@@ -201,69 +201,6 @@ survive the move. Any other CSV works too, as long as it has a habit and a date.
 
 ---
 
-## Download
-
-[**F-Droid**](https://f-droid.org/packages/com.streak.app/) is the easiest way:
-it installs Streak and keeps it updated for you. It's also on
-[**IzzyOnDroid**](https://apt.izzysoft.de/fdroid/index/apk/com.streak.app?repo=main)
-and [**OpenAPK**](https://www.openapk.net/streak/com.streak.app/).
-
-Streak runs on Android, Windows and Linux:
-
-| Platform | Status         |
-| -------- | -------------- |
-| Android  | ✅ Supported   |
-| Windows  | ✅ Supported   |
-| Linux    | ✅ Supported   |
-| iOS      | 🚧 In progress |
-| macOS    | 📅 Planned     |
-
-<details>
-<summary><b>Linux</b></summary>
-
-Two files on the [**Releases**](https://github.com/InlitX/streak/releases) page,
-both for 64-bit x86:
-
-| File                      | For                                             |
-| ------------------------- | ----------------------------------------------- |
-| `Streak-x86_64.AppImage`  | Any distribution: make it executable and run it |
-| `Streak-linux-x64.tar.gz` | Unpack anywhere and run `Streak`                |
-
-The Linux build has only just landed, so expect some rough edges. Reminders ring
-while Streak is open. If something does not work, open an issue and I will fix
-them as they come.
-
-</details>
-
-<details>
-<summary><b>Install the APK yourself</b></summary>
-
-Prefer the raw APK? It's on the
-[**Releases**](https://github.com/InlitX/streak/releases) page, one file per
-phone type so each download stays small:
-
-| APK                      | For                                     |
-| ------------------------ | --------------------------------------- |
-| `Streak-arm64-v8a.apk`   | Modern 64-bit phones, **pick this one** |
-| `Streak-armeabi-v7a.apk` | Older 32-bit devices                    |
-| `Streak-x86_64.apk`      | Emulators and x86 tablets               |
-
-Runs on **Android 9 (Pie) and newer**.
-
-If you install the APK yourself, [**Obtainium**](https://github.com/ImranR98/Obtainium)
-keeps it updated: add `https://github.com/InlitX/streak` and it will follow the
-Releases page, tell you when a new version is out and pick the right APK for
-your phone.
-
-> [!NOTE]
-> Streak isn't on the Play Store. Since the APK doesn't come from a store,
-> Android may ask you to allow installs from your browser or file manager the
-> first time.
-
-</details>
-
----
-
 ## Building from source
 
 To build Streak locally from source:
@@ -394,3 +331,64 @@ help as much as a coffee does.
 Released under the <a href="LICENSE"><b>GNU GPLv3</b></a>.
 
 </div>
+
+---
+
+## Download
+
+[**F-Droid**](https://f-droid.org/packages/com.streak.app/) is the easiest way:
+it installs Streak and keeps it updated for you. It's also on
+[**IzzyOnDroid**](https://apt.izzysoft.de/fdroid/index/apk/com.streak.app?repo=main)
+and [**OpenAPK**](https://www.openapk.net/streak/com.streak.app/).
+
+Streak runs on Android, Windows and Linux:
+
+| Platform | Status         |
+| -------- | -------------- |
+| Android  | ✅ Supported   |
+| Windows  | ✅ Supported   |
+| Linux    | ✅ Supported   |
+| iOS      | 🚧 In progress |
+| macOS    | 📅 Planned     |
+
+<details>
+<summary><b>Linux</b></summary>
+
+Two files on the [**Releases**](https://github.com/InlitX/streak/releases) page,
+both for 64-bit x86:
+
+| File                      | For                                             |
+| ------------------------- | ----------------------------------------------- |
+| `Streak-x86_64.AppImage`  | Any distribution: make it executable and run it |
+| `Streak-linux-x64.tar.gz` | Unpack anywhere and run `Streak`                |
+
+The Linux build has only just landed, so expect some rough edges. Reminders ring
+while Streak is open. If something does not work, open an issue and I will fix
+them as they come.
+
+</details>
+
+### Install the APK yourself
+
+Prefer the raw APK? You can download the latest builds right from the `/releases` folder:
+
+| APK                                                                          | Size  | For                                     |
+| ---------------------------------------------------------------------------- | ----- | --------------------------------------- |
+| [**`Streak-arm64-v8a.apk`**](releases/per-cpu-type/Streak-arm64-v8a.apk)     | 37 MB | Modern 64-bit phones, **pick this one** |
+| [**`Streak-armeabi-v7a.apk`**](releases/per-cpu-type/Streak-armeabi-v7a.apk) | 35 MB | Older 32-bit devices                    |
+| [**`Streak-x86_64.apk`**](releases/per-cpu-type/Streak-x86_64.apk)           | 39 MB | Emulators and x86 tablets               |
+| [**`Streak.apk`**](releases/fat-apk/Streak.apk)                              | 80 MB | Universal (All devices)                 |
+
+Runs on **Android 9 (Pie) and newer**.
+
+If you install the APK yourself, [**Obtainium**](https://github.com/ImranR98/Obtainium)
+keeps it updated: add `https://github.com/cybermajeed/streak` and it will follow the
+Releases page, tell you when a new version is out and pick the right APK for
+your phone.
+
+> [!NOTE]
+> Streak isn't on the Play Store. Since the APK doesn't come from a store,
+> Android may ask you to allow installs from your browser or file manager the
+> first time.
+
+---
