@@ -210,153 +210,162 @@ class _SleepAnalyticsSectionState extends State<SleepAnalyticsSection> {
               ),
               const SizedBox(height: 24),
               // Chart
-              SizedBox(
-                height: 180,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: SizedBox(
-                    width: max(
-                      MediaQuery.sizeOf(context).width - 72,
-                      days * 12.0,
-                    ),
-                    child: LineChart(
-                      LineChartData(
-                        minY: 0,
-                        maxY: maxY,
-                        minX: 0,
-                        maxX: (days - 1).toDouble(),
-                        lineTouchData: LineTouchData(
-                          touchTooltipData: LineTouchTooltipData(
-                            getTooltipItems: (touchedSpots) {
-                              return touchedSpots.map((spot) {
-                                final date = dateKeys[spot.x.toInt()];
-                                final dStr = DateFormat('MMM d').format(date);
-                                return LineTooltipItem(
-                                  '$dStr\n${spot.y.toStringAsFixed(1)}h',
-                                  const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                );
-                              }).toList();
-                            },
-                          ),
-                        ),
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          horizontalInterval: 4,
-                          getDrawingHorizontalLine: (value) => FlLine(
-                            color: scheme.outlineVariant.withValues(alpha: 0.2),
-                            strokeWidth: 1,
-                          ),
-                        ),
-                        titlesData: FlTitlesData(
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 32,
-                              interval: 4,
-                              getTitlesWidget: (value, _) {
-                                return Text(
-                                  '${value.toInt()}h',
-                                  style: TextStyle(
-                                    color: scheme.onSurfaceVariant.withValues(
-                                      alpha: 0.6,
-                                    ),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: _tabIndex == 0
-                                  ? 1
-                                  : _tabIndex == 1
-                                  ? 6
-                                  : 60,
-                              getTitlesWidget: (value, _) {
-                                final intValue = value.toInt();
-                                if (intValue < 0 ||
-                                    intValue >= dateKeys.length) {
-                                  return const SizedBox.shrink();
-                                }
-                                final date = dateKeys[intValue];
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    _tabIndex == 0
-                                        ? DateFormat('E').format(date)
-                                        : _tabIndex == 1
-                                        ? DateFormat('d').format(date)
-                                        : DateFormat('MMM').format(date),
-                                    style: TextStyle(
-                                      color: scheme.onSurfaceVariant.withValues(
-                                        alpha: 0.6,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return SizedBox(
+                    height: 180,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: SizedBox(
+                        width: max(constraints.maxWidth, days * 12.0),
+                        child: LineChart(
+                          LineChartData(
+                            minY: 0,
+                            maxY: maxY,
+                            minX: 0,
+                            maxX: (days - 1).toDouble(),
+                            lineTouchData: LineTouchData(
+                              touchTooltipData: LineTouchTooltipData(
+                                getTooltipItems: (touchedSpots) {
+                                  return touchedSpots.map((spot) {
+                                    final date = dateKeys[spot.x.toInt()];
+                                    final dStr = DateFormat(
+                                      'MMM d',
+                                    ).format(date);
+                                    return LineTooltipItem(
+                                      '$dStr\n${spot.y.toStringAsFixed(1)}h',
+                                      const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        borderData: FlBorderData(show: false),
-                        extraLinesData: ExtraLinesData(
-                          horizontalLines: [
-                            HorizontalLine(
-                              y: ctrl.targetHours,
-                              color: scheme.primary,
-                              strokeWidth: 1.5,
-                              dashArray: [6, 4],
-                              label: HorizontalLineLabel(
-                                show: true,
-                                alignment: Alignment.topRight,
-                                padding: const EdgeInsets.only(
-                                  right: 4,
-                                  bottom: 4,
-                                ),
-                                style: TextStyle(
-                                  color: scheme.primary,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                labelResolver: (_) => 'GOAL',
+                                    );
+                                  }).toList();
+                                },
                               ),
                             ),
-                          ],
-                        ),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: spots,
-                            isCurved: true,
-                            color: scheme.primary,
-                            barWidth: 3,
-                            isStrokeCapRound: true,
-                            dotData: FlDotData(show: _tabIndex == 0),
-                            belowBarData: BarAreaData(
+                            gridData: FlGridData(
                               show: true,
-                              color: scheme.primary.withValues(alpha: 0.1),
+                              drawVerticalLine: false,
+                              horizontalInterval: 4,
+                              getDrawingHorizontalLine: (value) => FlLine(
+                                color: scheme.outlineVariant.withValues(
+                                  alpha: 0.2,
+                                ),
+                                strokeWidth: 1,
+                              ),
                             ),
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 32,
+                                  interval: 4,
+                                  getTitlesWidget: (value, _) {
+                                    return Text(
+                                      '${value.toInt()}h',
+                                      style: TextStyle(
+                                        color: scheme.onSurfaceVariant
+                                            .withValues(
+                                              alpha: 0.6,
+                                            ),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  interval: _tabIndex == 0
+                                      ? 1
+                                      : _tabIndex == 1
+                                      ? 6
+                                      : 60,
+                                  getTitlesWidget: (value, _) {
+                                    final intValue = value.toInt();
+                                    if (intValue < 0 ||
+                                        intValue >= dateKeys.length) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    final date = dateKeys[intValue];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Text(
+                                        _tabIndex == 0
+                                            ? DateFormat('E').format(date)
+                                            : _tabIndex == 1
+                                            ? DateFormat('d').format(date)
+                                            : DateFormat('MMM').format(date),
+                                        style: TextStyle(
+                                          color: scheme.onSurfaceVariant
+                                              .withValues(
+                                                alpha: 0.6,
+                                              ),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            extraLinesData: ExtraLinesData(
+                              horizontalLines: [
+                                HorizontalLine(
+                                  y: ctrl.targetHours,
+                                  color: scheme.primary,
+                                  strokeWidth: 1.5,
+                                  dashArray: [6, 4],
+                                  label: HorizontalLineLabel(
+                                    show: true,
+                                    alignment: Alignment.topRight,
+                                    padding: const EdgeInsets.only(
+                                      right: 4,
+                                      bottom: 4,
+                                    ),
+                                    style: TextStyle(
+                                      color: scheme.primary,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    labelResolver: (_) => 'GOAL',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: spots,
+                                isCurved: true,
+                                color: scheme.primary,
+                                barWidth: 3,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(show: _tabIndex == 0),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  color: scheme.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ],
           ),

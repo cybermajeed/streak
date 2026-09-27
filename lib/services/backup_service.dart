@@ -15,6 +15,7 @@ import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/habits/data/category.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
+import 'package:streak/features/sleep/data/sleep_entry.dart';
 
 import 'package:streak/services/vault_writer.dart';
 
@@ -29,6 +30,8 @@ class BackupData {
     required this.categories,
     required this.settings,
     required this.skipped,
+    required this.sleep,
+    this.profilePhotoBase64,
     this.exportedAt,
   });
 
@@ -38,15 +41,32 @@ class BackupData {
   final List<Category> categories;
   final Map<String, dynamic> settings;
   final int skipped;
+  final List<SleepEntry> sleep;
+  final String? profilePhotoBase64;
   final DateTime? exportedAt;
 
-  bool get isEmpty => habits.isEmpty && notes.isEmpty && focus.isEmpty;
+  bool get isEmpty =>
+      habits.isEmpty && notes.isEmpty && focus.isEmpty && sleep.isEmpty;
 }
 
 class BackupService {
   const BackupService._();
 
-  static String _payloadFor(List<Habit> habits) {
+  static Future<String> _payloadFor(List<Habit> habits) async {
+    final settings = LocalStore.readAllSettings();
+    String? profilePhotoBase64;
+    final photoPath = settings['profilePhoto'] as String?;
+    if (photoPath != null && photoPath.isNotEmpty) {
+      try {
+        final file = File(photoPath);
+        if (file.existsSync()) {
+          profilePhotoBase64 = base64Encode(await file.readAsBytes());
+        }
+      } catch (e) {
+        debugPrint('Could not encode profile photo: $e');
+      }
+    }
+
     final payload = {
       'app': 'streak',
       'version': _kBackupVersion,
@@ -54,9 +74,10 @@ class BackupService {
       'habits': habits.map((h) => h.toMap()).toList(),
       'notes': LocalStore.readNotes().map((n) => n.toMap()).toList(),
       'focus': LocalStore.readFocusSessions().map((f) => f.toMap()).toList(),
-
+      'sleep': LocalStore.readSleepEntries().map((s) => s.toMap()).toList(),
       'categories': LocalStore.readCategories().map((c) => c.toMap()).toList(),
-      'settings': LocalStore.readAllSettings(),
+      'settings': settings,
+      if (profilePhotoBase64 != null) 'profilePhotoBase64': profilePhotoBase64,
     };
     return const JsonEncoder.withIndent('  ').convert(payload);
   }
@@ -107,7 +128,7 @@ class BackupService {
     final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
     final file = File('${dir.path}/streak_backup_$stamp.json');
     final habits = LocalStore.readHabits().values.toList();
-    await file.writeAsString(_payloadFor(habits));
+    await file.writeAsString(await _payloadFor(habits));
 
     try {
       if (readable) {
@@ -116,8 +137,8 @@ class BackupService {
           habits: habits,
           categories: LocalStore.readCategories(),
           notes: LocalStore.readNotes(),
-
           focus: LocalStore.readFocusSessions(),
+          sleep: LocalStore.readSleepEntries(),
         );
       }
     } catch (e) {
@@ -140,7 +161,7 @@ class BackupService {
   }
 
   static Future<bool> export(List<Habit> habits, {Rect? origin}) async {
-    final content = _payloadFor(habits);
+    final content = await _payloadFor(habits);
     final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
     final name = 'streak_backup_$stamp.json';
 
@@ -247,10 +268,12 @@ class BackupService {
       notes: collect(root['notes'], HabitNote.fromMap),
       focus: collect(root['focus'], FocusSession.fromMap),
       categories: collect(root['categories'], Category.fromMap),
+      sleep: collect(root['sleep'], SleepEntry.fromMap),
       settings: root['settings'] is Map
           ? Map<String, dynamic>.from(root['settings'] as Map)
           : const {},
       skipped: skipped,
+      profilePhotoBase64: root['profilePhotoBase64'] as String?,
       exportedAt: DateTime.tryParse((root['exportedAt'] ?? '') as String),
     );
 

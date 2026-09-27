@@ -9,7 +9,10 @@ import 'package:streak/services/vault_writer.dart';
 
 import 'support/app_harness.dart';
 
-Future<Directory> _vault(List<Habit> habits, {List<Category> categories = const []}) async {
+Future<Directory> _vault(
+  List<Habit> habits, {
+  List<Category> categories = const [],
+}) async {
   final dir = await Directory.systemTemp.createTemp('streak_vault');
   addTearDown(() => dir.deleteSync(recursive: true));
   await VaultWriter.write(
@@ -17,8 +20,8 @@ Future<Directory> _vault(List<Habit> habits, {List<Category> categories = const 
     habits: habits,
     categories: categories,
     notes: const [],
-
     focus: const [],
+    sleep: const [],
   );
   return dir;
 }
@@ -26,11 +29,9 @@ Future<Directory> _vault(List<Habit> habits, {List<Category> categories = const 
 String _read(Directory dir, String path) =>
     File('${dir.path}/$path').readAsStringSync();
 
-List<File> _pages(Directory dir) => Directory('${dir.path}/habits')
-    .listSync()
-    .whereType<File>()
-    .where((f) => f.path.endsWith('.md'))
-    .toList();
+List<File> _pages(Directory dir) => Directory(
+  '${dir.path}/habits',
+).listSync().whereType<File>().where((f) => f.path.endsWith('.md')).toList();
 
 void main() {
   group('the readable copy', () {
@@ -53,7 +54,10 @@ void main() {
       final files = _pages(dir);
       expect(files, hasLength(1));
       expect(files.single.path, endsWith('Gym Cardio 5k.md'));
-      expect(_read(dir, 'habits/Gym Cardio 5k.md'), contains('Gym / Cardio: 5k?'));
+      expect(
+        _read(dir, 'habits/Gym Cardio 5k.md'),
+        contains('Gym / Cardio: 5k?'),
+      );
     });
 
     test('two habits with the same name do not overwrite each other', () async {
@@ -140,8 +144,10 @@ void main() {
     test('archived habits go to their own folder', () async {
       final dir = await _vault([
         testHabit(id: 'a', name: 'Alive'),
-        testHabit(id: 'b', name: 'Retired')
-            .copyWith(archivedAt: DateTime(2026, 2, 1)),
+        testHabit(
+          id: 'b',
+          name: 'Retired',
+        ).copyWith(archivedAt: DateTime(2026, 2, 1)),
       ]);
 
       expect(File('${dir.path}/habits/Alive.md').existsSync(), isTrue);
@@ -161,8 +167,8 @@ void main() {
         habits: [testHabit(id: 'a', name: 'New name')],
         categories: const [],
         notes: const [],
-
         focus: const [],
+        sleep: const [],
       );
 
       expect(File('${dir.path}/habits/New name.md').existsSync(), isTrue);
@@ -179,8 +185,8 @@ void main() {
         habits: const [],
         categories: const [],
         notes: const [],
-
         focus: const [],
+        sleep: const [],
       );
 
       expect(theirs.existsSync(), isTrue);

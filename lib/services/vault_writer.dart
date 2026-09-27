@@ -7,6 +7,7 @@ import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/habits/data/category.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
+import 'package:streak/features/sleep/data/sleep_entry.dart';
 
 const vaultFolder = 'Streak';
 
@@ -30,8 +31,8 @@ class VaultWriter {
     required List<Habit> habits,
     required List<Category> categories,
     required List<HabitNote> notes,
-
     required List<FocusSession> focus,
+    required List<SleepEntry> sleep,
   }) async {
     final names = <String, String>{};
     for (final habit in habits) {
@@ -57,6 +58,7 @@ class VaultWriter {
 
     await _writeText(root, 'notes.md', _notes(notes, names));
     await _writeText(root, 'focus.md', _focus(focus, names));
+    await _writeText(root, 'sleep.md', _sleep(sleep));
   }
 
   static Future<void> _writeHabits(
@@ -302,6 +304,33 @@ the markdown here does not change anything in the app.
         '| ${_stamp(session.startedAt)} | $habit '
         '| ${formatMinutes(session.seconds / 60)} '
         '| ${session.completed ? 'yes' : 'no'} |',
+      );
+    }
+    return out.toString();
+  }
+
+  static String _sleep(List<SleepEntry> sleep) {
+    if (sleep.isEmpty) return '# Sleep\n\nNothing here yet.\n';
+
+    final sorted = sleep.toList()
+      ..sort((a, b) => b.wakeTime.compareTo(a.wakeTime));
+
+    final totalHours = sorted.fold<double>(0, (sum, s) => sum + s.hours);
+    final out = StringBuffer()
+      ..writeln('# Sleep')
+      ..writeln()
+      ..writeln(
+        '${sorted.length} entries, ${totalHours.toStringAsFixed(1)} hours in total.',
+      )
+      ..writeln()
+      ..writeln('| Date | Bed Time | Wake Time | Duration |')
+      ..writeln('| --- | --- | --- | --- |');
+
+    for (final entry in sorted) {
+      out.writeln(
+        '| ${_day(entry.wakeDay)} | ${_stamp(entry.bedTime)} '
+        '| ${_stamp(entry.wakeTime)} '
+        '| ${entry.hours.toStringAsFixed(1)}h |',
       );
     }
     return out.toString();

@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:streak/core/database/local_store.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/utils/cover_storage.dart';
@@ -472,6 +476,16 @@ class HabitsController extends ChangeNotifier {
     }
 
     if (data.settings.isNotEmpty) {
+      if (data.profilePhotoBase64 != null) {
+        try {
+          final dir = await getApplicationDocumentsDirectory();
+          final dest = '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          await File(dest).writeAsBytes(base64Decode(data.profilePhotoBase64!));
+          data.settings['profilePhoto'] = dest;
+        } catch (e) {
+          debugPrint('Could not restore profile photo: $e');
+        }
+      }
       await LocalStore.writeAllSettings(data.settings);
     }
     for (final habit in data.habits) {

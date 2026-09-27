@@ -183,7 +183,9 @@ class _NightRow extends StatelessWidget {
       onTap: entries.isEmpty
           ? () => SleepLogSheet.show(context, day: day)
           : null,
-      child: Row(
+      child: SizedBox(
+        height: _rowH,
+        child: Row(
         children: [
           // Day label
           SizedBox(
@@ -248,6 +250,7 @@ class _NightRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
