@@ -509,24 +509,7 @@ class _PreferencesPage extends StatelessWidget {
                 onChanged: settings.setNotesEnabled,
               ),
             ),
-            SoftRow(
-              icon: LucideIcons.listChecks,
-              title: context.l10n.todos,
-              subtitle: context.l10n.todos_enable_sub,
-              trailing: _SoftSwitch(
-                value: settings.todosEnabled,
-                onChanged: settings.setTodosEnabled,
-              ),
-            ),
-            SoftRow(
-              icon: LucideIcons.palmtree,
-              title: context.l10n.gamification_beta,
-              subtitle: context.l10n.island_enable_sub,
-              trailing: _SoftSwitch(
-                value: settings.islandEnabled,
-                onChanged: settings.setIslandEnabled,
-              ),
-            ),
+
             SoftRow(
               icon: LucideIcons.calendarClock,
               title: context.l10n.plan_day,

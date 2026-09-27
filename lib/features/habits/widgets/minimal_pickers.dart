@@ -38,16 +38,28 @@ class CompactIconPicker extends StatefulWidget {
 class _CompactIconPickerState extends State<CompactIconPicker> {
   late bool _emoji = HabitEmojis.isEmoji(widget.selected);
   late String _category = HabitIcons.categories.keys.first;
+  final TextEditingController _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final query = _searchCtrl.text.trim();
+    final isSearching = query.isNotEmpty;
+
     final cats = _emoji
         ? HabitEmojis.categories.keys.toList()
         : HabitIcons.categories.keys.toList();
     if (!cats.contains(_category)) _category = cats.first;
-    final glyphs = _emoji
-        ? HabitEmojis.categories[_category]!
-        : HabitIcons.categories[_category]!;
+    final glyphs = isSearching && !_emoji
+        ? HabitIcons.search(query)
+        : (_emoji
+            ? HabitEmojis.categories[_category]!
+            : HabitIcons.categories[_category]!);
 
     return CompactCard(
       child: Column(
@@ -56,8 +68,25 @@ class _CompactIconPickerState extends State<CompactIconPicker> {
           CompactTabs(
             labels: [context.l10n.icons_tab, context.l10n.emojis_tab],
             index: _emoji ? 1 : 0,
-            onChanged: (i) => setState(() => _emoji = i == 1),
+            onChanged: (i) {
+              setState(() {
+                _emoji = i == 1;
+                if (_emoji) _searchCtrl.clear();
+              });
+            },
           ),
+          if (!_emoji) ...[
+            const SizedBox(height: 10),
+            TextField(
+              controller: _searchCtrl,
+              decoration: const InputDecoration(
+                hintText: 'Search',
+                prefixIcon: Icon(LucideIcons.search, size: 18),
+                isDense: true,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
           if (_emoji) ...[
             const SizedBox(height: 10),
             CustomEmojiField(
@@ -65,13 +94,14 @@ class _CompactIconPickerState extends State<CompactIconPicker> {
               onPicked: widget.onSelected,
             ),
           ],
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 24,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final cat in cats)
+          if (!isSearching) const SizedBox(height: 12),
+          if (!isSearching)
+            SizedBox(
+              height: 24,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (final cat in cats)
                   Semantics(
                     button: true,
                     selected: _category == cat,
@@ -99,53 +129,58 @@ class _CompactIconPickerState extends State<CompactIconPicker> {
             ),
           ),
           const SizedBox(height: 10),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const columns = 8;
-              const gap = 7.0;
-              final cell =
-                  (constraints.maxWidth - gap * (columns - 1)) / columns;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  for (final glyph in glyphs)
-                    Semantics(
-                      button: true,
-                      selected: widget.selected == glyph,
-                      label: glyph,
-                      child: GestureDetector(
-                        onTap: () => widget.onSelected(glyph),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 140),
-                          width: cell,
-                          height: cell,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: widget.selected == glyph
-                                ? widget.color.withValues(alpha: 0.12)
-                                : context.colors.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(9),
-                            border: Border.all(
-                              color: widget.selected == glyph
-                                  ? widget.color.withValues(alpha: 0.75)
-                                  : Colors.transparent,
-                              width: 1.2,
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 220),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const columns = 8;
+                const gap = 7.0;
+                final cell =
+                    (constraints.maxWidth - gap * (columns - 1)) / columns;
+                return SingleChildScrollView(
+                  child: Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      for (final glyph in glyphs)
+                        Semantics(
+                          button: true,
+                          selected: widget.selected == glyph,
+                          label: glyph,
+                          child: GestureDetector(
+                            onTap: () => widget.onSelected(glyph),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 140),
+                              width: cell,
+                              height: cell,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: widget.selected == glyph
+                                    ? widget.color.withValues(alpha: 0.12)
+                                    : context.colors.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: widget.selected == glyph
+                                      ? widget.color.withValues(alpha: 0.75)
+                                      : Colors.transparent,
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: HabitGlyph(
+                                glyph: glyph,
+                                size: cell * 0.48,
+                                color: widget.selected == glyph
+                                    ? widget.color
+                                    : context.tokens.muted,
+                              ),
                             ),
                           ),
-                          child: HabitGlyph(
-                            glyph: glyph,
-                            size: cell * 0.48,
-                            color: widget.selected == glyph
-                                ? widget.color
-                                : context.tokens.muted,
-                          ),
                         ),
-                      ),
-                    ),
-                ],
-              );
-            },
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -216,7 +251,7 @@ class _CompactColorPickerState extends State<CompactColorPicker> {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: color,
-                              borderRadius: BorderRadius.circular(9),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: widget.selected.toARGB32() == color.toARGB32()
                                 ? Icon(
@@ -268,7 +303,7 @@ class CompactCover extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               color: context.colors.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: minimalOutline(context)),
             ),
             child: Row(
@@ -292,7 +327,7 @@ class CompactCover extends StatelessWidget {
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: Stack(
         children: [
           CoverBlur(

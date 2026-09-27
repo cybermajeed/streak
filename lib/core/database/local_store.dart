@@ -5,8 +5,7 @@ import 'package:streak/features/habits/data/category.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
-import 'package:streak/features/todos/data/todo.dart';
-import 'package:streak/features/todos/data/todo_tag.dart';
+import 'package:streak/features/sleep/data/sleep_entry.dart';
 
 class LocalStore {
   const LocalStore._();
@@ -16,16 +15,14 @@ class LocalStore {
   static const _categoriesBox = 'categories';
   static const _notesBox = 'notes';
   static const _focusBox = 'focus';
-  static const _todosBox = 'todos';
-  static const _todoTagsBox = 'todo_tags';
+  static const _sleepBox = 'sleep';
 
   static late Box _habits;
   static late Box _settings;
   static late Box _categories;
   static late Box _notes;
   static late Box _focus;
-  static late Box _todos;
-  static late Box _todoTags;
+  static late Box _sleep;
 
   static int _writing = 0;
 
@@ -51,48 +48,8 @@ class LocalStore {
     _categories = await Hive.openBox(_categoriesBox);
     _notes = await Hive.openBox(_notesBox);
     _focus = await Hive.openBox(_focusBox);
-    _todos = await Hive.openBox(_todosBox);
-    _todoTags = await Hive.openBox(_todoTagsBox);
+    _sleep = await Hive.openBox(_sleepBox);
   }
-
-  static List<Todo> readTodos() {
-    final result = <Todo>[];
-    for (final raw in _todos.values) {
-      try {
-        result.add(Todo.fromMap(Map<String, dynamic>.from(raw as Map)));
-      } catch (e) {
-        debugPrint('Skipped an unreadable to-do: $e');
-      }
-    }
-    return result;
-  }
-
-  static Future<void> writeTodo(Todo todo) => _todos.put(todo.id, todo.toMap());
-
-  static Future<void> removeTodo(String id) => _todos.delete(id);
-
-  static Future<void> removeTodos(Iterable<String> ids) async {
-    for (final id in ids) {
-      await _todos.delete(id);
-    }
-  }
-
-  static List<TodoTag> readTodoTags() {
-    final result = <TodoTag>[];
-    for (final raw in _todoTags.values) {
-      try {
-        result.add(TodoTag.fromJson(raw as String));
-      } catch (e) {
-        debugPrint('Skipped an unreadable tag: $e');
-      }
-    }
-    return result;
-  }
-
-  static Future<void> writeTodoTag(TodoTag tag) =>
-      _todoTags.put(tag.id, tag.toJson());
-
-  static Future<void> removeTodoTag(String id) => _todoTags.delete(id);
 
   static List<FocusSession> readFocusSessions() {
     final result = <FocusSession>[];
@@ -194,11 +151,23 @@ class LocalStore {
 
   static Map<String, dynamic> settingMap(String key) {
     final value = _settings.get(key);
-    return value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+    return value is Map
+        ? Map<String, dynamic>.from(value)
+        : <String, dynamic>{};
   }
 
   static Future<void> writeSetting(String key, Object value) =>
       _settings.put(key, value);
+
+  static Map<String, dynamic> readAllSettings() {
+    return _settings.toMap().cast<String, dynamic>();
+  }
+
+  static Future<void> writeAllSettings(Map<String, dynamic> data) async {
+    for (final entry in data.entries) {
+      await _settings.put(entry.key, entry.value);
+    }
+  }
 
   static Future<void> clearProgress() async {
     for (final habit in readHabits().values) {
@@ -206,24 +175,39 @@ class LocalStore {
     }
     await _notes.clear();
     await _focus.clear();
+    await _sleep.clear();
   }
+
+  // ── Sleep ──────────────────────────────────────────────────────────────────
+
+  static List<SleepEntry> readSleepEntries() {
+    final result = <SleepEntry>[];
+    for (final raw in _sleep.values) {
+      try {
+        result.add(
+          SleepEntry.fromMap(Map<String, dynamic>.from(raw as Map)),
+        );
+      } catch (e) {
+        debugPrint('Skipped unreadable sleep entry: $e');
+      }
+    }
+    return result;
+  }
+
+  static Future<void> writeSleepEntry(SleepEntry entry) =>
+      _sleep.put(entry.id, entry.toMap());
+
+  static Future<void> removeSleepEntry(String id) => _sleep.delete(id);
 
   static Future<void> wipeContent() async {
     await _habits.clear();
     await _notes.clear();
     await _focus.clear();
-    await _todos.clear();
-    await _todoTags.clear();
     await _categories.clear();
   }
 
   static Future<void> wipeEverything() async {
-    await _habits.clear();
-    await _notes.clear();
-    await _focus.clear();
-    await _todos.clear();
-    await _todoTags.clear();
-    await _categories.clear();
+    await wipeContent();
     await _settings.clear();
   }
 }

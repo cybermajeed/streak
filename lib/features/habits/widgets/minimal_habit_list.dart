@@ -52,7 +52,7 @@ class MinimalHabitList extends StatelessWidget {
               child: PaneMark(
                 id: habit.id,
                 tint: habit.color,
-                corners: BorderRadius.circular(20),
+                corners: BorderRadius.circular(12),
                 child: mode == HeatmapMode.week
                     ? GridWeekCard(
                         habit: habit,
@@ -111,7 +111,7 @@ class MinimalHabitList extends StatelessWidget {
     return PaneMark(
       id: habit.id,
       tint: habit.color,
-      corners: BorderRadius.circular(30),
+      corners: BorderRadius.circular(12),
       child: GridMonthCard(
         habit: habit,
         onOpen: () => onOpen(habit),

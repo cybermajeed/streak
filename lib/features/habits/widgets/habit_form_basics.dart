@@ -18,7 +18,11 @@ import 'package:streak/features/habits/widgets/custom_emoji_field.dart';
 
 class HabitPreview extends StatelessWidget {
   const HabitPreview({
-    super.key,required this.icon, required this.color, required this.name});
+    super.key,
+    required this.icon,
+    required this.color,
+    required this.name,
+  });
 
   final String icon;
   final Color color;
@@ -156,8 +160,11 @@ class CoverPicker extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(LucideIcons.imagePlus,
-                    size: 30, color: context.colors.primary),
+                Icon(
+                  LucideIcons.imagePlus,
+                  size: 30,
+                  color: context.colors.primary,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   context.l10n.add_image,
@@ -198,13 +205,17 @@ class CoverPicker extends StatelessWidget {
             right: 8,
             child: Row(
               children: [
-                CoverActionButton(icon: LucideIcons.pencil,
+                CoverActionButton(
+                  icon: LucideIcons.pencil,
                   label: context.l10n.edit,
-                  onTap: onPick),
+                  onTap: onPick,
+                ),
                 const SizedBox(width: 8),
-                CoverActionButton(icon: LucideIcons.trash2,
+                CoverActionButton(
+                  icon: LucideIcons.trash2,
                   label: context.l10n.delete,
-                  onTap: onRemove),
+                  onTap: onRemove,
+                ),
               ],
             ),
           ),
@@ -233,6 +244,7 @@ class IconPicker extends StatefulWidget {
 class _IconPickerState extends State<IconPicker> {
   bool _emoji = false;
   late String _category = HabitIcons.categories.keys.first;
+  final TextEditingController _searchCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -241,14 +253,25 @@ class _IconPickerState extends State<IconPicker> {
   }
 
   @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final query = _searchCtrl.text.trim();
+    final isSearching = query.isNotEmpty;
+
     final cats = _emoji
         ? HabitEmojis.categories.keys.toList()
         : HabitIcons.categories.keys.toList();
     if (!cats.contains(_category)) _category = cats.first;
-    final glyphs = _emoji
-        ? HabitEmojis.categories[_category]!
-        : HabitIcons.categories[_category]!;
+    final glyphs = isSearching && !_emoji
+        ? HabitIcons.search(query)
+        : (_emoji
+              ? HabitEmojis.categories[_category]!
+              : HabitIcons.categories[_category]!);
 
     return Card(
       child: Padding(
@@ -260,8 +283,25 @@ class _IconPickerState extends State<IconPicker> {
               left: context.l10n.icons_tab,
               right: context.l10n.emojis_tab,
               rightActive: _emoji,
-              onChanged: (v) => setState(() => _emoji = v),
+              onChanged: (v) {
+                setState(() {
+                  _emoji = v;
+                  if (v) _searchCtrl.clear();
+                });
+              },
             ),
+            if (!_emoji) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _searchCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Search',
+                  prefixIcon: const Icon(LucideIcons.search, size: 20),
+                  isDense: true,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
             if (_emoji) ...[
               const SizedBox(height: 12),
               CustomEmojiField(
@@ -270,67 +310,75 @@ class _IconPickerState extends State<IconPicker> {
               ),
             ],
             const SizedBox(height: 12),
-            SizedBox(
-              height: 32,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  for (final cat in cats)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Semantics(
-                        button: true,
-                        selected: _category == cat,
-                        child: GestureDetector(
-                          onTap: () => setState(() => _category = cat),
-                          child: Container(
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              color: _category == cat
-                                  ? widget.color.withValues(alpha: 0.16)
-                                  : context.colors.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              cat,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+            if (!isSearching)
+              SizedBox(
+                height: 32,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final cat in cats)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Semantics(
+                          button: true,
+                          selected: _category == cat,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _category = cat),
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              decoration: BoxDecoration(
                                 color: _category == cat
-                                    ? widget.color
-                                    : context.tokens.muted,
+                                    ? widget.color.withValues(alpha: 0.16)
+                                    : context.colors.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                cat,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _category == cat
+                                      ? widget.color
+                                      : context.tokens.muted,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                const columns = 7;
-                const gap = 10.0;
-                final cell =
-                    (constraints.maxWidth - gap * (columns - 1)) / columns;
-                return Wrap(
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: [
-                    for (final glyph in glyphs)
-                      _GlyphTile(
-                        glyph: glyph,
-                        size: cell,
-                        selected: widget.selected == glyph,
-                        color: widget.color,
-                        onTap: () => widget.onSelected(glyph),
-                      ),
                   ],
-                );
-              },
+                ),
+              ),
+            if (!isSearching) const SizedBox(height: 12),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 260),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const columns = 7;
+                  const gap = 10.0;
+                  final cell =
+                      (constraints.maxWidth - gap * (columns - 1)) / columns;
+                  return SingleChildScrollView(
+                    child: Wrap(
+                      spacing: gap,
+                      runSpacing: gap,
+                      children: [
+                        for (final glyph in glyphs)
+                          _GlyphTile(
+                            glyph: glyph,
+                            size: cell,
+                            selected: widget.selected == glyph,
+                            color: widget.color,
+                            onTap: () => widget.onSelected(glyph),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -356,31 +404,31 @@ class _Segment2 extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = context.colors;
     Widget seg(String label, bool active, VoidCallback onTap) => Expanded(
-          child: Semantics(
-            button: true,
-            selected: active,
-            child: GestureDetector(
-              onTap: onTap,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: active ? scheme.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: active ? scheme.onPrimary : context.tokens.muted,
-                  ),
-                ),
+      child: Semantics(
+        button: true,
+        selected: active,
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: active ? scheme.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: active ? scheme.onPrimary : context.tokens.muted,
               ),
             ),
           ),
-        );
+        ),
+      ),
+    );
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -430,8 +478,8 @@ class _GlyphTile extends StatelessWidget {
             color: selected
                 ? color.withValues(alpha: 0.16)
                 : (isDark
-                    ? const Color(0xFF222222)
-                    : context.colors.surfaceContainerHighest),
+                      ? const Color(0xFF222222)
+                      : context.colors.surfaceContainerHighest),
             borderRadius: BorderRadius.circular(12),
             border: selected ? Border.all(color: color, width: 1.6) : null,
           ),
@@ -483,7 +531,10 @@ class CategoryPicker extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(LucideIcons.pencil, color: context.colors.onSurface),
+              leading: Icon(
+                LucideIcons.pencil,
+                color: context.colors.onSurface,
+              ),
               title: Text(
                 context.l10n.edit,
                 style: sheetOptionStyle(sheetContext),
@@ -491,8 +542,10 @@ class CategoryPicker extends StatelessWidget {
               onTap: () => Navigator.of(sheetContext).pop('edit'),
             ),
             ListTile(
-              leading: Icon(LucideIcons.arrowUpDown,
-                  color: context.colors.onSurface),
+              leading: Icon(
+                LucideIcons.arrowUpDown,
+                color: context.colors.onSurface,
+              ),
               title: Text(
                 context.l10n.reorder,
                 style: sheetOptionStyle(sheetContext),
@@ -551,7 +604,10 @@ class CategoryPicker extends StatelessWidget {
               onLongPress: () => _editOrDelete(context, category),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 140),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: selected == category.name
                       ? category.color
@@ -601,7 +657,11 @@ class CategoryPicker extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(LucideIcons.plus, size: 14, color: context.colors.primary),
+                  Icon(
+                    LucideIcons.plus,
+                    size: 14,
+                    color: context.colors.primary,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     context.l10n.add_category,

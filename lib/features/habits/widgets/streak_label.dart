@@ -13,9 +13,14 @@ String habitMarkLabel(BuildContext context, Habit habit) => habit.tracking
 
 String streakLabel(BuildContext context, Habit habit) {
   final value = '${habit.currentStreak}';
-  return switch (habit.interval) {
+  final percent = habit.totalScheduledDays > 0
+      ? (habit.totalCompletions / habit.totalScheduledDays * 100).round()
+      : 0;
+  
+  final label = switch (habit.interval) {
     HabitInterval.weekly => context.l10n.streak_unit_week(value),
     HabitInterval.monthly => context.l10n.streak_unit_month(value),
     _ => value,
   };
+  return '$label • $percent%';
 }

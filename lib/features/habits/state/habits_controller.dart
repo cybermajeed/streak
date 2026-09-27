@@ -187,6 +187,7 @@ class HabitsController extends ChangeNotifier {
     await _apply(habit, CompletionOps.addProgress(habit, date, delta));
   }
 
+
   Future<void> setProgress(String id, DateTime date, double value) async {
     final habit = _habits[id];
     if (habit == null) return;
@@ -469,11 +470,9 @@ class HabitsController extends ChangeNotifier {
     for (final session in data.focus) {
       await LocalStore.writeFocusSession(session);
     }
-    for (final todo in data.todos) {
-      await LocalStore.writeTodo(todo);
-    }
-    for (final tag in data.todoTags) {
-      await LocalStore.writeTodoTag(tag);
+
+    if (data.settings.isNotEmpty) {
+      await LocalStore.writeAllSettings(data.settings);
     }
     for (final habit in data.habits) {
       if (habit.reminders.isNotEmpty) await _notifications.scheduleFor(habit);

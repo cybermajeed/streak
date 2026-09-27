@@ -101,9 +101,14 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
         }
 
         Future<void> editAmount(DateTime date) async {
-          final allowed =
-              await confirmUnscheduledDay(context, habit: habit, date: date);
+          final allowed = await confirmUnscheduledDay(
+            context,
+            habit: habit,
+            date: date,
+          );
           if (!allowed || !context.mounted) return;
+
+
 
           final current = habit.completions[date.dayKey]?.count ?? 0;
           final value = await showNumberKeypadDialog(
@@ -123,10 +128,15 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
         }
 
         Future<void> toggleDay(DateTime date) async {
-          if (!await allowManualCheck(context, habit: habit, date: date)) return;
+          if (!await allowManualCheck(context, habit: habit, date: date)) {
+            return;
+          }
           if (!context.mounted) return;
-          final allowed =
-              await confirmUnscheduledDay(context, habit: habit, date: date);
+          final allowed = await confirmUnscheduledDay(
+            context,
+            habit: habit,
+            date: date,
+          );
           if (!allowed) return;
           await controller.toggle(habit.id, date);
         }
@@ -154,11 +164,11 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
         final notesOn = settings.notesEnabled;
 
         void openDay(DateTime date) => showDayActionsSheet(
-              context,
-              habit: habit,
-              date: date,
-              notesEnabled: notesOn,
-            );
+          context,
+          habit: habit,
+          date: date,
+          notesEnabled: notesOn,
+        );
 
         return Scaffold(
           appBar: AppBar(
@@ -166,14 +176,21 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
             title: minimal || express
                 ? null
                 : Row(
-              children: [
-                HabitGlyph(glyph: habit.icon, color: habit.color, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(habit.name, overflow: TextOverflow.ellipsis),
-                ),
-              ],
-            ),
+                    children: [
+                      HabitGlyph(
+                        glyph: habit.icon,
+                        color: habit.color,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          habit.name,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
             leading: IconButton(
               icon: const Icon(LucideIcons.x),
               onPressed: () => AppNavigator.pop(),
@@ -717,7 +734,10 @@ class _FocusTile extends StatelessWidget {
     }
     await focus.removeSessions(ids);
     if (!context.mounted) return;
-    AppSnackbar.success(context, context.l10n.focus_sessions_deleted(ids.length));
+    AppSnackbar.success(
+      context,
+      context.l10n.focus_sessions_deleted(ids.length),
+    );
   }
 
   @override
@@ -736,106 +756,110 @@ class _FocusTile extends StatelessWidget {
       child: Column(
         children: [
           InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () => AppNavigator.push(FocusStatsPage(habitId: habit.id)),
-        onLongPress: () {
-          unawaited(_openActions(context));
-        },
-        child: Padding(
-          padding: express
-              ? const EdgeInsets.fromLTRB(16, 14, 14, 14)
-              : const EdgeInsets.fromLTRB(16, 12, 10, 12),
-          child: Row(
-            children: [
-              if (express)
-                ExpressBlob(
-                  size: 44,
-                  color: habit.color.withValues(alpha: 0.18),
-                  shape: ExpressShape.cookie,
-                  child: Icon(LucideIcons.timer, size: 20, color: habit.color),
-                )
-              else
-                Icon(LucideIcons.timer, size: 21, color: habit.color),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.l10n.focus_total,
-                      style: express
-                          ? ExpressType.headline.at(
-                              16,
-                              weight: 800,
-                              color: context.colors.onSurface,
-                            )
-                          : TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: context.colors.onSurface,
-                            ),
+            borderRadius: BorderRadius.circular(24),
+            onTap: () => AppNavigator.push(FocusStatsPage(habitId: habit.id)),
+            onLongPress: () {
+              unawaited(_openActions(context));
+            },
+            child: Padding(
+              padding: express
+                  ? const EdgeInsets.fromLTRB(16, 14, 14, 14)
+                  : const EdgeInsets.fromLTRB(16, 12, 10, 12),
+              child: Row(
+                children: [
+                  if (express)
+                    ExpressBlob(
+                      size: 44,
+                      color: habit.color.withValues(alpha: 0.18),
+                      shape: ExpressShape.cookie,
+                      child: Icon(
+                        LucideIcons.timer,
+                        size: 20,
+                        color: habit.color,
+                      ),
+                    )
+                  else
+                    Icon(LucideIcons.timer, size: 21, color: habit.color),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.l10n.focus_total,
+                          style: express
+                              ? ExpressType.headline.at(
+                                  16,
+                                  weight: 800,
+                                  color: context.colors.onSurface,
+                                )
+                              : TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: context.colors.onSurface,
+                                ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _focusLine(context, seconds, week, today),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: express
+                              ? ExpressType.body.at(
+                                  12.5,
+                                  weight: 600,
+                                  color: context.tokens.muted,
+                                )
+                              : TextStyle(
+                                  fontSize: 12.5,
+                                  color: context.tokens.muted,
+                                ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _focusLine(context, seconds, week, today),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: express
-                          ? ExpressType.body.at(
-                              12.5,
-                              weight: 600,
-                              color: context.tokens.muted,
-                            )
-                          : TextStyle(
-                              fontSize: 12.5,
-                              color: context.tokens.muted,
-                            ),
+                  ),
+                  if (express)
+                    ExpressIconButton(
+                      icon: LucideIcons.play,
+                      tooltip: context.l10n.focus_start,
+                      size: 46,
+                      tint: habit.color.computeLuminance() > 0.55
+                          ? Colors.black
+                          : Colors.white,
+                      background: habit.color,
+                      resting: ExpressShape.cookie,
+                      pressed: ExpressShape.flower,
+                      onPressed: () => AppNavigator.push(
+                        focus.isActive
+                            ? const FocusPage()
+                            : FocusPage(
+                                startHabitId: habit.id,
+                                startMinutes: habit.focusMinutes,
+                                breakMinutes: habit.focusBreakMinutes,
+                              ),
+                        fade: true,
+                        name: FocusPage.routeName,
+                      ),
+                    )
+                  else
+                    IconButton(
+                      tooltip: context.l10n.focus_start,
+                      icon: Icon(LucideIcons.circlePlay, color: habit.color),
+                      onPressed: () => AppNavigator.push(
+                        focus.isActive
+                            ? const FocusPage()
+                            : FocusPage(
+                                startHabitId: habit.id,
+                                startMinutes: habit.focusMinutes,
+                                breakMinutes: habit.focusBreakMinutes,
+                              ),
+                        fade: true,
+                        name: FocusPage.routeName,
+                      ),
                     ),
-                  ],
-                ),
+                ],
               ),
-              if (express)
-                ExpressIconButton(
-                  icon: LucideIcons.play,
-                  tooltip: context.l10n.focus_start,
-                  size: 46,
-                  tint: habit.color.computeLuminance() > 0.55
-                      ? Colors.black
-                      : Colors.white,
-                  background: habit.color,
-                  resting: ExpressShape.cookie,
-                  pressed: ExpressShape.flower,
-                  onPressed: () => AppNavigator.push(
-                    focus.isActive
-                        ? const FocusPage()
-                        : FocusPage(
-                            startHabitId: habit.id,
-                            startMinutes: habit.focusMinutes,
-                            breakMinutes: habit.focusBreakMinutes,
-                          ),
-                    fade: true,
-                    name: FocusPage.routeName,
-                  ),
-                )
-              else
-                IconButton(
-                  tooltip: context.l10n.focus_start,
-                  icon: Icon(LucideIcons.circlePlay, color: habit.color),
-                  onPressed: () => AppNavigator.push(
-                    focus.isActive
-                        ? const FocusPage()
-                        : FocusPage(
-                            startHabitId: habit.id,
-                            startMinutes: habit.focusMinutes,
-                            breakMinutes: habit.focusBreakMinutes,
-                          ),
-                    fade: true,
-                    name: FocusPage.routeName,
-                  ),
-                ),
-            ],
-          ),
-        ),
+            ),
           ),
           if (seconds > 0)
             Padding(

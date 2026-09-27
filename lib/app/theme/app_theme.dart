@@ -40,12 +40,14 @@ class AppTheme {
   }
 
   static ButtonStyle _expressButton(Color foreground) => ButtonStyle(
-        shape: const WidgetStatePropertyAll(StadiumBorder()),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
         padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 24, vertical: 15),
+          EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
         textStyle: WidgetStatePropertyAll(
-          ExpressType.headline.at(15, weight: 800, color: foreground),
+          ExpressType.headline.at(14, weight: 600, color: foreground),
         ),
       );
 
@@ -99,9 +101,8 @@ class AppTheme {
         systemOverlayStyle: systemBars(brightness),
         foregroundColor: scheme.onSurface,
         titleTextStyle: ExpressType.headline.at(
-          26,
-          weight: 900,
-          spacing: -0.4,
+          22,
+          weight: 600,
           color: scheme.onSurface,
         ),
       ),
@@ -109,23 +110,23 @@ class AppTheme {
         color: container,
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: scheme.surfaceContainerLow,
         surfaceTintColor: Colors.transparent,
         constraints: const BoxConstraints(maxWidth: phoneWidth),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(34)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.surfaceContainerHigh,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(34)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         titleTextStyle: ExpressType.headline.at(
           22,
-          weight: 800,
+          weight: 600,
           color: scheme.onSurface,
         ),
       ),

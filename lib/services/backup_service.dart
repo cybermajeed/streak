@@ -15,8 +15,7 @@ import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/habits/data/category.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
-import 'package:streak/features/todos/data/todo.dart';
-import 'package:streak/features/todos/data/todo_tag.dart';
+
 import 'package:streak/services/vault_writer.dart';
 
 const _kBackupVersion = 1;
@@ -27,9 +26,8 @@ class BackupData {
     required this.habits,
     required this.notes,
     required this.focus,
-    required this.todos,
-    required this.todoTags,
     required this.categories,
+    required this.settings,
     required this.skipped,
     this.exportedAt,
   });
@@ -37,14 +35,12 @@ class BackupData {
   final List<Habit> habits;
   final List<HabitNote> notes;
   final List<FocusSession> focus;
-  final List<Todo> todos;
-  final List<TodoTag> todoTags;
   final List<Category> categories;
+  final Map<String, dynamic> settings;
   final int skipped;
   final DateTime? exportedAt;
 
-  bool get isEmpty =>
-      habits.isEmpty && notes.isEmpty && focus.isEmpty && todos.isEmpty;
+  bool get isEmpty => habits.isEmpty && notes.isEmpty && focus.isEmpty;
 }
 
 class BackupService {
@@ -57,12 +53,10 @@ class BackupService {
       'exportedAt': DateTime.now().toIso8601String(),
       'habits': habits.map((h) => h.toMap()).toList(),
       'notes': LocalStore.readNotes().map((n) => n.toMap()).toList(),
-      'focus':
-          LocalStore.readFocusSessions().map((f) => f.toMap()).toList(),
-      'todos': LocalStore.readTodos().map((t) => t.toMap()).toList(),
-      'todoTags': LocalStore.readTodoTags().map((t) => t.toMap()).toList(),
-      'categories':
-          LocalStore.readCategories().map((c) => c.toMap()).toList(),
+      'focus': LocalStore.readFocusSessions().map((f) => f.toMap()).toList(),
+
+      'categories': LocalStore.readCategories().map((c) => c.toMap()).toList(),
+      'settings': LocalStore.readAllSettings(),
     };
     return const JsonEncoder.withIndent('  ').convert(payload);
   }
@@ -102,9 +96,7 @@ class BackupService {
     String folder = '',
     bool readable = true,
   }) async {
-    final dir = folder.isEmpty
-        ? await defaultBackupDir()
-        : Directory(folder);
+    final dir = folder.isEmpty ? await defaultBackupDir() : Directory(folder);
     if (dir == null) return null;
     try {
       if (!dir.existsSync()) await dir.create(recursive: true);
@@ -124,7 +116,7 @@ class BackupService {
           habits: habits,
           categories: LocalStore.readCategories(),
           notes: LocalStore.readNotes(),
-          todos: LocalStore.readTodos(),
+
           focus: LocalStore.readFocusSessions(),
         );
       }
@@ -132,12 +124,13 @@ class BackupService {
       debugPrint('Could not write the readable copy: $e');
     }
 
-    final old = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.json'))
-        .toList()
-      ..sort((a, b) => b.path.compareTo(a.path));
+    final old =
+        dir
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.json'))
+            .toList()
+          ..sort((a, b) => b.path.compareTo(a.path));
     for (final stale in old.skip(_kAutoBackupKeep)) {
       try {
         stale.deleteSync();
@@ -253,9 +246,10 @@ class BackupService {
       habits: habits,
       notes: collect(root['notes'], HabitNote.fromMap),
       focus: collect(root['focus'], FocusSession.fromMap),
-      todos: collect(root['todos'], Todo.fromMap),
-      todoTags: collect(root['todoTags'], TodoTag.fromMap),
       categories: collect(root['categories'], Category.fromMap),
+      settings: root['settings'] is Map
+          ? Map<String, dynamic>.from(root['settings'] as Map)
+          : const {},
       skipped: skipped,
       exportedAt: DateTime.tryParse((root['exportedAt'] ?? '') as String),
     );

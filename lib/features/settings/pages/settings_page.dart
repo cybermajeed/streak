@@ -106,8 +106,7 @@ class ClassicSettingsPage extends StatelessWidget {
                     icon: LucideIcons.heartHandshake,
                     title: context.l10n.support,
                     subtitle: context.l10n.support_sub,
-                    onTap: () =>
-                        AppNavigator.push(const _ClassicSupportPage()),
+                    onTap: () => AppNavigator.push(const _ClassicSupportPage()),
                   ),
                 ],
               ),
@@ -150,7 +149,10 @@ class _ClassicSection extends StatelessWidget {
         padding: context.pagePadding(16, 8, 16, 24),
         children: [
           Entrance(child: SectionLabel(label)),
-          Entrance(index: 1, child: Card(child: Column(children: children))),
+          Entrance(
+            index: 1,
+            child: Card(child: Column(children: children)),
+          ),
         ],
       ),
     );
@@ -419,7 +421,8 @@ class _ClassicPreferencesPage extends StatelessWidget {
                     trailing: Segmented(
                       options: [context.l10n.off, context.l10n.on],
                       index: settings.vacationAll ? 1 : 0,
-                      onChanged: (i) => SettingsActions.setVacationAll(context, i == 1),
+                      onChanged: (i) =>
+                          SettingsActions.setVacationAll(context, i == 1),
                     ),
                   ),
                   settingsDivider(context),
@@ -491,28 +494,7 @@ class _ClassicPreferencesPage extends StatelessWidget {
                     ),
                   ),
                   settingsDivider(context),
-                  SettingRow(
-                    icon: LucideIcons.listChecks,
-                    title: context.l10n.todos,
-                    subtitle: context.l10n.todos_enable_sub,
-                    trailing: Segmented(
-                      options: [context.l10n.off, context.l10n.on],
-                      index: settings.todosEnabled ? 1 : 0,
-                      onChanged: (i) => settings.setTodosEnabled(i == 1),
-                    ),
-                  ),
-                  settingsDivider(context),
-                  SettingRow(
-                    icon: LucideIcons.palmtree,
-                    title: context.l10n.gamification_beta,
-                    subtitle: context.l10n.island_enable_sub,
-                    trailing: Segmented(
-                      options: [context.l10n.off, context.l10n.on],
-                      index: settings.islandEnabled ? 1 : 0,
-                      onChanged: (i) => settings.setIslandEnabled(i == 1),
-                    ),
-                  ),
-                  settingsDivider(context),
+
                   SettingRow(
                     icon: LucideIcons.calendarClock,
                     title: context.l10n.plan_day,
@@ -603,9 +585,12 @@ class _ClassicPreferencesPage extends StatelessWidget {
                       icon: LucideIcons.timer,
                       title: context.l10n.app_lock_delay,
                       subtitle: context.l10n.app_lock_delay_sub,
-                      value: SettingsActions.appLockDelayLabels(context)[
-                          SettingsActions.appLockDelayIndex(
-                              settings.appLockDelay)],
+                      value:
+                          SettingsActions.appLockDelayLabels(
+                            context,
+                          )[SettingsActions.appLockDelayIndex(
+                            settings.appLockDelay,
+                          )],
                       onTap: () => showOptionSheet(
                         context,
                         title: context.l10n.app_lock_delay,
@@ -620,14 +605,14 @@ class _ClassicPreferencesPage extends StatelessWidget {
                     ),
                     if (hasBiometricLock) settingsDivider(context),
                     if (hasBiometricLock)
-                    NavRow(
-                      icon: LucideIcons.keyRound,
-                      title: context.l10n.app_lock_method,
-                      value: settings.appLockMode == 1
-                          ? context.l10n.pin_lock
-                          : context.l10n.app_lock_biometric,
-                      onTap: () => SettingsActions.chooseLockMethod(context),
-                    ),
+                      NavRow(
+                        icon: LucideIcons.keyRound,
+                        title: context.l10n.app_lock_method,
+                        value: settings.appLockMode == 1
+                            ? context.l10n.pin_lock
+                            : context.l10n.app_lock_biometric,
+                        onTap: () => SettingsActions.chooseLockMethod(context),
+                      ),
                     if (settings.appLockMode == 1) ...[
                       settingsDivider(context),
                       NavRow(

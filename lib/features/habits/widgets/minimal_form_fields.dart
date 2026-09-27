@@ -53,7 +53,7 @@ class CompactPreview extends StatelessWidget {
             height: 54,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: HabitGlyph(glyph: icon, color: color, size: 24),
           ),
@@ -116,7 +116,7 @@ class CompactPill extends StatelessWidget {
               color: selected
                   ? accent.withValues(alpha: 0.10)
                   : context.colors.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: selected ? accent.withValues(alpha: 0.75) : Colors.transparent,
                 width: 1.2,
@@ -254,7 +254,7 @@ class CompactStepperRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -355,7 +355,7 @@ class CompactWeekdays extends StatelessWidget {
                     color: active
                         ? accent.withValues(alpha: 0.12)
                         : context.colors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: active
                           ? accent.withValues(alpha: 0.75)
@@ -416,7 +416,7 @@ class CompactReminderRow extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
           decoration: BoxDecoration(
             color: context.colors.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
@@ -490,7 +490,7 @@ class CompactAddButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: context.colors.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -525,7 +525,7 @@ class CompactNote extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

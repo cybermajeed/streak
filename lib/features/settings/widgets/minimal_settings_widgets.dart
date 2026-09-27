@@ -49,7 +49,7 @@ class SoftCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color: minimalSurface(context),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(children: children),
     );
@@ -186,7 +186,7 @@ Future<void> showOptionSheet(
                       Semantics(
                         button: true,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                           onTap: () {
                             Navigator.of(sheet).pop();
                             onSelected(i);

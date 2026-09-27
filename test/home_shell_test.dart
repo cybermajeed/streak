@@ -6,7 +6,6 @@ import 'package:streak/core/minimal/minimal_nav.dart';
 import 'package:streak/features/habits/pages/home_page.dart';
 import 'package:streak/features/settings/pages/settings_page.dart';
 import 'package:streak/features/statistics/pages/statistics_page.dart';
-import 'package:streak/features/todos/pages/todos_page.dart';
 
 import 'support/app_harness.dart';
 
@@ -53,46 +52,6 @@ void main() {
       find.byType(StatisticsPage),
     ) as dynamic;
     expect(page.debugStats.total, 5, reason: 'cuenta al abrirla');
-  });
-
-  testWidgets('the to-do tab stays hidden while the setting is off',
-      (tester) async {
-    await seedHabits(tester, [testHabit(id: 'a', name: 'Read')]);
-    await pumpScreen(
-      tester,
-      const HomeShell(),
-      settings: {'todosEnabled': false},
-    );
-
-    expect(find.byIcon(LucideIcons.listChecks), findsNothing);
-    expect(find.byType(TodosPage), findsNothing);
-  });
-
-  testWidgets('switching to-dos on adds the tab', (tester) async {
-    await seedHabits(tester, [testHabit(id: 'a', name: 'Read')]);
-    await pumpScreen(
-      tester,
-      const HomeShell(),
-      settings: {'todosEnabled': true},
-    );
-
-    await tester.tap(find.byIcon(LucideIcons.listChecks));
-    await tester.pumpAndSettle();
-    expect(find.byType(TodosPage), findsOneWidget);
-  });
-
-  testWidgets('swiping no longer jumps to another tab', (tester) async {
-    await seedHabits(tester, [testHabit(id: 'a', name: 'Read')]);
-    await pumpScreen(
-      tester,
-      const HomeShell(),
-      settings: {'todosEnabled': true},
-    );
-
-    await tester.fling(find.byType(HomePage), const Offset(-300, 0), 1000);
-    await tester.pumpAndSettle();
-
-    expect(find.byType(TodosPage), findsNothing);
   });
 
   testWidgets('a wide window gives minimal a rail and a detail pane',

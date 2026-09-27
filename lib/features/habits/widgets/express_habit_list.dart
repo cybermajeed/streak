@@ -43,8 +43,7 @@ class ExpressHabitList extends StatelessWidget {
       padding: context.pagePadding(16, 4, 16, 128),
       itemCount: habits.length,
       buildDefaultDragHandles: false,
-      header: header,
-      onReorder: (oldIndex, newIndex) {
+      onReorderItem: (oldIndex, newIndex) {
         onReorder(oldIndex, newIndex);
       },
       proxyDecorator: (child, index, animation) => AnimatedBuilder(

@@ -28,8 +28,7 @@ import 'package:streak/features/focus/widgets/focus_pill.dart';
 import 'package:streak/features/habits/state/categories_controller.dart';
 import 'package:streak/features/habits/widgets/category_editor_sheet.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
-import 'package:streak/features/island/data/island_ledger.dart';
-import 'package:streak/features/island/widgets/island_coins.dart';
+
 import 'package:streak/features/habits/widgets/classic_habit_list.dart';
 import 'package:streak/features/habits/widgets/daily_quote.dart';
 import 'package:streak/features/habits/widgets/express_habit_list.dart';
@@ -46,7 +45,6 @@ import 'package:streak/features/habits/widgets/vacation_sheet.dart';
 import 'package:streak/features/settings/pages/settings_page.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/pages/statistics_page.dart';
-import 'package:streak/features/todos/pages/todos_page.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 
 class HomePage extends StatefulWidget {
@@ -93,24 +91,12 @@ class _HomePageState extends State<HomePage> {
     return true;
   }
 
-  final _coins = ValueNotifier<int>(0);
-  int _coinAmount = 0;
-
   void _changeMode(HeatmapMode mode) {
     setState(() => _mode = mode);
     context.read<SettingsController>().setHeatmapMode(mode.index);
   }
 
   void _celebrate() => _confetti.value++;
-
-  void _payout(HabitsController controller, DateTime date) {
-    final counted = controller.habits.where((h) => !h.tracking);
-    final due = counted.where((h) => h.isScheduledOn(date));
-    final perfect = due.isNotEmpty && due.every((h) => h.isCompletedOn(date));
-    _coinAmount = IslandLedger.perCheck +
-        (perfect ? IslandLedger.perPerfectDay : 0);
-    _coins.value++;
-  }
 
   void _showHabitActions(HabitsController controller, Habit habit) {
     showModalBottomSheet(
@@ -126,19 +112,23 @@ class _HomePageState extends State<HomePage> {
           (
             LucideIcons.pencil,
             context.l10n.edit_habit,
-            () => run(() => AppNavigator.push(
-                  HabitFormPage(habit: habit),
-                  fullscreenDialog: true,
-                )),
+            () => run(
+              () => AppNavigator.push(
+                HabitFormPage(habit: habit),
+                fullscreenDialog: true,
+              ),
+            ),
             false,
           ),
           (
             LucideIcons.chartColumn,
             context.l10n.statistics,
-            () => run(() => AppNavigator.push(
-                  HabitDetailsPage(habitId: habit.id),
-                  fullscreenDialog: true,
-                )),
+            () => run(
+              () => AppNavigator.push(
+                HabitDetailsPage(habitId: habit.id),
+                fullscreenDialog: true,
+              ),
+            ),
             false,
           ),
           (
@@ -150,10 +140,12 @@ class _HomePageState extends State<HomePage> {
           (
             LucideIcons.arrowUpDown,
             context.l10n.reorder,
-            () => run(() => setState(() {
-                  _category = null;
-                  _reordering = true;
-                })),
+            () => run(
+              () => setState(() {
+                _category = null;
+                _reordering = true;
+              }),
+            ),
             false,
           ),
           (
@@ -167,71 +159,70 @@ class _HomePageState extends State<HomePage> {
         return SafeArea(
           child: switch (sheetStyle(sheetContext)) {
             1 => Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SheetTitle(habit.name),
-                    const SizedBox(height: 14),
-                    MinimalList(
-                      children: [
-                        for (final (icon, label, onTap, danger)
-                            in actions)
-                          MinimalRow(
-                            label: label,
-                            leading: Icon(
-                              icon,
-                              size: 18,
-                              color: danger
-                                  ? sheetContext.tokens.danger
-                                  : sheetContext.tokens.muted,
-                            ),
-                            tint: danger ? sheetContext.tokens.danger : null,
-                            last: label == actions.last.$2,
-                            onTap: onTap,
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            2 => Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 6, bottom: 10),
-                      child: SheetTitle(habit.name),
-                    ),
-                    for (final (icon, label, onTap, danger) in actions) ...[
-                      SheetAction(
-                        icon: icon,
-                        label: label,
-                        accent: danger ? sheetContext.tokens.danger : null,
-                        highlighted: danger,
-                        onTap: onTap,
-                      ),
-                      const SizedBox(height: 4),
-                    ],
-                  ],
-                ),
-              ),
-            _ => Column(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final (icon, label, onTap, danger) in actions)
-                    _ActionTile(
-                      icon: icon,
-                      label: label,
-                      danger: danger,
-                      onTap: onTap,
-                    ),
-                  const SizedBox(height: 8),
+                  SheetTitle(habit.name),
+                  const SizedBox(height: 14),
+                  MinimalList(
+                    children: [
+                      for (final (icon, label, onTap, danger) in actions)
+                        MinimalRow(
+                          label: label,
+                          leading: Icon(
+                            icon,
+                            size: 18,
+                            color: danger
+                                ? sheetContext.tokens.danger
+                                : sheetContext.tokens.muted,
+                          ),
+                          tint: danger ? sheetContext.tokens.danger : null,
+                          last: label == actions.last.$2,
+                          onTap: onTap,
+                        ),
+                    ],
+                  ),
                 ],
               ),
+            ),
+            2 => Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 6, bottom: 10),
+                    child: SheetTitle(habit.name),
+                  ),
+                  for (final (icon, label, onTap, danger) in actions) ...[
+                    SheetAction(
+                      icon: icon,
+                      label: label,
+                      accent: danger ? sheetContext.tokens.danger : null,
+                      highlighted: danger,
+                      onTap: onTap,
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                ],
+              ),
+            ),
+            _ => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final (icon, label, onTap, danger) in actions)
+                  _ActionTile(
+                    icon: icon,
+                    label: label,
+                    danger: danger,
+                    onTap: onTap,
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
           },
         );
       },
@@ -286,12 +277,12 @@ class _HomePageState extends State<HomePage> {
         title: _reordering
             ? Text(context.l10n.reorder)
             : minimal || express
-                ? null
-                : FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(context.l10n.today),
-                  ),
+            ? null
+            : FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(context.l10n.today),
+              ),
 
         leading: minimal && !railed && !_reordering
             ? IconButton(
@@ -319,8 +310,7 @@ class _HomePageState extends State<HomePage> {
               tooltip: settings.compactCards
                   ? context.l10n.expand_cards
                   : context.l10n.collapse_cards,
-              onPressed: () =>
-                  settings.setCompactCards(!settings.compactCards),
+              onPressed: () => settings.setCompactCards(!settings.compactCards),
               icon: Icon(
                 settings.compactCards
                     ? LucideIcons.chevronsUpDown
@@ -328,14 +318,7 @@ class _HomePageState extends State<HomePage> {
                 size: 20,
               ),
             ),
-          if (!_reordering)
-            FocusPill(compact: minimal || express),
-          if (minimal && !railed && !_reordering && settings.todosEnabled)
-            IconButton(
-              tooltip: context.l10n.todos,
-              icon: const Icon(LucideIcons.listChecks, size: 22),
-              onPressed: () => AppNavigator.push(const TodosPage()),
-            ),
+          if (!_reordering) FocusPill(compact: minimal || express),
           if (minimal && !railed && !_reordering)
             IconButton(
               icon: const Icon(LucideIcons.chartColumn),
@@ -355,44 +338,44 @@ class _HomePageState extends State<HomePage> {
                     ),
                   )
                 : express
-                    ? const SizedBox.shrink()
-                    : minimal || bigText
-                    ? IconButton(
-                        onPressed: () => AppNavigator.push(
-                          const HabitFormPage(),
-                          fullscreenDialog: true,
-                        ),
-                        icon: Icon(
-                          LucideIcons.circlePlus,
-                          size: 26,
-                          color: context.colors.onSurface,
-                        ),
-                      )
-                    : FilledButton.icon(
-                        onPressed: () => AppNavigator.push(
-                          const HabitFormPage(),
-                          fullscreenDialog: true,
-                        ),
-                        icon: const Icon(LucideIcons.plus, size: 16),
-                        label: Text(
-                          context.l10n.new_label,
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
+                ? const SizedBox.shrink()
+                : minimal || bigText
+                ? IconButton(
+                    onPressed: () => AppNavigator.push(
+                      const HabitFormPage(),
+                      fullscreenDialog: true,
+                    ),
+                    icon: Icon(
+                      LucideIcons.circlePlus,
+                      size: 26,
+                      color: context.colors.onSurface,
+                    ),
+                  )
+                : FilledButton.icon(
+                    onPressed: () => AppNavigator.push(
+                      const HabitFormPage(),
+                      fullscreenDialog: true,
+                    ),
+                    icon: const Icon(LucideIcons.plus, size: 16),
+                    label: Text(
+                      context.l10n.new_label,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
                       ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -413,12 +396,17 @@ class _HomePageState extends State<HomePage> {
                   .toList();
               final done = finished.length;
               final total = counted.length;
-              final weight =
-                  counted.fold<int>(0, (sum, h) => sum + h.difficultyWeight);
+              final weight = counted.fold<int>(
+                0,
+                (sum, h) => sum + h.difficultyWeight,
+              );
               final ratio = weight == 0
                   ? 0.0
-                  : finished.fold<int>(0, (sum, h) => sum + h.difficultyWeight) /
-                      weight;
+                  : finished.fold<int>(
+                          0,
+                          (sum, h) => sum + h.difficultyWeight,
+                        ) /
+                        weight;
 
               final categories = _categoriesOf(all, order);
               if (_category != null && !categories.contains(_category)) {
@@ -447,8 +435,7 @@ class _HomePageState extends State<HomePage> {
                       showProgress: settings.showTodayProgress,
                       mode: _mode,
                       onMode: _changeMode,
-                      showModes:
-                          settings.cardActivity && settings.viewSwitcher,
+                      showModes: settings.cardActivity && settings.viewSwitcher,
                       categories: categories,
                       category: _category,
                       onCategory: (c) => setState(() => _category = c),
@@ -485,13 +472,12 @@ class _HomePageState extends State<HomePage> {
                 backgroundColor: express
                     ? expressSurface(context)
                     : minimal
-                        ? context.colors.surfaceContainerHighest
-                        : null,
+                    ? context.colors.surfaceContainerHighest
+                    : null,
                 strokeWidth: express ? 3.4 : (minimal ? 2 : 2.5),
                 displacement: express ? 58 : (minimal ? 32 : 40),
                 onRefresh: () async {
-                  await Future<void>.delayed(
-                      const Duration(milliseconds: 300));
+                  await Future<void>.delayed(const Duration(milliseconds: 300));
                   controller.reload();
                 },
                 child: express
@@ -556,15 +542,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          Positioned.fill(
-            child: RepaintBoundary(
-              child: ValueListenableBuilder<int>(
-                valueListenable: _coins,
-                builder: (context, trigger, _) =>
-                    IslandCoins(trigger: trigger, amount: _coinAmount),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -605,7 +582,6 @@ class _HomePageState extends State<HomePage> {
         !habit.tracking &&
         (updated?.isCompletedOn(date) ?? false)) {
       _celebrate();
-      _payout(controller, date);
     }
     if (!animate) return;
 
@@ -868,8 +844,7 @@ class _Chip extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color:
-                    active ? scheme.primary : scheme.surfaceContainerHighest,
+                color: active ? scheme.primary : scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: AnimatedDefaultTextStyle(

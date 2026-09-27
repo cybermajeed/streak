@@ -236,7 +236,7 @@ class StatIconSquare extends StatelessWidget {
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
         color: tint.withValues(alpha: minimal ? 0.10 : 0.16),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(icon, color: tint, size: 18),
     );
@@ -265,7 +265,7 @@ class MiniStat extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

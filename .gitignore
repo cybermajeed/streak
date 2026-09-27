@@ -51,3 +51,5 @@ app.*.map.json
 
 # Kotlin compiler cache
 /android/.kotlin/
+# Widget Preview related
+.widget_preview/

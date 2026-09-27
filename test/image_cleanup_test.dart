@@ -6,7 +6,7 @@ import 'package:streak/core/utils/app_dirs.dart';
 import 'package:streak/core/utils/cover_storage.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
-import 'package:streak/features/todos/state/todos_controller.dart';
+
 import 'package:streak/services/image_cleanup_service.dart';
 
 import 'support/app_harness.dart';
@@ -33,7 +33,7 @@ void main() {
     final cover = await _image('covers', 'cover.jpg');
     final book = await _image('covers', 'book.jpg');
     final notePhoto = await _image('journey', 'note.jpg');
-    final todoPhoto = await _image('todos', 'todo.jpg');
+
     final scene = await _image('focus', 'scene.jpg');
 
     await LocalStore.writeHabit(
@@ -44,15 +44,13 @@ void main() {
       testNote(id: 'n', habitId: 'a', day: DateTime(2026, 8, 16), text: 'x')
           .copyWith(photos: [notePhoto]),
     );
-    await LocalStore.writeTodo(
-      testTodo(id: 't', text: 'x').copyWith(photos: [todoPhoto]),
-    );
+
     await LocalStore.writeSetting('focusImages', [scene]);
 
     final freed = await CoverStorage.sweep(ImageCleanupService.inUse());
 
     expect(freed, 0);
-    for (final path in [cover, book, notePhoto, todoPhoto, scene]) {
+    for (final path in [cover, book, notePhoto, scene]) {
       expect(File(path).existsSync(), isTrue, reason: path);
     }
   });
@@ -61,13 +59,13 @@ void main() {
     final orphans = [
       await _image('covers', 'old.jpg', bytes: 10),
       await _image('journey', 'old.jpg', bytes: 10),
-      await _image('todos', 'old.jpg', bytes: 10),
+
       await _image('focus', 'old.jpg', bytes: 10),
     ];
 
     final freed = await CoverStorage.sweep(ImageCleanupService.inUse());
 
-    expect(freed, 40);
+    expect(freed, 30);
     for (final path in orphans) {
       expect(File(path).existsSync(), isFalse, reason: path);
     }
@@ -148,16 +146,6 @@ void main() {
     expect(File(dropped).existsSync(), isFalse);
   });
 
-  test('deleting a to-do takes its photos with it', () async {
-    final gone = await _image('todos', 'gone.jpg');
-    await LocalStore.writeTodo(
-      testTodo(id: 't', text: 'x').copyWith(photos: [gone]),
-    );
-
-    await TodosController().remove('t');
-
-    expect(File(gone).existsSync(), isFalse);
-  });
 
   test('deleting a habit takes its cover and its note photos', () async {
     final cover = await _image('covers', 'cover.jpg');

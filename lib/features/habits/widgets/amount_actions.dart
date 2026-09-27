@@ -14,6 +14,7 @@ Future<void> addCustomAmount(BuildContext context, Habit habit) async {
   if (!await confirmUnscheduledDay(context, habit: habit, date: today)) return;
   if (!context.mounted) return;
 
+
   final amount = await showNumberKeypadDialog(
     context,
     title: context.l10n.quant_add_title,

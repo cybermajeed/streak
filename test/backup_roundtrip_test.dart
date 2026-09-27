@@ -11,7 +11,7 @@ import 'package:streak/features/habits/data/completion.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
 import 'package:streak/features/habits/data/substep.dart';
-import 'package:streak/features/todos/data/todo.dart';
+
 import 'package:streak/services/backup_service.dart';
 import 'package:streak/services/vault_writer.dart';
 
@@ -66,9 +66,7 @@ Future<void> _seedEverything(int count) async {
         startedAt: AppClock.now().subtract(Duration(days: i)),
       ),
     );
-    await LocalStore.writeTodo(
-      Todo(id: 't$i', text: 'Todo $i', createdAt: AppClock.now()),
-    );
+
   }
 }
 
@@ -80,7 +78,7 @@ String _exportedPayload(List<Habit> habits) {
     'habits': habits.map((h) => h.toMap()).toList(),
     'notes': LocalStore.readNotes().map((n) => n.toMap()).toList(),
     'focus': LocalStore.readFocusSessions().map((f) => f.toMap()).toList(),
-    'todos': LocalStore.readTodos().map((t) => t.toMap()).toList(),
+
     'categories': LocalStore.readCategories().map((c) => c.toMap()).toList(),
   };
   return const JsonEncoder.withIndent('  ').convert(payload);
@@ -100,7 +98,7 @@ void main() {
     expect(data.habits.length, before.length);
     expect(data.notes.length, 12);
     expect(data.focus.length, 12);
-    expect(data.todos.length, 12);
+
     expect(data.categories.length, 1);
 
     for (final habit in data.habits) {
@@ -154,10 +152,7 @@ void main() {
       );
     }
 
-    final todos = [for (final t in LocalStore.readTodos()) t.toMap()];
-    for (final todo in data.todos) {
-      expect(json.encode(todo.toMap()), json.encode(byId(todos, todo.id)));
-    }
+
 
     final categories = [
       for (final c in LocalStore.readCategories()) c.toMap(),
@@ -199,9 +194,7 @@ void main() {
     for (final session in data.focus) {
       await LocalStore.writeFocusSession(session);
     }
-    for (final todo in data.todos) {
-      await LocalStore.writeTodo(todo);
-    }
+
     for (final category in data.categories) {
       await LocalStore.writeCategory(category);
     }
@@ -209,7 +202,7 @@ void main() {
     expect(LocalStore.readHabits().length, 15);
     expect(LocalStore.readNotes().length, 12);
     expect(LocalStore.readFocusSessions().length, 12);
-    expect(LocalStore.readTodos().length, 12);
+
     expect(LocalStore.readCategories().length, 1);
   });
 
@@ -282,7 +275,7 @@ void main() {
     final vault = '${dir.path}/$vaultFolder';
     expect(File('$vault/README.md').existsSync(), isTrue);
     expect(File('$vault/habits/Habit 0.md').existsSync(), isTrue);
-    expect(File('$vault/tasks.md').existsSync(), isTrue);
+
     expect(File('$vault/notes.md').existsSync(), isTrue);
     expect(File('$vault/focus.md').existsSync(), isTrue);
   });

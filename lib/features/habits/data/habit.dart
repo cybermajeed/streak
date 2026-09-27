@@ -13,20 +13,20 @@ enum HabitInterval { daily, weekly, monthly, weekdays, everyXDays }
 
 extension HabitIntervalLabel on HabitInterval {
   String get label => switch (this) {
-        HabitInterval.daily => 'Daily',
-        HabitInterval.weekly => 'Weekly',
-        HabitInterval.monthly => 'Monthly',
-        HabitInterval.weekdays => 'Days',
-        HabitInterval.everyXDays => 'Interval',
-      };
+    HabitInterval.daily => 'Daily',
+    HabitInterval.weekly => 'Weekly',
+    HabitInterval.monthly => 'Monthly',
+    HabitInterval.weekdays => 'Days',
+    HabitInterval.everyXDays => 'Interval',
+  };
 
   String get unit => switch (this) {
-        HabitInterval.daily => 'day',
-        HabitInterval.weekly => 'week',
-        HabitInterval.monthly => 'month',
-        HabitInterval.weekdays => 'day',
-        HabitInterval.everyXDays => 'day',
-      };
+    HabitInterval.daily => 'day',
+    HabitInterval.weekly => 'week',
+    HabitInterval.monthly => 'month',
+    HabitInterval.weekdays => 'day',
+    HabitInterval.everyXDays => 'day',
+  };
 
   bool get isDaySpecific =>
       this == HabitInterval.weekdays || this == HabitInterval.everyXDays;
@@ -97,10 +97,10 @@ class Habit {
   final ScheduleUnit scheduleUnit;
 
   int get scheduleSpanDays => switch (scheduleUnit) {
-        ScheduleUnit.days => scheduleEvery,
-        ScheduleUnit.weeks => scheduleEvery * 7,
-        ScheduleUnit.months => scheduleEvery * 31,
-      };
+    ScheduleUnit.days => scheduleEvery,
+    ScheduleUnit.weeks => scheduleEvery * 7,
+    ScheduleUnit.months => scheduleEvery * 31,
+  };
 
   final List<Reminder> reminders;
 
@@ -114,8 +114,7 @@ class Habit {
         final start = createdAt.atMidnight;
         if (day.isBefore(start)) return false;
         if (scheduleUnit == ScheduleUnit.months) {
-          final months =
-              (day.year - start.year) * 12 + day.month - start.month;
+          final months = (day.year - start.year) * 12 + day.month - start.month;
           if (months < 0 || months % scheduleEvery != 0) return false;
           final last = DateTime(day.year, day.month + 1, 0).day;
           return day.day == (start.day <= last ? start.day : last);
@@ -259,8 +258,7 @@ class Habit {
     if (cursor.isAfter(AppClock.today()) || cursor.isBefore(startedAt)) {
       return false;
     }
-    if (interval == HabitInterval.weekly ||
-        interval == HabitInterval.monthly) {
+    if (interval == HabitInterval.weekly || interval == HabitInterval.monthly) {
       if (isPausedOn(cursor) || isCompletedOn(cursor)) return false;
       return (_periodDone[_periodOf(cursor)] ?? 0) >= targetFrequency;
     }
@@ -335,9 +333,21 @@ class Habit {
   int _totalCompletions() {
     if (hasSubsteps) {
       final ids = substeps.map((s) => s.id).toSet();
-      return completions.values.where((c) => ids.every(c.steps.contains)).length;
+      return completions.values
+          .where((c) => ids.every(c.steps.contains))
+          .length;
     }
     return completions.values.where((c) => c.count >= perDayTarget).length;
+  }
+
+  int get totalScheduledDays {
+    final floor = startedAt.atMidnight;
+    final today = AppClock.today();
+    int count = 0;
+    for (int i = 0; i <= today.epochDay - floor.epochDay; i++) {
+      if (isScheduledOn(floor.addDays(i))) count++;
+    }
+    return count;
   }
 
   bool get isDoneForNow {
@@ -440,13 +450,11 @@ class Habit {
       case HabitInterval.weekly:
         var weekStart = now.addDays(-(now.weekday - 1));
         var streak = 0;
-        if (_countInRange(weekStart, weekStart.addDays(6)) >=
-            targetFrequency) {
+        if (_countInRange(weekStart, weekStart.addDays(6)) >= targetFrequency) {
           streak++;
         }
         weekStart = weekStart.addDays(-7);
-        while (_countInRange(
-                weekStart, weekStart.addDays(6)) >=
+        while (_countInRange(weekStart, weekStart.addDays(6)) >=
             targetFrequency) {
           streak++;
           weekStart = weekStart.addDays(-7);
@@ -455,14 +463,16 @@ class Habit {
 
       case HabitInterval.monthly:
         var monthStart = DateTime(now.year, now.month, 1);
-        final monthEnd =
-            DateTime(now.year, now.month + 1, 1).addDays(-1);
+        final monthEnd = DateTime(now.year, now.month + 1, 1).addDays(-1);
         var streak = 0;
         if (_countInRange(monthStart, monthEnd) >= targetFrequency) streak++;
         monthStart = DateTime(monthStart.year, monthStart.month - 1, 1);
         while (true) {
-          final end = DateTime(monthStart.year, monthStart.month + 1, 1)
-              .addDays(-1);
+          final end = DateTime(
+            monthStart.year,
+            monthStart.month + 1,
+            1,
+          ).addDays(-1);
           if (_countInRange(monthStart, end) < targetFrequency) break;
           streak++;
           monthStart = DateTime(monthStart.year, monthStart.month - 1, 1);
@@ -562,13 +572,11 @@ class Habit {
 
       case HabitInterval.weekly:
         var start = dates.first.addDays(-(dates.first.weekday - 1));
-        final end =
-            dates.last.addDays(7 - dates.last.weekday);
+        final end = dates.last.addDays(7 - dates.last.weekday);
         var best = 0;
         var run = 0;
         while (!start.isAfter(end)) {
-          if (_countInRange(start, start.addDays(6)) >=
-              targetFrequency) {
+          if (_countInRange(start, start.addDays(6)) >= targetFrequency) {
             run++;
           } else {
             run = 0;
@@ -580,13 +588,15 @@ class Habit {
 
       case HabitInterval.monthly:
         var start = DateTime(dates.first.year, dates.first.month, 1);
-        final end = DateTime(dates.last.year, dates.last.month + 1, 1)
-            .addDays(-1);
+        final end = DateTime(
+          dates.last.year,
+          dates.last.month + 1,
+          1,
+        ).addDays(-1);
         var best = 0;
         var run = 0;
         while (!start.isAfter(end)) {
-          final mEnd = DateTime(start.year, start.month + 1, 1)
-              .addDays(-1);
+          final mEnd = DateTime(start.year, start.month + 1, 1).addDays(-1);
           if (_countInRange(start, mEnd) >= targetFrequency) {
             run++;
           } else {
@@ -680,112 +690,115 @@ class Habit {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'name': name,
-        'icon': icon,
-        'category': category,
-        'description': description,
-        'color': color.toARGB32(),
-        'order': order,
-        'numberOfCompletionsPerDay': perDayTarget,
-        'completions':
-            completions.map((key, value) => MapEntry(key, value.toMap())),
-        'interval': interval.index,
-        'targetFrequency': targetFrequency,
-        'scheduleWeekdays': scheduleWeekdays,
-        'scheduleEvery': scheduleEvery,
-        'scheduleUnit': scheduleUnit.index,
-        'reminders': reminders.map((r) => r.toMap()).toList(),
-        'coverPath': coverPath,
-        'coverClarity': coverClarity,
-        'createdAt': createdAt.toIso8601String(),
-        'kind': kind.index,
-        'dailyCost': dailyCost,
-        'unitLabel': unitLabel,
-        'incrementAmount': incrementAmount,
-        'quantKind': quantKind.index,
-        'bookCoverPath': bookCoverPath,
-        'focusMinutes': focusMinutes,
-        'focusBreakMinutes': focusBreakMinutes,
-        'focusOnly': focusOnly,
-        'tracking': tracking,
-        'difficulty': difficulty,
-        'startMinute': startMinute,
-        'durationMinutes': durationMinutes,
-        'substeps': substeps.map((s) => s.toMap()).toList(),
-        'vacations': vacations.map((v) => v.toMap()).toList(),
-        'restDays': restDays,
-        if (archivedAt != null) 'archivedAt': archivedAt!.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'icon': icon,
+    'category': category,
+    'description': description,
+    'color': color.toARGB32(),
+    'order': order,
+    'numberOfCompletionsPerDay': perDayTarget,
+    'completions': completions.map(
+      (key, value) => MapEntry(key, value.toMap()),
+    ),
+    'interval': interval.index,
+    'targetFrequency': targetFrequency,
+    'scheduleWeekdays': scheduleWeekdays,
+    'scheduleEvery': scheduleEvery,
+    'scheduleUnit': scheduleUnit.index,
+    'reminders': reminders.map((r) => r.toMap()).toList(),
+    'coverPath': coverPath,
+    'coverClarity': coverClarity,
+    'createdAt': createdAt.toIso8601String(),
+    'kind': kind.index,
+    'dailyCost': dailyCost,
+    'unitLabel': unitLabel,
+    'incrementAmount': incrementAmount,
+    'quantKind': quantKind.index,
+    'bookCoverPath': bookCoverPath,
+    'focusMinutes': focusMinutes,
+    'focusBreakMinutes': focusBreakMinutes,
+    'focusOnly': focusOnly,
+    'tracking': tracking,
+    'difficulty': difficulty,
+    'startMinute': startMinute,
+    'durationMinutes': durationMinutes,
+    'substeps': substeps.map((s) => s.toMap()).toList(),
+    'vacations': vacations.map((v) => v.toMap()).toList(),
+    'restDays': restDays,
+    if (archivedAt != null) 'archivedAt': archivedAt!.toIso8601String(),
+  };
 
   factory Habit.fromMap(Map<String, dynamic> map) => Habit(
-        id: map['id'] as String,
-        name: map['name'] as String,
-        icon: (map['icon'] ?? 'target') as String,
-        category: (map['category'] ?? '') as String,
-        description: (map['description'] ?? '') as String,
-        color: Color(map['color'] as int),
-        order: (map['order'] ?? 0) as int,
-        perDayTarget:
-            ((map['numberOfCompletionsPerDay'] ?? 1) as num).toDouble(),
-        completions: (map['completions'] as Map?)?.map(
-              (key, value) => MapEntry(
-                key as String,
-                Completion.fromMap(Map<String, dynamic>.from(value as Map)),
-              ),
-            ) ??
-            const {},
-        interval: HabitInterval.values[(map['interval'] ?? 0) as int],
-        targetFrequency: (map['targetFrequency'] ?? 1) as int,
-        scheduleWeekdays: (map['scheduleWeekdays'] as List?)
-                ?.map((e) => e as int)
-                .toList() ??
-            const [],
-        scheduleEvery: (map['scheduleEvery'] ?? 2) as int,
-        scheduleUnit: ScheduleUnit.values[((map['scheduleUnit'] ?? 0) as num)
-            .toInt()
-            .clamp(0, ScheduleUnit.values.length - 1)],
-        reminders: map['reminders'] == null
-            ? const []
-            : (map['reminders'] as List)
-                .map((r) => Reminder.fromMap(Map<String, dynamic>.from(r as Map)))
-                .toList(),
-        coverPath: (map['coverPath'] ?? '') as String,
-        coverClarity: ((map['coverClarity'] ?? 100) as num).toInt(),
-        createdAt: map['createdAt'] != null
-            ? DateTime.tryParse(map['createdAt'] as String)
-            : null,
-        kind: HabitKind.values[(map['kind'] ?? 0) as int],
-        dailyCost: ((map['dailyCost'] ?? 0) as num).toDouble(),
-        unitLabel: (map['unitLabel'] ?? '') as String,
-        incrementAmount: ((map['incrementAmount'] ?? 1) as num).toDouble(),
-        quantKind: QuantKind.values[(map['quantKind'] ?? 0) as int],
-        bookCoverPath: (map['bookCoverPath'] ?? '') as String,
-        focusMinutes: ((map['focusMinutes'] ?? 25) as num).toInt(),
-        focusBreakMinutes:
-            ((map['focusBreakMinutes'] ?? 0) as num).toInt(),
-        focusOnly: (map['focusOnly'] ?? false) as bool,
-        tracking: (map['tracking'] ?? false) as bool,
-        difficulty: ((map['difficulty'] ?? 0) as num).toInt().clamp(0, 3),
-        startMinute: ((map['startMinute'] ?? -1) as num).toInt(),
-        durationMinutes: ((map['durationMinutes'] ?? 0) as num).toInt(),
-        substeps: map['substeps'] == null
-            ? const []
-            : (map['substeps'] as List)
-                .map((s) => Substep.fromMap(Map<String, dynamic>.from(s as Map)))
-                .toList(),
-        vacations: map['vacations'] == null
-            ? const []
-            : (map['vacations'] as List)
-                .map((v) =>
-                    VacationPeriod.fromMap(Map<String, dynamic>.from(v as Map)))
-                .toList(),
-        restDays:
-            (map['restDays'] as List?)?.map((e) => e as int).toList() ?? const [],
-        archivedAt: map['archivedAt'] == null
-            ? null
-            : DateTime.tryParse(map['archivedAt'] as String),
-      );
+    id: map['id'] as String,
+    name: map['name'] as String,
+    icon: (map['icon'] ?? 'target') as String,
+    category: (map['category'] ?? '') as String,
+    description: (map['description'] ?? '') as String,
+    color: Color(map['color'] as int),
+    order: (map['order'] ?? 0) as int,
+    perDayTarget: ((map['numberOfCompletionsPerDay'] ?? 1) as num).toDouble(),
+    completions:
+        (map['completions'] as Map?)?.map(
+          (key, value) => MapEntry(
+            key as String,
+            Completion.fromMap(Map<String, dynamic>.from(value as Map)),
+          ),
+        ) ??
+        const {},
+    interval: HabitInterval.values[(map['interval'] ?? 0) as int],
+    targetFrequency: (map['targetFrequency'] ?? 1) as int,
+    scheduleWeekdays:
+        (map['scheduleWeekdays'] as List?)?.map((e) => e as int).toList() ??
+        const [],
+    scheduleEvery: (map['scheduleEvery'] ?? 2) as int,
+    scheduleUnit:
+        ScheduleUnit.values[((map['scheduleUnit'] ?? 0) as num).toInt().clamp(
+          0,
+          ScheduleUnit.values.length - 1,
+        )],
+    reminders: map['reminders'] == null
+        ? const []
+        : (map['reminders'] as List)
+              .map((r) => Reminder.fromMap(Map<String, dynamic>.from(r as Map)))
+              .toList(),
+    coverPath: (map['coverPath'] ?? '') as String,
+    coverClarity: ((map['coverClarity'] ?? 100) as num).toInt(),
+    createdAt: map['createdAt'] != null
+        ? DateTime.tryParse(map['createdAt'] as String)
+        : null,
+    kind: HabitKind.values[(map['kind'] ?? 0) as int],
+    dailyCost: ((map['dailyCost'] ?? 0) as num).toDouble(),
+    unitLabel: (map['unitLabel'] ?? '') as String,
+    incrementAmount: ((map['incrementAmount'] ?? 1) as num).toDouble(),
+    quantKind: QuantKind.values[(map['quantKind'] ?? 0) as int],
+    bookCoverPath: (map['bookCoverPath'] ?? '') as String,
+    focusMinutes: ((map['focusMinutes'] ?? 25) as num).toInt(),
+    focusBreakMinutes: ((map['focusBreakMinutes'] ?? 0) as num).toInt(),
+    focusOnly: (map['focusOnly'] ?? false) as bool,
+    tracking: (map['tracking'] ?? false) as bool,
+    difficulty: ((map['difficulty'] ?? 0) as num).toInt().clamp(0, 3),
+    startMinute: ((map['startMinute'] ?? -1) as num).toInt(),
+    durationMinutes: ((map['durationMinutes'] ?? 0) as num).toInt(),
+    substeps: map['substeps'] == null
+        ? const []
+        : (map['substeps'] as List)
+              .map((s) => Substep.fromMap(Map<String, dynamic>.from(s as Map)))
+              .toList(),
+    vacations: map['vacations'] == null
+        ? const []
+        : (map['vacations'] as List)
+              .map(
+                (v) =>
+                    VacationPeriod.fromMap(Map<String, dynamic>.from(v as Map)),
+              )
+              .toList(),
+    restDays:
+        (map['restDays'] as List?)?.map((e) => e as int).toList() ?? const [],
+    archivedAt: map['archivedAt'] == null
+        ? null
+        : DateTime.tryParse(map['archivedAt'] as String),
+  );
 
   String toJson() => json.encode(toMap());
 

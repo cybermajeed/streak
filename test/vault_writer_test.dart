@@ -17,7 +17,7 @@ Future<Directory> _vault(List<Habit> habits, {List<Category> categories = const 
     habits: habits,
     categories: categories,
     notes: const [],
-    todos: const [],
+
     focus: const [],
   );
   return dir;
@@ -161,7 +161,7 @@ void main() {
         habits: [testHabit(id: 'a', name: 'New name')],
         categories: const [],
         notes: const [],
-        todos: const [],
+
         focus: const [],
       );
 
@@ -179,7 +179,7 @@ void main() {
         habits: const [],
         categories: const [],
         notes: const [],
-        todos: const [],
+
         focus: const [],
       );
 

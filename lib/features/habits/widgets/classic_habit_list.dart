@@ -43,8 +43,7 @@ class ClassicHabitList extends StatelessWidget {
     return ReorderableListView.builder(
       padding: context.pagePadding(16, 8, 16, 104),
       itemCount: habits.length,
-      buildDefaultDragHandles: false,
-      onReorder: (oldIndex, newIndex) {
+      onReorderItem: (oldIndex, newIndex) {
         onReorder(oldIndex, newIndex);
       },
       proxyDecorator: (child, index, animation) => Material(

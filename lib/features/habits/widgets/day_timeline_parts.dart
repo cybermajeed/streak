@@ -18,30 +18,32 @@ const _iconCenter = _cardPadding + _tile / 2;
 class TimelineBlock extends StatelessWidget {
   const TimelineBlock({
     super.key,
-    required this.habit,
+    required this.slot,
     required this.date,
     required this.done,
     required this.onOpen,
     required this.onCheck,
   });
 
-  final Habit habit;
+  final DaySlot slot;
   final DateTime date;
   final bool done;
   final VoidCallback onOpen;
   final VoidCallback onCheck;
 
+  Habit get habit => slot.habit!;
+
   double get _tileHeight {
-    if (habit.durationMinutes <= 0) return _tile;
-    final grown = _tile + (habit.durationMinutes - 15) * 0.85;
+    if (slot.minutes <= 0) return _tile;
+    final grown = _tile + (slot.minutes - 15) * 0.85;
     return grown.clamp(_tile, 148.0);
   }
 
   String _subtitle(BuildContext context) {
-    final start = minuteLabel(habit.startMinute);
-    if (habit.durationMinutes <= 0) return start;
-    return '$start - ${minuteLabel(habit.endMinute)}'
-        '  ·  ${spanLabel(habit.durationMinutes)}';
+    final start = minuteLabel(slot.start);
+    if (slot.minutes <= 0) return start;
+    return '$start - ${minuteLabel(slot.end)}'
+        '  ·  ${spanLabel(slot.minutes)}';
   }
 
   String? _progressLabel(BuildContext context) {
@@ -74,7 +76,7 @@ class TimelineBlock extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(top: 14, right: 8),
             child: Text(
-              minuteLabel(habit.startMinute),
+              minuteLabel(slot.start),
               textAlign: TextAlign.right,
               style: TextStyle(
                 fontSize: 11.5,

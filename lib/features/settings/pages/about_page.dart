@@ -342,7 +342,7 @@ class _LinkButton extends StatelessWidget {
     }
     return Material(
       color: scheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: Semantics(
         button: true,

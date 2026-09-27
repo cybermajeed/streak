@@ -29,6 +29,7 @@ class ExpressNavBar extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
         color: Color.alphaBlend(
@@ -44,16 +45,19 @@ class ExpressNavBar extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < items.length; i++)
-            _NavPill(
-              item: items[i],
-              selected: i == index,
-              onTap: () => onSelect(i),
-            ),
-        ],
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < items.length; i++)
+              _NavPill(
+                item: items[i],
+                selected: i == index,
+                onTap: () => onSelect(i),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -89,7 +93,7 @@ class _NavPill extends StatelessWidget {
           duration: Express.normal,
           curve: Express.bouncy,
           height: 48,
-          padding: EdgeInsets.symmetric(horizontal: selected ? 18 : 15),
+          padding: EdgeInsets.symmetric(horizontal: selected ? 14 : 10),
           decoration: BoxDecoration(
             color: selected ? scheme.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(24),
@@ -101,7 +105,7 @@ class _NavPill extends StatelessWidget {
                 scale: selected ? 1.06 : 1,
                 duration: Express.normal,
                 curve: Express.bouncy,
-                child: Icon(item.icon, size: 21, color: tint),
+                child: Icon(item.icon, size: 20, color: tint),
               ),
               ClipRect(
                 child: AnimatedSize(
@@ -109,19 +113,16 @@ class _NavPill extends StatelessWidget {
                   curve: Express.emphasized,
                   child: selected
                       ? Padding(
-                          padding: const EdgeInsets.only(left: 9),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 92),
-                            child: Text(
-                              item.label,
-                              maxLines: 1,
-                              softWrap: false,
-                              overflow: TextOverflow.ellipsis,
-                              style: ExpressType.headline.at(
-                                14,
-                                weight: 800,
-                                color: tint,
-                              ),
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Text(
+                            item.label,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.ellipsis,
+                            style: ExpressType.headline.at(
+                              14,
+                              weight: 800,
+                              color: tint,
                             ),
                           ),
                         )
@@ -217,51 +218,55 @@ class _RailPillState extends State<_RailPill> {
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),
         child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          widget.onTap();
-        },
-        child: AnimatedContainer(
-          duration: Express.normal,
-          curve: Express.bouncy,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: selected
-                ? scheme.primary
-                : scheme.primary.withValues(alpha: _hover ? 0.16 : 0.06),
-            borderRadius: BorderRadius.circular(selected ? 24 : 14),
-          ),
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: Express.normal,
-                curve: Express.bouncy,
-                width: 30,
-                height: 30,
-                decoration: ShapeDecoration(
-                  color: selected
-                      ? Colors.white.withValues(alpha: 0.22)
-                      : Colors.transparent,
-                  shape: ExpressBorder(
-                    shape: selected
-                        ? ExpressShape.cookie
-                        : ExpressShape.squircle,
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            widget.onTap();
+          },
+          child: AnimatedContainer(
+            duration: Express.normal,
+            curve: Express.bouncy,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: selected
+                  ? scheme.primary
+                  : scheme.primary.withValues(alpha: _hover ? 0.16 : 0.06),
+              borderRadius: BorderRadius.circular(selected ? 24 : 14),
+            ),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: Express.normal,
+                  curve: Express.bouncy,
+                  width: 30,
+                  height: 30,
+                  decoration: ShapeDecoration(
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.22)
+                        : Colors.transparent,
+                    shape: ExpressBorder(
+                      shape: selected
+                          ? ExpressShape.cookie
+                          : ExpressShape.squircle,
+                    ),
+                  ),
+                  child: Icon(item.icon, size: 17, color: tint),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: ExpressType.headline.at(
+                      14,
+                      weight: 800,
+                      color: tint,
+                    ),
                   ),
                 ),
-                child: Icon(item.icon, size: 17, color: tint),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: ExpressType.headline.at(14, weight: 800, color: tint),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );

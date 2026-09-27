@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/habits/data/habit.dart';
@@ -37,28 +38,36 @@ class DayPlan {
   static DayPlan of(List<Habit> habits, DateTime day) {
     final due = habits.where((h) => isDueOn(h, day)).toList();
 
-    final planned = due.where((h) => h.isPlanned).toList()
-      ..sort((a, b) {
-        final byStart = a.startMinute.compareTo(b.startMinute);
-        if (byStart != 0) return byStart;
-        final byEnd = a.endMinute.compareTo(b.endMinute);
-        return byEnd != 0 ? byEnd : a.order.compareTo(b.order);
-      });
+    final events = <DaySlot>[];
+
+    // 1. Add scheduled habits
+    for (final h in due.where((h) => h.isPlanned)) {
+      events.add(DaySlot(start: h.startMinute, end: h.endMinute, habit: h));
+    }
+
+
+
+    events.sort((a, b) {
+      final byStart = a.start.compareTo(b.start);
+      if (byStart != 0) return byStart;
+      final byEnd = a.end.compareTo(b.end);
+      return byEnd != 0
+          ? byEnd
+          : (a.habit?.order ?? 0).compareTo(b.habit?.order ?? 0);
+    });
 
     final slots = <DaySlot>[];
-    var reached = -1;
-    for (final habit in planned) {
-      if (reached >= 0 && habit.startMinute > reached) {
-        slots.add(DaySlot(start: reached, end: habit.startMinute));
+    var reached = events.isEmpty ? 0 : math.min(0, events.first.start);
+    for (final e in events) {
+      if (e.start > reached) {
+        slots.add(DaySlot(start: reached, end: e.start));
       }
-      slots.add(
-        DaySlot(
-          start: habit.startMinute,
-          end: habit.endMinute,
-          habit: habit,
-        ),
-      );
-      if (habit.endMinute > reached) reached = habit.endMinute;
+      var s = e.start;
+      if (s < reached) s = reached;
+      if (e.end > s) {
+        slots.add(DaySlot(start: s, end: e.end, habit: e.habit));
+        if (e.end > reached) reached = e.end;
+      }
     }
 
     return DayPlan(
@@ -69,8 +78,12 @@ class DayPlan {
 }
 
 String minuteLabel(int minute, {bool hour24 = true}) {
-  final total = minute.clamp(0, Habit.dayMinutes);
-  final h = (total ~/ 60) % 24;
+  var total = minute;
+  while (total < 0) {
+    total += 1440;
+  }
+  total = total % 1440;
+  final h = total ~/ 60;
   final m = total % 60;
   if (hour24) {
     return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';

@@ -619,20 +619,7 @@ List<Widget> _preferenceTiles(BuildContext context) {
           value: settings.notesEnabled,
           onChanged: settings.setNotesEnabled,
         ),
-        _Toggle(
-          icon: LucideIcons.listChecks,
-          title: context.l10n.todos,
-          subtitle: context.l10n.todos_enable_sub,
-          value: settings.todosEnabled,
-          onChanged: settings.setTodosEnabled,
-        ),
-        _Toggle(
-          icon: LucideIcons.palmtree,
-          title: context.l10n.gamification_beta,
-          subtitle: context.l10n.island_enable_sub,
-          value: settings.islandEnabled,
-          onChanged: settings.setIslandEnabled,
-        ),
+
         _Toggle(
           icon: LucideIcons.calendarClock,
           title: context.l10n.plan_day,

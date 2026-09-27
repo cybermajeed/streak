@@ -19,10 +19,8 @@ import 'package:streak/core/widgets/app_confirm_dialog.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/habits/state/categories_controller.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
-import 'package:streak/features/island/state/island_controller.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
-import 'package:streak/features/todos/state/todo_tags_controller.dart';
-import 'package:streak/features/todos/state/todos_controller.dart';
+
 import 'package:streak/services/notification_service.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/settings/widgets/minimal_settings_widgets.dart';
@@ -63,10 +61,11 @@ class SettingsActions {
     final error = await controller.importBackup(replace: replace);
     if (!context.mounted) return;
     if (error == null) {
+      await context.read<SettingsController>().reloadFromStore();
+      if (!context.mounted) return;
       context.read<NotesController>().reload();
       context.read<FocusController>().reload();
-      context.read<TodosController>().reload();
-      context.read<TodoTagsController>().reload();
+
       context.read<CategoriesController>().reload();
       AppSnackbar.success(context, context.l10n.habits_imported);
     } else {
@@ -89,8 +88,7 @@ class SettingsActions {
       if (!context.mounted) return;
       context.read<NotesController>().reload();
       context.read<FocusController>().reload();
-      context.read<TodosController>().reload();
-      context.read<TodoTagsController>().reload();
+
       context.read<CategoriesController>().reload();
     }
     await settings.runAutoBackup(force: true);
@@ -307,10 +305,8 @@ class SettingsActions {
     if (!context.mounted) return;
     context.read<NotesController>().reload();
     context.read<FocusController>().reload();
-    context.read<TodosController>().reload();
-    context.read<TodoTagsController>().reload();
     context.read<CategoriesController>().reload();
-    context.read<IslandController>().reload();
+
     await context.read<SettingsController>().reloadFromStore();
     if (!context.mounted) return;
     AppSnackbar.success(context, context.l10n.wipe_data_done);

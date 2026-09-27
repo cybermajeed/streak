@@ -321,7 +321,7 @@ class _ReminderEditorSheetState extends State<ReminderEditorSheet> {
               button: true,
               child: InkWell(
                 onTap: _pickTime,
-                borderRadius: BorderRadius.circular(minimal ? 13 : 16),
+                borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: minimal ? 14 : 16,
@@ -329,7 +329,7 @@ class _ReminderEditorSheetState extends State<ReminderEditorSheet> {
                   ),
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(minimal ? 13 : 16),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
@@ -402,7 +402,7 @@ class _ReminderEditorSheetState extends State<ReminderEditorSheet> {
                 onPressed: (!_intervalMode && _days.isEmpty) ? null : _save,
                 style: FilledButton.styleFrom(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(minimal ? 13 : 16),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: Text(
@@ -441,7 +441,7 @@ class _ModeToggle extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: active ? scheme.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
@@ -502,7 +502,7 @@ class _IntervalStepper extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -581,7 +581,7 @@ class _PresetChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: context.colors.primary.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             label,

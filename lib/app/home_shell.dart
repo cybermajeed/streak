@@ -28,8 +28,7 @@ import 'package:streak/features/habits/widgets/today_intro.dart';
 import 'package:streak/features/settings/pages/settings_page.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/pages/statistics_page.dart';
-import 'package:streak/features/todos/pages/todos_page.dart';
-import 'package:streak/features/todos/state/todos_controller.dart';
+import 'package:streak/features/sleep/pages/sleep_page.dart';
 import 'package:streak/services/home_widget_service.dart';
 import 'package:streak/services/widget_action_service.dart';
 
@@ -40,7 +39,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-enum _Tab { today, todos, plan, stats, settings }
+enum _Tab { today, sleep, plan, stats, settings }
 
 final _paneTab = ValueNotifier(_Tab.today);
 
@@ -64,8 +63,8 @@ class _HomeShellState extends State<HomeShell>
     WidgetsBinding.instance.addObserver(this);
     final focus = context.read<FocusController>();
     final habits = context.read<HabitsController>();
-    focus.onRoundSaved =
-        (session) => unawaited(countFocusTime(habits, focus, session));
+    focus.onRoundSaved = (session) =>
+        unawaited(countFocusTime(habits, focus, session));
   }
 
   @override
@@ -133,12 +132,12 @@ class _HomeShellState extends State<HomeShell>
   }
 
   Widget _guard(List<_Tab> tabs, _Tab current, Widget child) => PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _back(tabs, current);
-        },
-        child: child,
-      );
+    canPop: false,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) _back(tabs, current);
+    },
+    child: child,
+  );
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -146,21 +145,17 @@ class _HomeShellState extends State<HomeShell>
       final habits = context.read<HabitsController>();
       if (Platform.isIOS) _applyWidgetActions(habits);
       habits.reload().then((_) => HomeWidgetService.sync(habits.asMap));
-      context.read<TodosController>().reload();
       TodayIntro.replay();
       drainFocusActions();
     }
   }
 
   Future<void> _applyWidgetActions(HabitsController habits) async {
-    final todos = context.read<TodosController>();
     final changed = await WidgetActionService.drain(
       LocalStore.readHabits(),
-      todos: LocalStore.readTodos(),
     );
     if (!changed) return;
     await habits.reload();
-    todos.reload();
     await HomeWidgetService.sync(habits.asMap);
   }
 
@@ -180,7 +175,7 @@ class _HomeShellState extends State<HomeShell>
     final express = settings.isExpressStyle;
     final tabs = [
       _Tab.today,
-      if (settings.todosEnabled) _Tab.todos,
+      _Tab.sleep,
       if (settings.planningEnabled) _Tab.plan,
       _Tab.stats,
       _Tab.settings,
@@ -192,34 +187,9 @@ class _HomeShellState extends State<HomeShell>
         tabs,
         current,
         _SplitScaffold(
-        full: current == _Tab.stats,
-        rail: _rail(context, tabs, current, settings.appStyle),
-        page: FadeThrough(
-          animation: _swap,
-          child: IndexedStack(
-            index: tabs.indexOf(current),
-            children: [
-              for (final tab in tabs)
-                TickerMode(
-                  enabled: tab == current,
-                  child: _visited.contains(tab)
-                      ? _pageOf(tab)
-                      : const SizedBox.shrink(),
-                ),
-            ],
-          ),
-        ),
-      ),
-      );
-    }
-
-    return _guard(
-      tabs,
-      current,
-      Scaffold(
-      body: Stack(
-        children: [
-          FadeThrough(
+          full: current == _Tab.stats,
+          rail: _rail(context, tabs, current, settings.appStyle),
+          page: FadeThrough(
             animation: _swap,
             child: IndexedStack(
               index: tabs.indexOf(current),
@@ -234,85 +204,119 @@ class _HomeShellState extends State<HomeShell>
               ],
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: MediaQuery.paddingOf(context).bottom + 12,
-            child: Center(
-              child: express
-                  ? ExpressNavBar(
-                      items: [
-                        for (final tab in tabs)
-                          ExpressNavItem(
-                            icon: _iconOf(tab),
-                            label: _labelOf(context, tab),
-                          ),
-                      ],
-                      index: tabs.indexOf(current),
-                      onSelect: (i) => _select(tabs, tabs[i]),
-                    )
-                  : Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                decoration: BoxDecoration(
-                  color: scheme.surface.withValues(alpha: 0.94),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: scheme.outlineVariant.withValues(alpha: 0.45),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.24),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+        ),
+      );
+    }
+
+    return _guard(
+      tabs,
+      current,
+      Scaffold(
+        body: Stack(
+          children: [
+            FadeThrough(
+              animation: _swap,
+              child: IndexedStack(
+                index: tabs.indexOf(current),
+                children: [
+                  for (final tab in tabs)
+                    TickerMode(
+                      enabled: tab == current,
+                      child: _visited.contains(tab)
+                          ? _pageOf(tab)
+                          : const SizedBox.shrink(),
                     ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final tab in tabs)
-                      _NavItem(
-                        icon: _iconOf(tab),
-                        label: _labelOf(context, tab),
-                        selected: tab == current,
-                        dense: tabs.length > 4,
-                        onTap: () => _select(tabs, tab),
-                      ),
-                  ],
-                ),
+                ],
               ),
             ),
-          ),
-        ],
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: MediaQuery.paddingOf(context).bottom + 12,
+              child: Center(
+                child: express
+                    ? ExpressNavBar(
+                        items: [
+                          for (final tab in tabs)
+                            ExpressNavItem(
+                              icon: _iconOf(tab),
+                              label: _labelOf(context, tab),
+                            ),
+                        ],
+                        index: tabs.indexOf(current),
+                        onSelect: (i) => _select(tabs, tabs[i]),
+                      )
+                    : Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 24),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.surface.withValues(alpha: 0.94),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: scheme.outlineVariant.withValues(
+                              alpha: 0.45,
+                            ),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.24),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (final tab in tabs)
+                                _NavItem(
+                                  icon: _iconOf(tab),
+                                  label: _labelOf(context, tab),
+                                  selected: tab == current,
+                                  dense: tabs.length > 4,
+                                  onTap: () => _select(tabs, tab),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
 
 Widget _pageOf(_Tab tab) => switch (tab) {
-      _Tab.today => const HomePage(),
-      _Tab.todos => const TodosPage(),
-      _Tab.plan => const DayTimelinePage(),
-      _Tab.stats => const StatisticsPage(),
-      _Tab.settings => const SettingsPage(),
-    };
+  _Tab.today => const HomePage(),
+  _Tab.sleep => const SleepPage(),
+  _Tab.plan => const DayTimelinePage(),
+  _Tab.stats => const StatisticsPage(),
+  _Tab.settings => const SettingsPage(),
+};
 
 IconData _iconOf(_Tab tab) => switch (tab) {
-      _Tab.today => LucideIcons.house,
-      _Tab.todos => LucideIcons.listChecks,
-      _Tab.plan => LucideIcons.calendarClock,
-      _Tab.stats => LucideIcons.chartColumn,
-      _Tab.settings => LucideIcons.settings,
-    };
+  _Tab.today => LucideIcons.house,
+  _Tab.sleep => LucideIcons.moonStar,
+  _Tab.plan => LucideIcons.calendarClock,
+  _Tab.stats => LucideIcons.chartColumn,
+  _Tab.settings => LucideIcons.settings,
+};
 
 String _labelOf(BuildContext context, _Tab tab) => switch (tab) {
-      _Tab.today => context.l10n.today,
-      _Tab.todos => context.l10n.todos,
-      _Tab.plan => context.l10n.plan_tab,
-      _Tab.stats => context.l10n.stats,
-      _Tab.settings => context.l10n.settings,
-    };
+  _Tab.today => context.l10n.today,
+  _Tab.sleep => 'Sleep',
+  _Tab.plan => context.l10n.plan_tab,
+  _Tab.stats => context.l10n.stats,
+  _Tab.settings => context.l10n.settings,
+};
 
 class _NavItem extends StatelessWidget {
   const _NavItem({
@@ -350,7 +354,7 @@ class _NavItem extends StatelessWidget {
               duration: const Duration(milliseconds: 320),
               curve: Curves.easeOutCubic,
               padding: EdgeInsets.symmetric(
-                horizontal: dense ? (selected ? 13 : 11) : (selected ? 18 : 16),
+                horizontal: dense ? (selected ? 11 : 9) : (selected ? 15 : 12),
                 vertical: 10,
               ),
               decoration: BoxDecoration(
@@ -364,7 +368,7 @@ class _NavItem extends StatelessWidget {
                     scale: selected ? 1.08 : 1,
                     duration: const Duration(milliseconds: 320),
                     curve: Curves.easeOutBack,
-                    child: Icon(icon, size: 21, color: tint),
+                    child: Icon(icon, size: 20, color: tint),
                   ),
                   ClipRect(
                     child: AnimatedSize(
@@ -372,20 +376,16 @@ class _NavItem extends StatelessWidget {
                       curve: Curves.easeOutCubic,
                       child: selected
                           ? Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: ConstrainedBox(
-                                constraints:
-                                    BoxConstraints(maxWidth: dense ? 72 : 88),
-                                child: Text(
-                                  label,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: tint,
-                                  ),
+                              padding: const EdgeInsets.only(left: 6),
+                              child: Text(
+                                label,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: tint,
                                 ),
                               ),
                             )
@@ -488,7 +488,9 @@ class _Line extends StatelessWidget {
           ? minimalLineColor(context)
           : settings.isExpressStyle
           ? expressHairlineColor(context)
-          : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.32),
+          : Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withValues(alpha: 0.32),
     );
   }
 }

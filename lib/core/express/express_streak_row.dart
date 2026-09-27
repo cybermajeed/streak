@@ -222,7 +222,13 @@ class _StreakPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    paintStreakRow(canvas, Offset.zero & size, states, ink, progress);
+    paintStreakRow(
+      canvas,
+      Offset.zero & size,
+      states,
+      ink,
+      progress,
+    );
   }
 
   @override

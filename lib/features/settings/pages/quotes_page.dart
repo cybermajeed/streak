@@ -145,14 +145,14 @@ class _QuoteTile extends StatelessWidget {
     final express = context.watch<SettingsController>().isExpressStyle;
     return InkWell(
       onTap: onEdit,
-      borderRadius: BorderRadius.circular(express ? 24 : 18),
+      borderRadius: BorderRadius.circular(express ? 24 : 12),
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
         decoration: BoxDecoration(
           color: express
               ? expressSurface(context)
               : context.colors.surfaceContainerHighest.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(express ? 24 : 18),
+          borderRadius: BorderRadius.circular(express ? 24 : 12),
           border: express ? expressHairline(context) : null,
         ),
         child: Row(
