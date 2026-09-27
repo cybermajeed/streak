@@ -18,7 +18,11 @@ class StartupFailure extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, color: Colors.white70, size: 48),
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.white70,
+                  size: 48,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'Streak could not open its data',
@@ -32,7 +36,7 @@ class StartupFailure extends StatelessWidget {
                 const SizedBox(height: 12),
                 const Text(
                   'Nothing has been lost. Please send this message to '
-                  'github.com/InlitX/streak/issues so it can be fixed.',
+                  'github.com/cybermajeed/streak/issues so it can be fixed.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),

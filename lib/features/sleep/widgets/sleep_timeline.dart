@@ -7,15 +7,24 @@ import 'package:streak/features/sleep/widgets/sleep_log_sheet.dart';
 
 /// 7-night timeline. Each row = one night. Sleep blocks are drawn as
 /// horizontal range bars proportional to a 24-hour clock axis.
-class SleepTimeline extends StatelessWidget {
+class SleepTimeline extends StatefulWidget {
   const SleepTimeline({super.key});
 
   // Midnight to midnight
   static const _windowStart = 0.0;
   static const _windowEnd = 24.0;
 
-  static double _hourOf(DateTime dt) {
-    return dt.hour + dt.minute / 60.0;
+  @override
+  State<SleepTimeline> createState() => _SleepTimelineState();
+}
+
+class _SleepTimelineState extends State<SleepTimeline> {
+  final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -26,32 +35,91 @@ class SleepTimeline extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _AxisLabels(scheme: scheme),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 7 * (_NightRow._rowH + 6), // 7 rows + spacing
-          child: PageView.builder(
-            reverse: true, // Page 0 is current week, page 1 is last week, etc
-            itemBuilder: (context, pageIndex) {
-              final weekStartOffset = pageIndex * 7;
-              final days = List.generate(
-                7,
-                (i) => AppClock.today().addDays(-(weekStartOffset + i)),
-              );
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var i = 0; i < days.length; i++) ...[
-                    _NightRow(
-                      day: days[i],
-                      entries: ctrl.entriesForDay(days[i]),
-                      targetHours: ctrl.targetHours,
-                    ),
-                    if (i < days.length - 1) const SizedBox(height: 6),
-                  ],
-                ],
-              );
-            },
+        // Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.timeline_rounded,
+                  size: 16,
+                  color: Color(0xFF6C63FF),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Past 7 nights',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            FilledButton.tonal(
+              onPressed: () {
+                _pageController.animateToPage(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 32),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              child: const Text(
+                'Today',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _AxisLabels(scheme: scheme),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 7 * (_NightRow._rowH + 6), // 7 rows + spacing
+                child: PageView.builder(
+                  controller: _pageController,
+                  reverse:
+                      true, // Page 0 is current week, page 1 is last week, etc
+                  itemBuilder: (context, pageIndex) {
+                    final weekStartOffset = pageIndex * 7;
+                    final days = List.generate(
+                      7,
+                      (i) => AppClock.today().addDays(-(weekStartOffset + i)),
+                    );
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var i = 0; i < days.length; i++) ...[
+                          _NightRow(
+                            day: days[i],
+                            entries: ctrl.entriesForDay(days[i]),
+                            targetHours: ctrl.targetHours,
+                          ),
+                          if (i < days.length - 1) const SizedBox(height: 6),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ],

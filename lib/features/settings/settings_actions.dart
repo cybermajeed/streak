@@ -30,8 +30,8 @@ import 'package:streak/services/import_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-const kGitHubUrl = 'https://github.com/InlitX/streak';
-const kIssuesUrl = 'https://github.com/InlitX/streak/issues';
+const kGitHubUrl = 'https://github.com/cybermajeed/streak';
+const kIssuesUrl = 'https://github.com/cybermajeed/streak/issues';
 const kCoffeeUrl = 'https://ko-fi.com/inlitx';
 
 class SettingsActions {

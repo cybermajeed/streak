@@ -264,6 +264,31 @@ your phone.
 
 ---
 
+## Building from source
+
+To build Streak locally from source:
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/InlitX/streak.git
+   cd streak
+   ```
+2. **Install dependencies:**
+   ```bash
+   flutter pub get
+   ```
+3. **Run the app:**
+   ```bash
+   flutter run
+   ```
+4. **Build a release APK:**
+   ```bash
+   flutter build apk --release
+   ```
+   *The APK will be generated at `build/app/outputs/flutter-apk/app-release.apk`.*
+
+---
+
 ## Privacy
 
 > [!IMPORTANT]

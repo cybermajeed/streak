@@ -23,6 +23,8 @@ import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/settings/widgets/settings_rows.dart';
 import 'package:streak/features/settings/widgets/minimal_settings_widgets.dart';
 import 'package:streak/features/settings/widgets/settings_sheets.dart';
+import 'package:streak/features/sleep/state/sleep_controller.dart';
+import 'package:streak/features/sleep/widgets/sleep_goal_sheet.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -58,6 +60,7 @@ class ClassicSettingsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          const Entrance(child: SectionLabel('Design')),
           Entrance(
             index: 1,
             child: Card(
@@ -74,6 +77,7 @@ class ClassicSettingsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          const Entrance(child: SectionLabel('Settings')),
           Entrance(
             index: 2,
             child: Card(
@@ -113,6 +117,7 @@ class ClassicSettingsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          const Entrance(child: SectionLabel('App')),
           Entrance(
             index: 3,
             child: Card(
@@ -323,6 +328,25 @@ class _ClassicPreferencesPage extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Entrance(child: SectionLabel('Sleep')),
+          Entrance(
+            index: 2,
+            child: Card(
+              child: Builder(
+                builder: (ctx) {
+                  final ctrl = ctx.watch<SleepController>();
+                  return NavRow(
+                    icon: LucideIcons.moonStar,
+                    title: 'Sleep Goal',
+                    subtitle: 'Set your daily sleep target',
+                    value: '${ctrl.targetHours.toStringAsFixed(ctrl.targetHours % 1 == 0 ? 0 : 1)}h',
+                    onTap: () => showSleepGoalSheet(ctx),
+                  );
+                },
               ),
             ),
           ),

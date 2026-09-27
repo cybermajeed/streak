@@ -16,8 +16,8 @@ import 'package:streak/core/express/express_surface.dart';
 import 'package:streak/core/express/express_type.dart';
 import 'package:streak/core/minimal/minimal_type.dart';
 
-const _kGitHubUrl = 'https://github.com/InlitX/streak';
-const _kProfileUrl = 'https://github.com/InlitX';
+const _kGitHubUrl = 'https://github.com/cybermajeed/streak';
+const _kProfileUrl = 'https://github.com/cybermajeed';
 const _kCoffeeUrl = 'https://ko-fi.com/inlitx';
 const _base = Duration(milliseconds: 340);
 
@@ -59,50 +59,50 @@ class _AboutPageState extends State<AboutPage> {
 
     final nameStyle = switch (style) {
       2 => ExpressType.display.at(
-          48,
-          height: 1,
-          spacing: -0.6,
-          color: scheme.onSurface,
-        ),
+        48,
+        height: 1,
+        spacing: -0.6,
+        color: scheme.onSurface,
+      ),
       1 => MinimalType.display(46, color: scheme.onSurface, height: 1),
       _ => TextStyle(
-          fontFamily: 'PlayfairDisplay',
-          fontSize: 46,
-          fontWeight: FontWeight.w700,
-          height: 1.0,
-          letterSpacing: -1,
-          color: scheme.onSurface,
-        ),
+        fontFamily: 'PlayfairDisplay',
+        fontSize: 46,
+        fontWeight: FontWeight.w700,
+        height: 1.0,
+        letterSpacing: -1,
+        color: scheme.onSurface,
+      ),
     };
 
     final subtitleStyle = switch (style) {
       2 => ExpressType.headline.at(18, height: 1.35, weight: 700, color: muted),
       1 => MinimalType.body(18, height: 1.35, color: muted, weight: 500),
       _ => TextStyle(
-          fontFamily: 'PlayfairDisplay',
-          fontStyle: FontStyle.italic,
-          fontSize: 18,
-          height: 1.3,
-          color: muted,
-        ),
+        fontFamily: 'PlayfairDisplay',
+        fontStyle: FontStyle.italic,
+        fontSize: 18,
+        height: 1.3,
+        color: muted,
+      ),
     };
 
     final storyStyle = switch (style) {
       2 => ExpressType.body.at(
-          15,
-          height: 1.7,
-          color: scheme.onSurface.withValues(alpha: 0.85),
-        ),
+        15,
+        height: 1.7,
+        color: scheme.onSurface.withValues(alpha: 0.85),
+      ),
       1 => MinimalType.body(
-          15,
-          height: 1.7,
-          color: scheme.onSurface.withValues(alpha: 0.85),
-        ),
+        15,
+        height: 1.7,
+        color: scheme.onSurface.withValues(alpha: 0.85),
+      ),
       _ => TextStyle(
-          fontSize: 15,
-          height: 1.7,
-          color: scheme.onSurface.withValues(alpha: 0.85),
-        ),
+        fontSize: 15,
+        height: 1.7,
+        color: scheme.onSurface.withValues(alpha: 0.85),
+      ),
     };
 
     return Scaffold(
@@ -246,46 +246,71 @@ class _MadeBy extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = context.colors;
-    final text = context.l10n.made_by;
-    final handle = context.l10n.dev_handle;
-    final start = handle.isEmpty ? -1 : text.indexOf(handle);
     final style = TextStyle(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: scheme.onSurface.withValues(alpha: 0.85),
     );
 
-    if (start < 0) {
-      return Text(text, textAlign: TextAlign.center, style: style);
-    }
-
-    return Semantics(
-      link: true,
-      label: handle,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: text.substring(0, start)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Semantics(
+          link: true,
+          label: 'InlitX',
+          child: InkWell(
+            onTap: () => launchUrl(Uri.parse('https://github.com/InlitX')),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Text.rich(
                 TextSpan(
-                  text: handle,
-                  style: TextStyle(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  children: [
+                    const TextSpan(text: 'Original Creator: '),
+                    TextSpan(
+                      text: 'InlitX',
+                      style: TextStyle(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-                TextSpan(text: text.substring(start + handle.length)),
-              ],
+                textAlign: TextAlign.center,
+                style: style,
+              ),
             ),
-            textAlign: TextAlign.center,
-            style: style,
           ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Semantics(
+          link: true,
+          label: 'cybermajeed',
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(text: 'Downstream Developer: '),
+                    TextSpan(
+                      text: 'cybermajeed',
+                      style: TextStyle(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+                style: style,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

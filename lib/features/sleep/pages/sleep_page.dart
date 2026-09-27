@@ -11,8 +11,6 @@ import 'package:streak/features/sleep/widgets/sleep_analytics_section.dart';
 class SleepPage extends StatelessWidget {
   const SleepPage({super.key});
 
-  static const _accent = Color(0xFF6C63FF);
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -20,70 +18,34 @@ class SleepPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // ── App Bar ───────────────────────────────────────────────────────
-          SliverAppBar(
-            expandedHeight: 120,
-            floating: false,
-            pinned: true,
-            backgroundColor: scheme.surface,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Sleep',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          'Track your rest',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Row(
-                    children: [
-                      // Goal editor button
-                      _GoalButton(),
-                      const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed: () =>
-                            SleepLogSheet.show(context, day: today),
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Log'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: scheme.primary,
-                          foregroundColor: scheme.onPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+      appBar: AppBar(
+        title: const Text('Sleep Log'),
+        actions: [
+          Center(
+            child: FilledButton.icon(
+              onPressed: () => SleepLogSheet.show(context, day: today),
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text(
+                'Log Today',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(0, 36),
               ),
             ),
           ),
-
+          const SizedBox(width: 16),
+        ],
+      ),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
           // ── Body ──────────────────────────────────────────────────────────
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
@@ -98,42 +60,11 @@ class SleepPage extends StatelessWidget {
                 const SleepStatsStrip(),
                 const SizedBox(height: 28),
 
-                // Timeline section header
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.timeline_rounded,
-                      size: 16,
-                      color: _accent,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Past 7 nights',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
                 // Timeline
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: scheme.outlineVariant.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: const SleepTimeline(),
-                ),
+                const SleepTimeline(),
 
                 const SizedBox(height: 28),
-                
+
                 // Analytics Section
                 const SleepAnalyticsSection(),
 
@@ -150,96 +81,7 @@ class SleepPage extends StatelessWidget {
   }
 }
 
-// ── Goal Button ──────────────────────────────────────────────────────────────
-
-class _GoalButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final ctrl = context.watch<SleepController>();
-    final scheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () => _editGoal(context, ctrl),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: scheme.primaryContainer,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.flag_rounded, size: 14, color: scheme.onPrimaryContainer),
-            const SizedBox(width: 6),
-            Text(
-              '${ctrl.targetHours.toStringAsFixed(ctrl.targetHours % 1 == 0 ? 0 : 1)}h',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: scheme.onPrimaryContainer,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _editGoal(BuildContext context, SleepController ctrl) async {
-    double selected = ctrl.targetHours;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text(
-          'Sleep Goal',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        content: StatefulBuilder(
-          builder: (_, setState) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${selected.toStringAsFixed(selected % 1 == 0 ? 0 : 1)} hours',
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF6C63FF),
-                ),
-              ),
-              Slider(
-                value: selected,
-                min: 4,
-                max: 12,
-                divisions: 16,
-                activeColor: const Color(0xFF6C63FF),
-                onChanged: (v) => setState(() => selected = v),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-            ),
-            onPressed: () {
-              ctrl.setTarget(selected);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ── Yearly Heatmap ────────────────────────────────────────────────────────────
-
-
 
 // ── All Entries List ──────────────────────────────────────────────────────────
 
@@ -370,8 +212,9 @@ class _EntryTile extends StatelessWidget {
               ),
             );
             if (ok == true) {
-              if (context.mounted)
+              if (context.mounted) {
                 await context.read<SleepController>().remove(entry.id);
+              }
             }
           },
           child: Padding(

@@ -18,6 +18,8 @@ import 'package:streak/features/settings/settings_actions.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/settings/widgets/minimal_settings_widgets.dart';
 import 'package:streak/features/settings/widgets/settings_sheets.dart';
+import 'package:streak/features/sleep/state/sleep_controller.dart';
+import 'package:streak/features/sleep/widgets/sleep_goal_sheet.dart';
 
 class MinimalSettingsPage extends StatelessWidget {
   const MinimalSettingsPage({super.key});
@@ -38,6 +40,7 @@ class MinimalSettingsPage extends StatelessWidget {
             photoPath: settings.profilePhoto,
           ),
           const SizedBox(height: 28),
+          const SectionLabel('Design'),
           SoftCard(
             children: [
               SoftRow(
@@ -53,6 +56,7 @@ class MinimalSettingsPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
+          const SectionLabel('Settings'),
           SoftCard(
             children: [
               SoftRow(
@@ -82,6 +86,7 @@ class MinimalSettingsPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
+          const SectionLabel('App'),
           SoftCard(
             children: [
               SoftRow(
@@ -404,6 +409,24 @@ class _PreferencesPage extends StatelessWidget {
                 index: settings.celebration.index,
                 onSelected: settings.setCelebration,
               ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        const SectionLabel('Sleep'),
+        SoftCard(
+          children: [
+            Builder(
+              builder: (ctx) {
+                final ctrl = ctx.watch<SleepController>();
+                return SoftRow(
+                  icon: LucideIcons.moonStar,
+                  title: 'Sleep Goal',
+                  subtitle: 'Set your daily sleep target',
+                  value: '${ctrl.targetHours.toStringAsFixed(ctrl.targetHours % 1 == 0 ? 0 : 1)}h',
+                  onTap: () => showSleepGoalSheet(ctx),
+                );
+              },
             ),
           ],
         ),
