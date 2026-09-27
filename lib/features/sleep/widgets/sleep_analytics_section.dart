@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -210,17 +209,10 @@ class _SleepAnalyticsSectionState extends State<SleepAnalyticsSection> {
               ),
               const SizedBox(height: 24),
               // Chart
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  return SizedBox(
-                    height: 180,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: SizedBox(
-                        width: max(constraints.maxWidth, days * 12.0),
-                        child: LineChart(
-                          LineChartData(
+              SizedBox(
+                height: 180,
+                child: LineChart(
+                  LineChartData(
                             minY: 0,
                             maxY: maxY,
                             minX: 0,
@@ -360,12 +352,8 @@ class _SleepAnalyticsSectionState extends State<SleepAnalyticsSection> {
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
+                  ),
+                ),
               ),
             ],
           ),
