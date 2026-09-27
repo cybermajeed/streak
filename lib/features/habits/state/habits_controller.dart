@@ -423,11 +423,29 @@ class HabitsController extends ChangeNotifier {
   }
 
   Future<ImportOutcome?> importFromApp() async {
-    final outcome = await LocalStore.guardWrites(ImportService.pickAndParse);
+    final ImportOutcome? outcome;
+    try {
+      outcome = await LocalStore.guardWrites(ImportService.pickAndParse);
+    } on StreakBackupDetected catch (e) {
+      // The user picked a native Streak backup via "Import from another app".
+      // Route through the full restore path so sleep, focus, notes, categories
+      // and settings are all recovered, not just habits.
+      final data = BackupService.parse(e.raw);
+      await LocalStore.guardWrites(() => _applyBackup(data, replace: false));
+      notifyListeners();
+      await HomeWidgetService.sync(asMap);
+      final entries = data.habits.fold<int>(0, (a, h) => a + h.completions.length);
+      return ImportOutcome(
+        habits: data.habits,
+        source: 'Streak',
+        entries: entries,
+        skipped: data.skipped,
+      );
+    }
     if (outcome == null) return null;
     await LocalStore.guardWrites(() async {
       var order = habits.length;
-      for (final habit in outcome.habits) {
+      for (final habit in outcome!.habits) {
         final placed = habit.copyWith(order: order++);
         _habits[placed.id] = placed;
         await LocalStore.writeHabit(placed);
@@ -473,6 +491,9 @@ class HabitsController extends ChangeNotifier {
     }
     for (final session in data.focus) {
       await LocalStore.writeFocusSession(session);
+    }
+    for (final entry in data.sleep) {
+      await LocalStore.writeSleepEntry(entry);
     }
 
     if (data.settings.isNotEmpty) {

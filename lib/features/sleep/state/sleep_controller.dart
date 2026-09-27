@@ -67,6 +67,12 @@ class SleepController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void reload() {
+    _entries = LocalStore.readSleepEntries();
+    _targetHours = LocalStore.setting<double>(_targetKey, 8.0);
+    notifyListeners();
+  }
+
   Future<void> remove(String id) async {
     await LocalStore.removeSleepEntry(id);
     _entries.removeWhere((e) => e.id == id);

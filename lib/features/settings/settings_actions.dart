@@ -20,6 +20,7 @@ import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/habits/state/categories_controller.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
+import 'package:streak/features/sleep/state/sleep_controller.dart';
 
 import 'package:streak/services/notification_service.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
@@ -65,7 +66,7 @@ class SettingsActions {
       if (!context.mounted) return;
       context.read<NotesController>().reload();
       context.read<FocusController>().reload();
-
+      context.read<SleepController>().reload();
       context.read<CategoriesController>().reload();
       AppSnackbar.success(context, context.l10n.habits_imported);
     } else {
@@ -88,7 +89,7 @@ class SettingsActions {
       if (!context.mounted) return;
       context.read<NotesController>().reload();
       context.read<FocusController>().reload();
-
+      context.read<SleepController>().reload();
       context.read<CategoriesController>().reload();
     }
     await settings.runAutoBackup(force: true);
@@ -103,6 +104,16 @@ class SettingsActions {
     try {
       final outcome = await controller.importFromApp();
       if (!context.mounted || outcome == null) return;
+      if (outcome.source == 'Streak') {
+        // Full Streak backup restore — reload every controller.
+        await context.read<SettingsController>().reloadFromStore();
+        if (!context.mounted) return;
+        context.read<NotesController>().reload();
+        context.read<FocusController>().reload();
+        context.read<SleepController>().reload();
+        context.read<CategoriesController>().reload();
+      }
+      if (!context.mounted) return;
       AppSnackbar.success(
         context,
         context.l10n.import_from_app_done(

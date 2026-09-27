@@ -87,6 +87,9 @@ class FolderSync {
     for (final session in data.focus) {
       await LocalStore.writeFocusSession(session);
     }
+    for (final entry in data.sleep) {
+      await LocalStore.writeSleepEntry(entry);
+    }
 
     return brought;
   }

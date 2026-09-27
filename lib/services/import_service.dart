@@ -109,7 +109,7 @@ class ImportService {
       final decoded = _decodeJson(text);
       if (decoded != null) {
         if (_isStreakBackup(decoded)) {
-          return _buildFromStreak(decoded);
+          throw StreakBackupDetected(text);
         }
         if (_isHabitKit(decoded)) {
           return _build(_parseHabitKit(decoded), 'HabitKit');
@@ -186,34 +186,6 @@ class ImportService {
       habits: habits,
       source: source,
       entries: totalEntries,
-      skipped: 0,
-    );
-  }
-
-  static ImportOutcome _buildFromStreak(dynamic decoded) {
-    final list = decoded is List
-        ? decoded
-        : (decoded is Map && decoded['habits'] is List
-            ? decoded['habits'] as List
-            : const []);
-    final habits = <Habit>[];
-    for (final e in list) {
-      if (e is! Map) continue;
-      try {
-        habits.add(Habit.fromMap(Map<String, dynamic>.from(e)));
-      } catch (error) {
-        debugPrint('Skipped a habit while importing: $error');
-      }
-    }
-    if (habits.isEmpty) {
-      throw const ImportException('No habits found in that backup.');
-    }
-    final entries =
-        habits.fold<int>(0, (a, h) => a + h.completions.length);
-    return ImportOutcome(
-      habits: habits,
-      source: 'Streak',
-      entries: entries,
       skipped: 0,
     );
   }
@@ -777,4 +749,13 @@ class ImportException implements Exception {
   final String message;
   @override
   String toString() => message;
+}
+
+/// Thrown by [ImportService.parseBytes] when the file is recognised as a
+/// native Streak backup. The caller should pass [raw] to
+/// [BackupService.parse] so that sleep entries, focus sessions, notes,
+/// categories and settings are all restored.
+class StreakBackupDetected implements Exception {
+  const StreakBackupDetected(this.raw);
+  final String raw;
 }

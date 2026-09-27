@@ -203,6 +203,7 @@ class LocalStore {
     await _habits.clear();
     await _notes.clear();
     await _focus.clear();
+    await _sleep.clear();
     await _categories.clear();
   }
 
