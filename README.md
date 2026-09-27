@@ -210,13 +210,13 @@ and [**OpenAPK**](https://www.openapk.net/streak/com.streak.app/).
 
 Streak runs on Android, Windows and Linux:
 
-| Platform | Status |
-|----------|--------|
-| Android | ✅ Supported |
-| Windows | ✅ Supported |
-| Linux | ✅ Supported |
-| iOS | 🚧 In progress |
-| macOS | 📅 Planned |
+| Platform | Status         |
+| -------- | -------------- |
+| Android  | ✅ Supported   |
+| Windows  | ✅ Supported   |
+| Linux    | ✅ Supported   |
+| iOS      | 🚧 In progress |
+| macOS    | 📅 Planned     |
 
 <details>
 <summary><b>Linux</b></summary>
@@ -224,10 +224,10 @@ Streak runs on Android, Windows and Linux:
 Two files on the [**Releases**](https://github.com/InlitX/streak/releases) page,
 both for 64-bit x86:
 
-| File | For |
-|------|-----|
-| `Streak-x86_64.AppImage` | Any distribution: make it executable and run it |
-| `Streak-linux-x64.tar.gz` | Unpack anywhere and run `Streak` |
+| File                      | For                                             |
+| ------------------------- | ----------------------------------------------- |
+| `Streak-x86_64.AppImage`  | Any distribution: make it executable and run it |
+| `Streak-linux-x64.tar.gz` | Unpack anywhere and run `Streak`                |
 
 The Linux build has only just landed, so expect some rough edges. Reminders ring
 while Streak is open. If something does not work, open an issue and I will fix
@@ -242,11 +242,11 @@ Prefer the raw APK? It's on the
 [**Releases**](https://github.com/InlitX/streak/releases) page, one file per
 phone type so each download stays small:
 
-| APK | For |
-|-----|-----|
-| `Streak-arm64-v8a.apk` | Modern 64-bit phones, **pick this one** |
-| `Streak-armeabi-v7a.apk` | Older 32-bit devices |
-| `Streak-x86_64.apk` | Emulators and x86 tablets |
+| APK                      | For                                     |
+| ------------------------ | --------------------------------------- |
+| `Streak-arm64-v8a.apk`   | Modern 64-bit phones, **pick this one** |
+| `Streak-armeabi-v7a.apk` | Older 32-bit devices                    |
+| `Streak-x86_64.apk`      | Emulators and x86 tablets               |
 
 Runs on **Android 9 (Pie) and newer**.
 
@@ -256,9 +256,9 @@ Releases page, tell you when a new version is out and pick the right APK for
 your phone.
 
 > [!NOTE]
->Streak isn't on the Play Store. Since the APK doesn't come from a store,
->Android may ask you to allow installs from your browser or file manager the
->first time.
+> Streak isn't on the Play Store. Since the APK doesn't come from a store,
+> Android may ask you to allow installs from your browser or file manager the
+> first time.
 
 </details>
 
@@ -270,7 +270,7 @@ To build Streak locally from source:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/InlitX/streak.git
+   git clone https://github.com/cybermajeed/streak.git
    cd streak
    ```
 2. **Install dependencies:**
@@ -285,16 +285,16 @@ To build Streak locally from source:
    ```bash
    flutter build apk --release
    ```
-   *The APK will be generated at `build/app/outputs/flutter-apk/app-release.apk`.*
+   _The APK will be generated at `build/app/outputs/flutter-apk/app-release.apk`._
 
 ---
 
 ## Privacy
 
 > [!IMPORTANT]
->Streak has **no analytics, no advertising SDK and no network backend**. The
->app never sends your data anywhere; it stays on your device. The only
->outbound actions are links you choose to open yourself.
+> Streak has **no analytics, no advertising SDK and no network backend**. The
+> app never sends your data anywhere; it stays on your device. The only
+> outbound actions are links you choose to open yourself.
 
 ---
 
