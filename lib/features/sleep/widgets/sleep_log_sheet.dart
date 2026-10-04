@@ -51,7 +51,7 @@ class _SleepLogSheetState extends State<SleepLogSheet> {
   }
 
   Duration get _duration => _wake.difference(_bed);
-  bool get _valid => _wake.isAfter(_bed) && _duration.inMinutes > 0;
+  bool get _valid => !_wake.isBefore(_bed);
 
   Future<void> _pick({required bool isBed}) async {
     final current = isBed ? _bed : _wake;
@@ -94,6 +94,18 @@ class _SleepLogSheetState extends State<SleepLogSheet> {
   Future<void> _save() async {
     if (!_valid) return;
     final controller = context.read<SleepController>();
+
+    // Overlap validation
+    for (final e in controller.entries) {
+      if (widget.existing != null && e.id == widget.existing!.id) continue;
+      if (_bed.isBefore(e.wakeTime) && _wake.isAfter(e.bedTime)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Overlaps with an existing session')),
+        );
+        return;
+      }
+    }
+
     if (widget.existing != null) {
       await controller.remove(widget.existing!.id);
     }
@@ -124,8 +136,10 @@ class _SleepLogSheetState extends State<SleepLogSheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.paddingOf(context).bottom +
-            MediaQuery.viewInsetsOf(context).bottom + 16,
+        bottom:
+            MediaQuery.paddingOf(context).bottom +
+            MediaQuery.viewInsetsOf(context).bottom +
+            16,
         left: 24,
         right: 24,
         top: 4,
@@ -153,9 +167,23 @@ class _SleepLogSheetState extends State<SleepLogSheet> {
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _timeCard(label: 'Bedtime', dt: _bed, isBed: true, accent: accent)),
+              Expanded(
+                child: _timeCard(
+                  label: 'Bedtime',
+                  dt: _bed,
+                  isBed: true,
+                  accent: accent,
+                ),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: _timeCard(label: 'Wake up', dt: _wake, isBed: false, accent: accent)),
+              Expanded(
+                child: _timeCard(
+                  label: 'Wake up',
+                  dt: _wake,
+                  isBed: false,
+                  accent: accent,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -200,15 +228,41 @@ class _SleepLogSheetState extends State<SleepLogSheet> {
             ),
           ],
           const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: _valid ? _save : null,
-            icon: const Icon(Icons.check_rounded),
-            label: const Text('Save'),
-            style: FilledButton.styleFrom(
-              backgroundColor: accent,
-              foregroundColor: scheme.onPrimary,
-              minimumSize: const Size.fromHeight(52),
-            ),
+          Row(
+            children: [
+              if (widget.existing != null) ...[
+                Expanded(
+                  flex: 1,
+                  child: FilledButton.tonal(
+                    onPressed: () async {
+                      await context.read<SleepController>().remove(
+                        widget.existing!.id,
+                      );
+                      if (context.mounted) Navigator.of(context).pop();
+                    },
+                    style: FilledButton.styleFrom(
+                      foregroundColor: scheme.error,
+                      minimumSize: const Size.fromHeight(52),
+                    ),
+                    child: const Icon(Icons.delete_outline),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                flex: 2,
+                child: FilledButton.icon(
+                  onPressed: _valid ? _save : null,
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Save'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: scheme.onPrimary,
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

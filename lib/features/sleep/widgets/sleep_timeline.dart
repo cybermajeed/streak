@@ -20,6 +20,8 @@ class SleepTimeline extends StatefulWidget {
 
 class _SleepTimelineState extends State<SleepTimeline> {
   final PageController _pageController = PageController();
+  double _scale = 1.0;
+  double _baseScale = 1.0;
 
   @override
   void dispose() {
@@ -86,40 +88,64 @@ class _SleepTimelineState extends State<SleepTimeline> {
               color: scheme.outlineVariant.withValues(alpha: 0.4),
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _AxisLabels(scheme: scheme),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 7 * (_NightRow._rowH + 6), // 7 rows + spacing
-                child: PageView.builder(
-                  controller: _pageController,
-                  reverse:
-                      true, // Page 0 is current week, page 1 is last week, etc
-                  itemBuilder: (context, pageIndex) {
-                    final weekStartOffset = pageIndex * 7;
-                    final days = List.generate(
-                      7,
-                      (i) => AppClock.today().addDays(-(weekStartOffset + i)),
-                    );
-                    return Column(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final contentWidth = constraints.maxWidth * _scale;
+              return GestureDetector(
+                onScaleStart: (details) => _baseScale = _scale,
+                onScaleUpdate: (details) {
+                  setState(() {
+                    _scale = (_baseScale * details.scale).clamp(1.0, 6.0);
+                  });
+                },
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: _scale > 1.0
+                      ? const ClampingScrollPhysics()
+                      : const NeverScrollableScrollPhysics(),
+                  child: SizedBox(
+                    width: contentWidth,
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (var i = 0; i < days.length; i++) ...[
-                          _NightRow(
-                            day: days[i],
-                            entries: ctrl.entriesForDay(days[i]),
-                            targetHours: ctrl.targetHours,
+                        _AxisLabels(scheme: scheme, scale: _scale),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 7 * (_NightRow._rowH + 6), // 7 rows + spacing
+                          child: PageView.builder(
+                            controller: _pageController,
+                            reverse: true,
+                            itemBuilder: (context, pageIndex) {
+                              final weekStartOffset = pageIndex * 7;
+                              final days = List.generate(
+                                7,
+                                (i) => AppClock.today().addDays(
+                                  -(weekStartOffset + i),
+                                ),
+                              );
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  for (var i = 0; i < days.length; i++) ...[
+                                    _NightRow(
+                                      day: days[i],
+                                      entries: ctrl.entriesForDay(days[i]),
+                                      targetHours: ctrl.targetHours,
+                                    ),
+                                    if (i < days.length - 1)
+                                      const SizedBox(height: 6),
+                                  ],
+                                ],
+                              );
+                            },
                           ),
-                          if (i < days.length - 1) const SizedBox(height: 6),
-                        ],
+                        ),
                       ],
-                    );
-                  },
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ],
@@ -128,30 +154,71 @@ class _SleepTimelineState extends State<SleepTimeline> {
 }
 
 class _AxisLabels extends StatelessWidget {
-  const _AxisLabels({required this.scheme});
+  const _AxisLabels({required this.scheme, required this.scale});
   final ColorScheme scheme;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['12am', '6am', '12pm', '6pm', '12am'];
     return Padding(
-      padding: const EdgeInsets.only(left: 54, right: 44),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          for (final l in labels)
-            Text(
-              l,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-              ),
-            ),
-        ],
+      padding: const EdgeInsets.only(left: 46, right: 44),
+      child: SizedBox(
+        height: 16,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _AxisLabelsPainter(scheme: scheme, scale: scale),
+        ),
       ),
     );
   }
+}
+
+class _AxisLabelsPainter extends CustomPainter {
+  _AxisLabelsPainter({required this.scheme, required this.scale});
+  final ColorScheme scheme;
+  final double scale;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    int step = 6;
+    if (scale > 4.0) {
+      step = 1;
+    } else if (scale > 2.0) {
+      step = 3;
+    }
+
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+
+    for (int h = 0; h <= 24; h += step) {
+      String label = '';
+      if (h == 0 || h == 24) {
+        label = '12am';
+      } else if (h == 12) {
+        label = '12pm';
+      } else if (h < 12) {
+        label = '${h}am';
+      } else {
+        label = '${h - 12}pm';
+      }
+
+      textPainter.text = TextSpan(
+        text: label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+        ),
+      );
+      textPainter.layout();
+
+      final x = (h / 24.0) * size.width;
+      textPainter.paint(canvas, Offset(x - textPainter.width / 2, 0));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_AxisLabelsPainter old) =>
+      old.scale != scale || old.scheme != scheme;
 }
 
 class _NightRow extends StatelessWidget {
@@ -178,14 +245,9 @@ class _NightRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: entries.isEmpty
-          ? () => SleepLogSheet.show(context, day: day)
-          : null,
-      child: SizedBox(
-        height: _rowH,
-        child: Row(
+    return SizedBox(
+      height: _rowH,
+      child: Row(
         children: [
           // Day label
           SizedBox(
@@ -251,7 +313,6 @@ class _NightRow extends StatelessWidget {
           ),
         ],
       ),
-      ),
     );
   }
 
@@ -311,18 +372,47 @@ class _BarCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(width, _NightRow._rowH),
-      painter: _TimelinePainter(
-        entries: entries,
-        targetHours: targetHours,
-        dayTotalHours: dayTotalHours,
-        scheme: scheme,
-        xOf: _xOf,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapUp: (details) {
+        final x = details.localPosition.dx;
+        SleepEntry? tappedEntry;
+
+        final dayStart = DateTime(day.year, day.month, day.day);
+        final dayEnd = dayStart.add(const Duration(days: 1));
+
+        for (final entry in entries) {
+          final start = entry.bedTime.isBefore(dayStart)
+              ? dayStart
+              : entry.bedTime;
+          final end = entry.wakeTime.isAfter(dayEnd) ? dayEnd : entry.wakeTime;
+
+          if (end.isBefore(start) || end.isAtSameMomentAs(start)) continue;
+
+          final startH = start.difference(dayStart).inMinutes / 60.0;
+          final endH = end.difference(dayStart).inMinutes / 60.0;
+
+          final x0 = _xOf(startH);
+          final x1 = _xOf(endH);
+
+          if (x >= x0 - 5 && x <= x1 + 5) {
+            tappedEntry = entry;
+            break;
+          }
+        }
+        SleepLogSheet.show(context, day: day, existing: tappedEntry);
+      },
+      child: CustomPaint(
+        size: Size(width, _NightRow._rowH),
+        painter: _TimelinePainter(
+          entries: entries,
+          targetHours: targetHours,
+          dayTotalHours: dayTotalHours,
+          scheme: scheme,
+          xOf: _xOf,
+          day: day,
+        ),
       ),
-      child: entries.isNotEmpty
-          ? _EntryTapLayer(entries: entries, day: day)
-          : null,
     );
   }
 }
@@ -334,6 +424,7 @@ class _TimelinePainter extends CustomPainter {
     required this.dayTotalHours,
     required this.scheme,
     required this.xOf,
+    required this.day,
   });
 
   final List<SleepEntry> entries;
@@ -341,6 +432,7 @@ class _TimelinePainter extends CustomPainter {
   final double dayTotalHours;
   final ColorScheme scheme;
   final double Function(double) xOf;
+  final DateTime day;
 
   static Color _colorFor(double hours, double goal) {
     final ratio = hours / goal;
@@ -362,7 +454,10 @@ class _TimelinePainter extends CustomPainter {
       trackPaint,
     );
 
-    // Midnight divider
+    // Midnight divider (24.0) is technically at the end of the day, but wait:
+    // the timeline goes from 12am (0) to 12am (24).
+    // We can draw a divider at 12pm (noon) instead, or both?
+    // Wait, let's keep the existing logic. 12am is at xOf(0) and xOf(24).
     final midnight = xOf(24.0);
     canvas.drawRect(
       Rect.fromLTWH(midnight - 0.5, 4, 1, size.height - 8),
@@ -370,7 +465,6 @@ class _TimelinePainter extends CustomPainter {
     );
 
     if (entries.isEmpty) {
-      // Dashed empty placeholder
       _drawDashed(canvas, size);
       return;
     }
@@ -378,30 +472,17 @@ class _TimelinePainter extends CustomPainter {
     const barH = 22.0;
     final top = (size.height - barH) / 2;
 
-    for (final entry in entries) {
-      var startH = entry.bedTime.hour + entry.bedTime.minute / 60.0;
-      var endH = entry.wakeTime.hour + entry.wakeTime.minute / 60.0;
+    final dayStart = DateTime(day.year, day.month, day.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
 
-      // Handle entries that span multiple days by clamping to 0-24 window.
-      // If a sleep started yesterday and ended today, it's plotted from 00:00 to wakeTime today.
-      if (entry.bedTime.isBefore(
-        DateTime(entry.wakeDay.year, entry.wakeDay.month, entry.wakeDay.day),
-      )) {
-        startH = 0.0; // Started before midnight today
-      }
-      // If a sleep started today but ends tomorrow (shouldn't happen since wakeDay is the day it ends, but for safety):
-      if (entry.wakeTime.isAfter(
-        DateTime(
-          entry.wakeDay.year,
-          entry.wakeDay.month,
-          entry.wakeDay.day,
-          23,
-          59,
-          59,
-        ),
-      )) {
-        endH = 24.0;
-      }
+    for (final entry in entries) {
+      final start = entry.bedTime.isBefore(dayStart) ? dayStart : entry.bedTime;
+      final end = entry.wakeTime.isAfter(dayEnd) ? dayEnd : entry.wakeTime;
+
+      if (end.isBefore(start) || end.isAtSameMomentAs(start)) continue;
+
+      final startH = start.difference(dayStart).inMinutes / 60.0;
+      final endH = end.difference(dayStart).inMinutes / 60.0;
 
       final x0 = xOf(startH.clamp(0.0, 24.0));
       final x1 = xOf(endH.clamp(0.0, 24.0));
@@ -414,7 +495,6 @@ class _TimelinePainter extends CustomPainter {
         RRect.fromRectAndRadius(rect, const Radius.circular(8)),
         Paint()..color = color.withValues(alpha: 0.25),
       );
-      // Colored border
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, const Radius.circular(8)),
         Paint()
@@ -422,13 +502,11 @@ class _TimelinePainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5,
       );
-      // Start cap dot
       canvas.drawCircle(
         Offset(x0 + 5, size.height / 2),
         3,
         Paint()..color = color,
       );
-      // End cap dot
       canvas.drawCircle(
         Offset(x1 - 5, size.height / 2),
         3,
@@ -458,23 +536,7 @@ class _TimelinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_TimelinePainter old) =>
-      old.entries != entries || old.targetHours != targetHours;
-}
-
-class _EntryTapLayer extends StatelessWidget {
-  const _EntryTapLayer({required this.entries, required this.day});
-  final List<SleepEntry> entries;
-  final DateTime day;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: () => SleepLogSheet.show(
-        context,
-        day: day,
-        existing: entries.first,
-      ),
-    );
-  }
+      old.entries != entries ||
+      old.targetHours != targetHours ||
+      old.day != day;
 }
