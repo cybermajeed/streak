@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/i18n/date_labels.dart';
 import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/focus/data/focus_stats.dart';
@@ -14,12 +15,14 @@ class FocusRangeBars extends StatelessWidget {
     required this.range,
     required this.color,
     this.height = 150,
+    this.stacks,
   });
 
   final FocusStats stats;
   final FocusRange range;
   final Color color;
   final double height;
+  final List<List<(double, Color)>>? stacks;
 
   double get _barWidth => switch (range) {
     FocusRange.week => 14,
@@ -46,12 +49,26 @@ class FocusRangeBars extends StatelessWidget {
     }
   }
 
+  double _average() {
+    final today = AppClock.today();
+    var total = 0;
+    var count = 0;
+    for (var i = 0; i < stats.buckets.length; i++) {
+      if (stats.buckets[i].isAfter(today)) break;
+      total += stats.series[i];
+      count++;
+    }
+    return count == 0 ? 0 : total / count / 60;
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueBars(
       key: ValueKey(range),
       values: [for (final seconds in stats.series) seconds / 60],
+      average: _average(),
       color: color,
+      stacks: stacks,
       height: height,
       barWidth: _barWidth,
       label: (index) => _label(context, index),

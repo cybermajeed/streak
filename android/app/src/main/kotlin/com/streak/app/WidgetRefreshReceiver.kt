@@ -24,7 +24,7 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
                 repaint(context)
             } catch (e: Exception) {
             } finally {
-                pending.finish()
+                GlanceWidgets.release(pending)
             }
         }
         WidgetActionWorker.refresh(context)
@@ -39,6 +39,8 @@ class WidgetRefreshReceiver : BroadcastReceiver() {
             HabitWidgetProvider::class.java,
             TodayWidgetProvider::class.java,
             StatsWidgetProvider::class.java,
+            FocusWidgetProvider::class.java,
+            FocusBoardWidgetProvider::class.java,
             HeatmapWidgetProvider::class.java,
             TodosWidgetProvider::class.java,
         )

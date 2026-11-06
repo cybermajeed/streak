@@ -28,11 +28,14 @@ import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/widgets/saved_money.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/data/habit_stats.dart';
+import 'package:streak/features/statistics/widgets/consistency_period.dart';
 import 'package:streak/features/statistics/widgets/period_totals.dart';
 import 'package:streak/features/statistics/widgets/express_line_chart.dart';
 import 'package:streak/features/statistics/widgets/express_stat_kit.dart';
 import 'package:streak/features/statistics/widgets/stat_charts.dart';
+import 'package:streak/features/statistics/widgets/stat_line_charts.dart';
 import 'package:streak/features/statistics/widgets/year_heatmap.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class ExpressStatisticsPage extends StatefulWidget {
   const ExpressStatisticsPage({super.key});
@@ -57,7 +60,13 @@ class _ExpressStatisticsPageState extends State<ExpressStatisticsPage> {
     final key = (habits: all, id: _habitId, year: _year);
     if (_statsKey != key) {
       _statsKey = key;
-      _stats = HabitStats.compute(scoped, _year);
+      if (HabitStats.isLight(scoped)) {
+        _stats = HabitStats.compute(scoped, _year);
+      } else {
+        HabitStats.inBackground(scoped, _year).then((stats) {
+          if (mounted && _statsKey == key) setState(() => _stats = stats);
+        });
+      }
     }
     return _stats;
   }
@@ -204,14 +213,15 @@ class _ExpressStatisticsPageState extends State<ExpressStatisticsPage> {
     List<Habit> all,
     Color accent,
   ) {
-    final focus = context.watch<FocusController>();
+    context.select<FocusController, int>((f) => f.revision);
+    final focus = context.read<FocusController>();
     final settings = context.watch<SettingsController>();
 
     final ranked = [
       for (final habit in all)
         (
           name: habit.name,
-          color: habit.color,
+          color: habit.color.shownIn(context),
           count: stats.perHabit[habit.id] ?? 0,
         ),
     ]..sort((a, b) => b.count.compareTo(a.count));
@@ -221,7 +231,7 @@ class _ExpressStatisticsPageState extends State<ExpressStatisticsPage> {
         : focus.sessions.where((s) => s.habitId == _habitId).length;
 
     return [
-      _ConsistencyHero(percent: stats.consistency, accent: accent),
+      _ConsistencyHero(stats: stats, accent: accent),
       const SizedBox(height: 24),
       const SpanEnd(),
       SectionLabel(context.l10n.times_completed),
@@ -288,9 +298,30 @@ class _ExpressStatisticsPageState extends State<ExpressStatisticsPage> {
             tint: context.tokens.success,
             shape: ExpressShape.flower,
           ),
+          ExpressStatRow(
+            icon: LucideIcons.calendarDays,
+            label: context.l10n.active_days,
+            value: '${stats.activeDays}',
+            tint: accent,
+            shape: ExpressShape.gem,
+          ),
+          ExpressStatRow(
+            icon: LucideIcons.percent,
+            label: context.l10n.completion_rate,
+            value: '${stats.monthRate}%',
+            tint: context.tokens.info,
+            shape: ExpressShape.clover,
+          ),
+          ExpressStatRow(
+            icon: LucideIcons.calendarRange,
+            label: context.l10n.best_month,
+            value: stats.total == 0 ? '—' : _months(context)[stats.bestMonth],
+            tint: context.tokens.warning,
+            shape: ExpressShape.burst,
+          ),
         ],
       ),
-      if (scoped.length == 1 && scoped.first.hasCost) ...[
+      if (scoped.length == 1 && showsMoney(scoped.first)) ...[
         const SizedBox(height: 20),
         SavedMoneyStats(habit: scoped.first),
       ],
@@ -327,6 +358,7 @@ class _ExpressStatisticsPageState extends State<ExpressStatisticsPage> {
         ),
       ],
       if (entries.length > 1) ...[
+        const SameColumn(),
         const SizedBox(height: 24),
         SectionLabel(context.l10n.ranking),
         ExpressCard(
@@ -386,6 +418,29 @@ class _ExpressStatisticsPageState extends State<ExpressStatisticsPage> {
         shape: ExpressShape.clover,
         child: WeekdayBars(values: stats.weekday, color: accent, height: 170),
       ),
+      const SizedBox(height: 12),
+      ExpressStatPanel(
+        title: context.l10n.streak_evolution,
+        icon: LucideIcons.trendingUp,
+        tint: accent,
+        shape: ExpressShape.pebble,
+        child: TrendChart(
+          key: const ValueKey('express-streak'),
+          values: stats.streakSeries,
+          color: accent,
+          startDate: AppClock.today().addDays(1 - HabitStats.window),
+        ),
+      ),
+      const SizedBox(height: 12),
+      ExpressStatPanel(
+        title: context.l10n.completion_time,
+        icon: LucideIcons.clock,
+        tint: accent,
+        shape: ExpressShape.cookie,
+        child: stats.hourSamples >= 5
+            ? HourArea(values: stats.hours, color: accent)
+            : _Placeholder(text: context.l10n.not_enough_data),
+      ),
     ];
   }
 }
@@ -437,7 +492,7 @@ class _HabitScope extends StatelessWidget {
             label: habit.name,
             glyph: habit.icon,
             active: selected == habit.id,
-            tint: habit.color,
+            tint: habit.color.shownIn(context),
             onTap: () => onSelected(habit.id),
           ),
       ],
@@ -446,14 +501,19 @@ class _HabitScope extends StatelessWidget {
 }
 
 class _ConsistencyHero extends StatelessWidget {
-  const _ConsistencyHero({required this.percent, required this.accent});
+  const _ConsistencyHero({required this.stats, required this.accent});
 
-  final int percent;
+  final HabitStats stats;
   final Color accent;
 
   @override
   Widget build(BuildContext context) {
+    final period = consistencyPeriodOf(context);
+    final value = stats.consistencyOver(period);
+    final percent = value.now;
+    final change = consistencyChange(context, value);
     return ExpressCard(
+      onTap: () => pickConsistencyPeriod(context),
       radius: 30,
       padding: const EdgeInsets.symmetric(vertical: 22),
       child: Column(
@@ -492,14 +552,32 @@ class _ConsistencyHero extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Text(
-            context.l10n.last_90_days,
-            style: ExpressType.body.at(
-              13,
-              weight: 700,
-              color: context.tokens.muted,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                consistencyCaption(context, period),
+                style: ExpressType.body.at(
+                  13,
+                  weight: 700,
+                  color: context.tokens.muted,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                LucideIcons.chevronDown,
+                size: 15,
+                color: context.tokens.muted,
+              ),
+            ],
           ),
+          if (change != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              change,
+              style: ExpressType.body.at(12.5, weight: 600, color: accent),
+            ),
+          ],
         ],
       ),
     );

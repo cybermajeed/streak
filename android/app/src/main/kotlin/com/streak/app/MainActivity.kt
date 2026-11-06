@@ -31,6 +31,9 @@ class MainActivity : FlutterFragmentActivity() {
         focusChannel =
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FocusBridge.CHANNEL)
                 .also { FocusBridge.attach(applicationContext, it) }
+        HealthBridge.attach(this, MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HealthBridge.CHANNEL))
+        SoundBridge.attach(applicationContext, MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SoundBridge.CHANNEL))
+        live = this
         channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).apply {
             setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -51,6 +54,14 @@ class MainActivity : FlutterFragmentActivity() {
                     "consumeLaunchHabit" -> result.success(takeHabitId(intent))
                     "consumeLaunchFocus" -> result.success(takeFocusId(intent))
                     "consumeLaunchPage" -> result.success(takePage(intent))
+                    "openWidgetEditor" -> {
+                        startActivity(
+                            Intent(this@MainActivity, WidgetConfigActivity::class.java)
+                                .putExtra(WidgetConfigActivity.EXTRA_TEMPLATE, call.argument<String>("kind")),
+                        )
+                        result.success(true)
+                    }
+                    "widgetPreview" -> result.success(widgetPreview(call.argument<String>("kind")))
                     else -> result.notImplemented()
                 }
             }
@@ -58,7 +69,9 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
+        if (live === this) live = null
         FocusBridge.detach(focusChannel)
+        SoundBridge.detach()
         super.onDestroy()
     }
 
@@ -100,7 +113,13 @@ class MainActivity : FlutterFragmentActivity() {
         return habitId
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (HealthBridge.onPermissionResult(requestCode, grantResults)) return
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
     private fun takePage(intent: Intent?): String? {
+        if (HealthBridge.isUsageIntent(intent)) return "health"
         val page = intent?.getStringExtra(EXTRA_OPEN_PAGE) ?: return null
         intent.removeExtra(EXTRA_OPEN_PAGE)
         return page
@@ -111,6 +130,18 @@ class MainActivity : FlutterFragmentActivity() {
         val habitId = intent?.getStringExtra(key) ?: return null
         intent.removeExtra(key)
         return habitId
+    }
+
+    private fun widgetPreview(kind: String?): ByteArray? {
+        val shot = when (kind) {
+            "today" -> R.drawable.widget_preview_shot_today
+            "stats" -> R.drawable.widget_preview_shot_stats
+            "heatmap" -> R.drawable.widget_preview_shot_heatmap
+            "todos" -> R.drawable.widget_preview_shot_todos
+            "focus" -> R.drawable.widget_preview_shot_focus
+            else -> R.drawable.widget_preview_shot_week
+        }
+        return resources.openRawResource(shot).use { it.readBytes() }
     }
 
     private fun setIcon(key: String) {
@@ -124,6 +155,19 @@ class MainActivity : FlutterFragmentActivity() {
                 else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
                 PackageManager.DONT_KILL_APP,
             )
+        }
+    }
+
+    companion object {
+        private var live: MainActivity? = null
+
+        fun deliverLink(link: String, fallback: () -> Unit) {
+            val target = live?.channel ?: return fallback()
+            target.invokeMethod("link", link, object : MethodChannel.Result {
+                override fun success(result: Any?) {}
+                override fun error(code: String, message: String?, details: Any?) = fallback()
+                override fun notImplemented() = fallback()
+            })
         }
     }
 }

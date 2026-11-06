@@ -12,11 +12,14 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 # Pinned Flutter version. F-Droid extracts this exact value from the recipe so
 # its build matches upstream. Defined once here and reused by both jobs.
 env:
   FLUTTER_VERSION: '3.41.9'
+  SIGNPATH_ORGANIZATION_ID: '56d04f3f-a39d-43ed-9e68-fb90ca3852d6'
+  SIGNPATH_PROJECT: 'streak'
 
 jobs:
   build:
@@ -191,22 +194,34 @@ jobs:
       - name: Zip the build
         run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath Streak-windows-x64.zip
 
+      - name: Install Inno Setup
+        run: choco install innosetup --version=6.7.1 -y --no-progress
+
+      - name: Build the installer
+        run: |
+          $iscc = (Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe").FullName
+          & $iscc "/DAppVersion=$('${{ inputs.tag }}'.TrimStart('v'))" windows\installer.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Add it to the release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag }}
-          files: Streak-windows-x64.zip
+          files: |
+            Streak-windows-x64.zip
+            build/installer/Streak-windows-x64-setup.exe
 
   linux:
     name: Build Linux
     runs-on: ubuntu-latest
     container: ubuntu:22.04
+    timeout-minutes: 30
     needs: release
     if: github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Install build dependencies
-        run: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y curl git jq unzip xz-utils zip file ca-certificates desktop-file-utils clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev lld
+        run: apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update && DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y curl git jq unzip xz-utils zip file ca-certificates desktop-file-utils clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev lld
 
       - name: Let git trust the container directories
         run: git config --global --add safe.directory '*'

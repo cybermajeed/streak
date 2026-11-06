@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/extensions/clock_extensions.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/icons/habit_glyph.dart';
 import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
-import 'package:streak/features/habits/data/quant_progress.dart';
+import 'package:streak/features/habits/data/habit_note.dart';
+import 'package:streak/features/habits/pages/note_editor_page.dart';
+import 'package:streak/core/routing/app_navigator.dart';
+import 'package:streak/features/habits/state/notes_controller.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/features/todos/data/todo.dart';
+import 'package:streak/features/todos/widgets/todo_check.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 const timelineGutter = 46.0;
 const _cardPadding = 12.0;
@@ -18,32 +25,36 @@ const _iconCenter = _cardPadding + _tile / 2;
 class TimelineBlock extends StatelessWidget {
   const TimelineBlock({
     super.key,
-    required this.slot,
+    required this.habit,
+    required this.start,
+    required this.minutes,
     required this.date,
     required this.done,
     required this.onOpen,
     required this.onCheck,
+    required this.onAddNote,
   });
 
-  final DaySlot slot;
+  final Habit habit;
+  final int start;
+  final int minutes;
   final DateTime date;
   final bool done;
   final VoidCallback onOpen;
   final VoidCallback onCheck;
-
-  Habit get habit => slot.habit!;
+  final VoidCallback onAddNote;
 
   double get _tileHeight {
-    if (slot.minutes <= 0) return _tile;
-    final grown = _tile + (slot.minutes - 15) * 0.85;
+    if (minutes <= 0) return _tile;
+    final grown = _tile + (minutes - 15) * 0.85;
     return grown.clamp(_tile, 148.0);
   }
 
   String _subtitle(BuildContext context) {
-    final start = minuteLabel(slot.start);
-    if (slot.minutes <= 0) return start;
-    return '$start - ${minuteLabel(slot.end)}'
-        '  ·  ${spanLabel(slot.minutes)}';
+    final from = context.clockAt(start);
+    if (minutes <= 0) return from;
+    return '$from - ${context.clockAt(start + minutes)}'
+        '  ·  ${spanLabel(minutes)}';
   }
 
   String? _progressLabel(BuildContext context) {
@@ -52,8 +63,10 @@ class TimelineBlock extends StatelessWidget {
       final unit = habit.isTimeAmount || habit.unitLabel.isEmpty
           ? ''
           : ' ${habit.unitLabel}';
+      final goal = habit.goalOn(date);
+      if (goal <= 0) return '${habit.amountText(count)}$unit';
       return '${habit.amountText(count)}/'
-          '${habit.amountText(habit.perDayTarget)}$unit';
+          '${habit.amountText(goal)}$unit';
     }
     if (habit.hasSubsteps) {
       final steps = habit.completions[date.dayKey]?.steps.length ?? 0;
@@ -75,14 +88,17 @@ class TimelineBlock extends StatelessWidget {
           width: timelineGutter,
           child: Padding(
             padding: const EdgeInsets.only(top: 14, right: 8),
-            child: Text(
-              minuteLabel(slot.start),
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                color: context.tokens.muted,
-                fontFeatures: const [FontFeature.tabularFigures()],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                context.clockAt(start),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: context.tokens.muted,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ),
           ),
@@ -92,6 +108,7 @@ class TimelineBlock extends StatelessWidget {
             button: true,
             child: GestureDetector(
               onTap: onOpen,
+              onLongPress: onAddNote,
               child: Container(
                 padding: const EdgeInsets.all(_cardPadding),
                 decoration: BoxDecoration(
@@ -100,18 +117,21 @@ class TimelineBlock extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                Row(
                   children: [
                     Container(
                       width: _tile,
                       height: _tileHeight,
                       decoration: BoxDecoration(
-                        color: habit.color.withValues(alpha: done ? 0.5 : 0.18),
+                        color: habit.color.shownIn(context).withValues(alpha: done ? 0.5 : 0.18),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: HabitGlyph(
                         glyph: habit.icon,
-                        color: done ? scheme.surface : habit.color,
+                        color: done ? scheme.surface : habit.color.shownIn(context),
                         size: 22,
                       ),
                     ),
@@ -155,7 +175,7 @@ class TimelineBlock extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
-                                color: habit.color,
+                                color: habit.color.shownIn(context),
                               ),
                             ),
                           ],
@@ -171,11 +191,288 @@ class TimelineBlock extends StatelessWidget {
                     ),
                   ],
                 ),
+                TimelineNotes(habit: habit, date: date),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+Color timelineTodoColor(BuildContext context, Todo todo) =>
+    todo.priority == TodoPriority.none
+        ? context.colors.primary
+        : todoPriorityColor(context, todo.priority);
+
+class TimelineTodo extends StatelessWidget {
+  const TimelineTodo({
+    super.key,
+    required this.todo,
+    required this.checking,
+    required this.onToggle,
+    required this.onOpen,
+  });
+
+  final Todo todo;
+  final bool checking;
+  final VoidCallback onToggle;
+  final VoidCallback onOpen;
+
+  int get _start => todo.minutes ?? 0;
+
+  int get _span => todo.estimate ?? 0;
+
+  double get _tileHeight {
+    if (_span <= 0) return _tile;
+    return (_tile + (_span - 15) * 0.85).clamp(_tile, 148.0);
+  }
+
+  String _subtitle(BuildContext context) {
+    final start = context.clockAt(_start);
+    if (_span <= 0) return start;
+    return '$start - ${context.clockAt(_start + _span)}  ·  ${spanLabel(_span)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    final accent = timelineTodoColor(context, todo);
+    final done = todo.done || checking;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: timelineGutter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 14, right: 8),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                context.clockAt(_start),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: context.tokens.muted,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Semantics(
+            button: true,
+            child: GestureDetector(
+              onTap: onOpen,
+              child: Container(
+                padding: const EdgeInsets.all(_cardPadding),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(
+                    alpha: done ? 0.35 : 0.6,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: _tile,
+                      height: _tileHeight,
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: done ? 0.5 : 0.18),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        LucideIcons.listTodo,
+                        size: 21,
+                        color: done ? scheme.surface : accent,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            todo.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  done ? context.tokens.muted : scheme.onSurface,
+                              decoration:
+                                  done ? TextDecoration.lineThrough : null,
+                              decorationColor: context.tokens.muted,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            _subtitle(context),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: context.tokens.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    TodoCheck(
+                      title: todo.title,
+                      done: done,
+                      ring: accent,
+                      onToggle: onToggle,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class TimelineNotes extends StatelessWidget {
+  const TimelineNotes({super.key, required this.habit, required this.date});
+
+  final Habit habit;
+  final DateTime date;
+
+  static const _shown = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final notes = context.select<NotesController, List<HabitNote>>(
+      (controller) => controller.forDay(habit.id, date.dayKey),
+    );
+    if (notes.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final note in notes.take(_shown))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _NoteLine(habit: habit, note: note),
+            ),
+          if (notes.length > _shown)
+            Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Text(
+                '+${notes.length - _shown}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: context.tokens.muted,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoteLine extends StatelessWidget {
+  const _NoteLine({required this.habit, required this.note});
+
+  final Habit habit;
+  final HabitNote note;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    final muted = context.tokens.muted;
+    final text = note.text.trim();
+    final minutes = note.minutes;
+
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => AppNavigator.push(
+          NoteEditorPage(
+            habitId: habit.id,
+            dayKey: note.date,
+            accent: habit.color.shownIn(context),
+            note: note,
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+          decoration: BoxDecoration(
+            color: scheme.surface.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                margin: const EdgeInsets.only(top: 6, right: 8),
+                decoration: BoxDecoration(
+                  color: noteTypeColor(context, note.type),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              if (minutes != null) ...[
+                Text(
+                  context.clockAt(minutes),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    height: 1.35,
+                    color: habit.color.shownIn(context),
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  text.isEmpty ? context.l10n.note_photos : text,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                    color: text.isEmpty ? muted : scheme.onSurface,
+                  ),
+                ),
+              ),
+              if (note.photos.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Icon(LucideIcons.image, size: 14, color: muted),
+                if (note.photos.length > 1)
+                  Text(
+                    ' ${note.photos.length}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: muted,
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -199,11 +496,8 @@ class TimelineCheck extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = habit.completions[date.dayKey]?.count ?? 0;
-    final progress = QuantProgress.of(
-      count: count,
-      target: habit.perDayTarget,
-    );
-    final color = _quant ? progress.activeColor(habit.color) : habit.color;
+    final progress = habit.progressFor(count, goal: habit.pastGoalOn(date));
+    final color = _quant ? progress.activeColor(habit.color.shownIn(context)) : habit.color.shownIn(context);
     final circle = context.watch<SettingsController>().isCircleCheck;
 
     return Semantics(
@@ -262,7 +556,11 @@ class TimelineCheck extends StatelessWidget {
                               ? LucideIcons.plus
                               : LucideIcons.check,
                   size: _quant ? 15 : 18,
-                  color: done ? context.colors.surface : color,
+                  color: done
+                      ? context.colors.surface
+                      : _quant || habit.needsFocusSession
+                          ? color
+                          : color.withValues(alpha: 0.3),
                 ),
               ),
             ],

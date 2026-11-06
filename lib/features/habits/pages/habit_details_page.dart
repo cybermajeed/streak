@@ -18,6 +18,7 @@ import 'package:streak/core/widgets/section_label.dart';
 import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/focus/pages/focus_stats_page.dart';
 import 'package:streak/features/focus/widgets/focus_daily_bars.dart';
+import 'package:streak/features/focus/widgets/focus_setup_parts.dart';
 import 'package:streak/features/focus/pages/focus_page.dart';
 import 'package:streak/features/focus/state/focus_actions.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
@@ -31,6 +32,7 @@ import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
 import 'package:streak/features/habits/widgets/activity_calendar.dart';
 import 'package:streak/features/habits/widgets/day_actions_sheet.dart';
+import 'package:streak/features/habits/widgets/miss_reasons.dart';
 import 'package:streak/core/minimal/minimal_kit.dart';
 import 'package:streak/features/habits/widgets/minimal_detail_parts.dart';
 import 'package:streak/features/habits/widgets/note_widgets.dart';
@@ -46,8 +48,10 @@ import 'package:streak/core/express/express_shapes.dart';
 import 'package:streak/core/express/express_streak_row.dart';
 import 'package:streak/core/express/express_tabs.dart';
 import 'package:streak/core/express/express_surface.dart';
+import 'package:streak/core/widgets/glass.dart';
 import 'package:streak/features/habits/widgets/quant_daily_bars.dart';
 import 'package:streak/features/habits/widgets/quantitative_progress.dart';
+import 'package:streak/features/habits/pages/habit_stats_page.dart';
 import 'package:streak/features/habits/widgets/saved_money.dart';
 import 'package:streak/features/habits/widgets/share_card.dart';
 import 'package:streak/features/habits/widgets/streak_summary.dart';
@@ -55,6 +59,7 @@ import 'package:streak/features/habits/widgets/focus_only_dialog.dart';
 import 'package:streak/features/habits/widgets/unscheduled_day_dialog.dart';
 import 'package:streak/features/habits/widgets/vacation_sheet.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class HabitDetailsPage extends StatefulWidget {
   const HabitDetailsPage({super.key, required this.habitId});
@@ -118,9 +123,10 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
             ).format(date),
             value: current,
             unit: habit.unitLabel,
-            target: habit.perDayTarget,
+            target: habit.hasGoal ? habit.perDayTarget : null,
             decimals: true,
-            accent: habit.color,
+            clock: habit.isTimeAmount,
+            accent: habit.color.shownIn(context),
           );
           if (value != null && value != current) {
             await controller.setProgress(habit.id, date, value);
@@ -142,6 +148,16 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
         }
 
         void toggle(DateTime date) {
+          final prefs = context.read<SettingsController>();
+          if (prefs.pastFirst && date.atMidnight.isBefore(AppClock.today())) {
+            showDayActionsSheet(
+              context,
+              habit: habit,
+              date: date,
+              notesEnabled: prefs.notesEnabled,
+            );
+            return;
+          }
           switch (habit.kind) {
             case HabitKind.positive:
               unawaited(toggleDay(date));
@@ -176,40 +192,64 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
             title: minimal || express
                 ? null
                 : Row(
-                    children: [
-                      HabitGlyph(
-                        glyph: habit.icon,
-                        color: habit.color,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          habit.name,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-            leading: IconButton(
-              icon: const Icon(LucideIcons.x),
-              onPressed: () => AppNavigator.pop(),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(LucideIcons.share2),
-                tooltip: context.l10n.share_progress,
-                onPressed: () => showShareCard(context, habit),
-              ),
-              IconButton(
-                icon: const Icon(LucideIcons.pencil),
-                onPressed: () => AppNavigator.push(
-                  HabitFormPage(habit: habit),
-                  fullscreenDialog: true,
+              children: [
+                HabitGlyph(glyph: habit.icon, color: habit.color.shownIn(context), size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ClassicTitle(habit.name),
                 ),
-              ),
-              const SizedBox(width: 8),
-            ],
+              ],
+            ),
+            leadingWidth: minimal || express ? null : 64,
+            leading: minimal || express
+                ? IconButton(
+                    icon: const Icon(LucideIcons.x),
+                    onPressed: () => AppNavigator.pop(),
+                  )
+                : Center(
+                    child: GlassIconButton(
+                      icon: LucideIcons.x,
+                      size: 38,
+                      tooltip: MaterialLocalizations.of(context)
+                          .closeButtonTooltip,
+                      onTap: () => AppNavigator.pop(),
+                    ),
+                  ),
+            actions: minimal || express
+                ? [
+                    IconButton(
+                      icon: const Icon(LucideIcons.share2),
+                      tooltip: context.l10n.share_progress,
+                      onPressed: () => showShareCard(context, habit),
+                    ),
+                    IconButton(
+                      icon: const Icon(LucideIcons.pencil),
+                      onPressed: () => AppNavigator.push(
+                        HabitFormPage(habit: habit),
+                        fullscreenDialog: true,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ]
+                : [
+                    GlassIconButton(
+                      icon: LucideIcons.share2,
+                      size: 38,
+                      tooltip: context.l10n.share_progress,
+                      onTap: () => showShareCard(context, habit),
+                    ),
+                    const SizedBox(width: 8),
+                    GlassIconButton(
+                      icon: LucideIcons.pencil,
+                      size: 38,
+                      tooltip: context.l10n.edit,
+                      onTap: () => AppNavigator.push(
+                        HabitFormPage(habit: habit),
+                        fullscreenDialog: true,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                  ],
           ),
           body: _DetailBackground(
             coverPath: habit.coverPath,
@@ -237,6 +277,13 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
                   ),
                   const SizedBox(height: 20),
                 ],
+                if (settings.focusEnabled && habit.needsFocusSession) ...[
+                  if (minimal)
+                    MinimalFocusRow(habit: habit)
+                  else
+                    _FocusTile(habit: habit),
+                  const SizedBox(height: 20),
+                ],
                 if (habit.kind == HabitKind.quantitative) ...[
                   QuantitativeProgress(habit: habit),
                   const SizedBox(height: 20),
@@ -257,7 +304,7 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
                   ),
                   const SizedBox(height: 20),
                 ],
-                if (settings.focusEnabled) ...[
+                if (settings.focusEnabled && !habit.needsFocusSession) ...[
                   if (minimal)
                     MinimalFocusRow(habit: habit)
                   else
@@ -267,7 +314,11 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
                 if (minimal) ...[
                   MinimalSection(
                     title: context.l10n.streaks,
-                    child: MinimalStreakTiles(habit: habit),
+                    trailing: habit.kind != HabitKind.quantitative &&
+                            hasHabitStats(habit)
+                        ? QuantStatsLink(habit: habit)
+                        : null,
+                    child: MinimalStreakTiles(habit: habit, mode: _mode),
                   ),
                   if (habit.hasCost)
                     MinimalSection(
@@ -275,8 +326,14 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
                       child: MinimalMoneyTiles(habit: habit),
                     ),
                 ] else ...[
-                  SectionLabel(context.l10n.streaks),
-                  StreakSummary(habit: habit),
+                  SectionLabel(
+                    context.l10n.streaks,
+                    trailing: habit.kind != HabitKind.quantitative &&
+                            hasHabitStats(habit)
+                        ? QuantStatsLink(habit: habit)
+                        : null,
+                  ),
+                  StreakSummary(habit: habit, mode: _mode),
                   if (habit.hasCost) ...[
                     const SizedBox(height: 12),
                     SavedMoneyCard(habit: habit),
@@ -328,6 +385,7 @@ class _HabitDetailsPageState extends State<HabitDetailsPage> {
                 const SizedBox(height: 20),
                 CheckHistoryTile(habit: habit),
                 const SizedBox(height: 12),
+                MissReasonsTile(habit: habit),
                 if (minimal)
                   MinimalVacationRow(habit: habit)
                 else
@@ -364,7 +422,7 @@ class _JourneyStrip extends StatelessWidget {
               button: true,
               child: GestureDetector(
                 onTap: () => AppNavigator.push(
-                  JourneyPage(habitId: habit.id, accent: habit.color),
+                  JourneyPage(habitId: habit.id, accent: habit.color.shownIn(context)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -477,7 +535,7 @@ class _ActivityView extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
         child: YearHeatmap(
           year: AppClock.now().year,
-          color: habit.color,
+          color: habit.color.shownIn(context),
           habit: habit,
           express: true,
         ),
@@ -499,6 +557,7 @@ class _ActivityView extends StatelessWidget {
           height: 60,
           onToggle: onToggle,
           onLongPress: onLongPress,
+          showNotes: showNotes,
         ),
       );
     }
@@ -538,16 +597,14 @@ class _ExpressHeader extends StatelessWidget {
         children: [
           ExpressBlob(
             size: 58,
-            color: habit.color.withValues(alpha: 0.18),
+            color: habit.color.shownIn(context).withValues(alpha: 0.18),
             shape: ExpressShape.cookie,
-            child: HabitGlyph(glyph: habit.icon, color: habit.color, size: 27),
+            child: HabitGlyph(glyph: habit.icon, color: habit.color.shownIn(context), size: 27),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               habit.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w900,
@@ -742,7 +799,8 @@ class _FocusTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final focus = context.watch<FocusController>();
+    context.select<FocusController, int>((f) => f.revision);
+    final focus = context.read<FocusController>();
     final seconds = focus.secondsForHabit(habit.id);
     final today = focus.secondsForHabitOnDay(habit.id, AppClock.now());
     final week = focus.secondsForHabitSince(
@@ -770,23 +828,22 @@ class _FocusTile extends StatelessWidget {
                   if (express)
                     ExpressBlob(
                       size: 44,
-                      color: habit.color.withValues(alpha: 0.18),
+                      color: habit.color.shownIn(context).withValues(alpha: 0.18),
                       shape: ExpressShape.cookie,
-                      child: Icon(
-                        LucideIcons.timer,
-                        size: 20,
-                        color: habit.color,
-                      ),
+                      child: Icon(LucideIcons.timer, size: 20, color: habit.color.shownIn(context)),
                     )
                   else
-                    Icon(LucideIcons.timer, size: 21, color: habit.color),
+                    Icon(LucideIcons.timer, size: 21, color: habit.color.shownIn(context)),
                   const SizedBox(width: 14),
-                  Expanded(
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 150),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           context.l10n.focus_total,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: express
                               ? ExpressType.headline.at(
                                   16,
@@ -818,15 +875,22 @@ class _FocusTile extends StatelessWidget {
                       ],
                     ),
                   ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: FocusQuickTimers(habit: habit),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   if (express)
                     ExpressIconButton(
                       icon: LucideIcons.play,
                       tooltip: context.l10n.focus_start,
                       size: 46,
-                      tint: habit.color.computeLuminance() > 0.55
+                      tint: habit.color.shownIn(context).computeLuminance() > 0.55
                           ? Colors.black
                           : Colors.white,
-                      background: habit.color,
+                      background: habit.color.shownIn(context),
                       resting: ExpressShape.cookie,
                       pressed: ExpressShape.flower,
                       onPressed: () => AppNavigator.push(
@@ -844,7 +908,7 @@ class _FocusTile extends StatelessWidget {
                   else
                     IconButton(
                       tooltip: context.l10n.focus_start,
-                      icon: Icon(LucideIcons.circlePlay, color: habit.color),
+                      icon: Icon(LucideIcons.circlePlay, color: habit.color.shownIn(context)),
                       onPressed: () => AppNavigator.push(
                         focus.isActive
                             ? const FocusPage()
@@ -868,6 +932,35 @@ class _FocusTile extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _ClassicTitle extends StatelessWidget {
+  const _ClassicTitle(this.name);
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final painter = TextPainter(
+          text: TextSpan(text: name, style: DefaultTextStyle.of(context).style),
+          maxLines: 1,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: box.maxWidth);
+        final fits = !painter.didExceedMaxLines;
+        painter.dispose();
+        if (fits) return Text(name, maxLines: 1);
+        return Text(
+          name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 18, height: 1.15),
+        );
+      },
     );
   }
 }

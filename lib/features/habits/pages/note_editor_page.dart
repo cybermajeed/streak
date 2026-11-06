@@ -14,6 +14,7 @@ import 'package:streak/core/routing/app_navigator.dart';
 import 'package:streak/core/utils/cover_storage.dart';
 import 'package:streak/core/widgets/photo_deck.dart';
 import 'package:streak/core/widgets/photo_viewer.dart';
+import 'package:streak/core/widgets/time_picker.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
 import 'package:streak/features/habits/widgets/express_form_kit.dart';
@@ -56,10 +57,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _time ?? TimeOfDay.now(),
-    );
+    final picked = await pickTime(context, _time ?? TimeOfDay.now());
     if (picked != null) setState(() => _time = picked);
   }
 
@@ -278,6 +276,8 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
                 onPressed: _canSave ? _save : null,
                 style: FilledButton.styleFrom(
                   backgroundColor: widget.accent,
+                  disabledBackgroundColor:
+                      widget.accent.withValues(alpha: 0.14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -287,7 +287,9 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
                   style: sheetActionStyle(
                     context,
                     size: 16,
-                    color: widget.accent.computeLuminance() > 0.6
+                    color: !_canSave
+                        ? widget.accent.withValues(alpha: 0.6)
+                        : widget.accent.computeLuminance() > 0.6
                         ? Colors.black
                         : Colors.white,
                   ),

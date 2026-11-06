@@ -16,25 +16,26 @@ class ReminderSchedule {
     return (habit * 100 + reminder) * slotsPerReminder + slot;
   }
 
-  static const maxHourlyPerDay = 8;
+  static const _dayMinutes = 24 * 60;
+
+  static int hourlyCap(int days) => slotsPerReminder ~/ (days < 1 ? 1 : days);
 
   static List<int> hourlySlots({
     required int hour,
     required int minute,
-    required int everyHours,
+    required int everyMinutes,
+    int? until,
+    int cap = 24,
   }) {
-    if (everyHours < 1) return [hour * 60 + minute];
     final start = hour * 60 + minute;
-    final step = everyHours * 60;
+    if (everyMinutes < 1) return [start];
+    final end = until != null && until > start ? until : _dayMinutes - 1;
     final slots = <int>[];
-    for (var at = start; at < 24 * 60 && slots.length < maxHourlyPerDay; at += step) {
+    for (var at = start; at <= end && slots.length < cap; at += everyMinutes) {
       slots.add(at);
     }
     return slots;
   }
-
-  static int hourlyId(String habitId, String reminderId, int day, int slot) =>
-      notificationId(habitId, reminderId, (day - 1) * maxHourlyPerDay + slot);
 
   static const todoIdBase = 1000000000;
 
@@ -65,6 +66,28 @@ class ReminderSchedule {
       when = when.add(const Duration(days: 1));
     }
     return when.isBefore(now) ? when.add(const Duration(days: 7)) : when;
+  }
+
+  static const habitDaysHorizon = 800;
+
+  static List<DateTime> onHabitDays({
+    required DateTime from,
+    required bool Function(DateTime day) due,
+    required List<int> slots,
+    required int limit,
+  }) {
+    final moments = <DateTime>[];
+    for (var offset = 0; offset < habitDaysHorizon; offset++) {
+      final day = DateTime(from.year, from.month, from.day + offset);
+      if (!due(day)) continue;
+      for (final slot in slots) {
+        final at = DateTime(day.year, day.month, day.day, slot ~/ 60, slot % 60);
+        if (at.isBefore(from)) continue;
+        moments.add(at);
+        if (moments.length >= limit) return moments;
+      }
+    }
+    return moments;
   }
 
   static DateTime nextDaily({

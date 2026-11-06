@@ -3,7 +3,7 @@ description: "Streak: a minimal habit tracker that helps you build lasting strea
 
 publish_to: 'none'
 
-version: 2.0.0+11
+version: 2.6.0+17
 
 environment:
   sdk: ^3.9.2
@@ -15,6 +15,7 @@ dependencies:
     sdk: flutter
   archive: ^3.6.1
   crypto: ^3.0.7
+  ffi: ^2.2.0
   file_picker: ^10.3.7
   fl_chart: ^0.69.2
   flutter_colorpicker: ^1.1.0
@@ -46,6 +47,10 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.1
 
+dependency_overrides:
+  permission_handler_windows:
+    path: desktop/permission_handler_windows
+
 # Run: dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: true
@@ -70,6 +75,8 @@ flutter:
     - assets/sounds/
     - assets/backgrounds/
     - assets/island/
+  shaders:
+    - assets/shaders/edge_fade.frag
 
   fonts:
     - family: Figtree
@@ -88,9 +95,28 @@ flutter:
           weight: 800
         - asset: fonts/Figtree-Black.ttf
           weight: 900
+    - family: GoogleSansRounded
+      fonts:
+        - asset: fonts/GoogleSansRounded-Light.ttf
+          weight: 300
+        - asset: fonts/GoogleSansRounded-Regular.ttf
+          weight: 400
+        - asset: fonts/GoogleSansRounded-Medium.ttf
+          weight: 500
+        - asset: fonts/GoogleSansRounded-SemiBold.ttf
+          weight: 600
+        - asset: fonts/GoogleSansRounded-Bold.ttf
+          weight: 700
+        - asset: fonts/GoogleSansRounded-ExtraBold.ttf
+          weight: 800
+        - asset: fonts/GoogleSansRounded-Black.ttf
+          weight: 900
     - family: GoogleSansFlex
       fonts:
         - asset: fonts/GoogleSansFlex.ttf
+    - family: Nunito
+      fonts:
+        - asset: fonts/Nunito.ttf
     - family: PlayfairDisplay
       fonts:
         - asset: fonts/PlayfairDisplay.ttf

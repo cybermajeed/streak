@@ -7,7 +7,7 @@
 ---
 
 <div align="right">
-  <sub><a href="../README.md">English</a> · <b>Español</b> · <a href="README.zh-CN.md">中文</a> · <a href="README.ru.md">Русский</a></sub>
+  <sub><a href="../README.md">English</a> · <b>Español</b> · <a href="README.zh-CN.md">中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a></sub>
 </div>
 
 <div align="center">
@@ -136,7 +136,7 @@ exigir.
   su meta
 - **Rondas pomodoro** con descansos cortos, o una sola sesión larga
 - Tres estilos de reloj: **Círculo**, **Flip** y **Puntos**
-- Sonidos incluidos (lluvia, ruido marrón, pad cálido) o tus propias pistas,
+- Sonidos incluidos (lluvia, ruido marrón, fuego) o tus propias pistas,
   en orden o aleatorias
 - Escenas tranquilas de fondo, o una foto tuya
 - Marca subtareas sin salir del temporizador, y deja la pantalla encendida
@@ -186,7 +186,6 @@ exigir.
 - **Copias automáticas**, diarias o semanales, en la carpeta que elijas
 - **Bloqueo de la app** con PIN o huella, para móviles que no lo traen
 - **Archiva** hábitos sin perder un solo día de su historial
-- Todo sin conexión: sin cuenta, sin servidor, nada que sincronizar
 - Siete idiomas, con más abiertos en Weblate
 
 </td>
@@ -277,19 +276,19 @@ que le toca a tu teléfono.
 ## Privacidad
 
 > [!IMPORTANT]
->Streak **no tiene analíticas, ni SDK de publicidad, ni backend de red**. La app
->nunca envía tus datos a ningún sitio: se quedan en tu dispositivo. Las únicas
->acciones salientes son los enlaces que tú decides abrir.
+>Streak **nunca se conecta a internet**, y es una regla de base, no un ajuste.
+>En Android ni siquiera pide el permiso de internet. No hay analíticas, ni
+>anuncios, ni cuentas, ni servidores: tus datos nunca salen de tu dispositivo.
+>Si quieres una copia en otro sitio, como una nube, la exportas y la subes tú
+>mismo. Los enlaces que tocas se abren en tu navegador.
 
 ---
 
 ## Traducciones
 
-Streak habla **inglés, español, francés, portugués, ruso, ucraniano y chino**
-por completo, y **alemán, polaco, hebreo, indonesio y persa** están en camino;
-cualquier idioma nuevo es bienvenido. Las
-traducciones se gestionan en [**Weblate**](https://hosted.weblate.org/engage/streak/):
-no hace falta programar, solo son frases cortas que traduces en el navegador.
+Las traducciones se gestionan en [**Weblate**](https://hosted.weblate.org/engage/streak/):
+no hace falta programar, solo frases cortas que traduces en el navegador.
+Cualquier idioma nuevo es bienvenido.
 
 [![Estado de la traducción por idioma](https://hosted.weblate.org/widget/streak/app-strings/multi-auto.svg)](https://hosted.weblate.org/engage/streak/)
 
@@ -380,6 +379,6 @@ ayudan tanto como un café.
 <br/>
 <br/>
 
-Publicado bajo la <a href="../LICENSE"><b>Licencia GNU GPLv3</b></a>.
+Publicado bajo la <a href="../LICENSE"><b>Licencia GNU GPLv3</b></a>, con el <a href="../ADDITIONAL_TERMS.md">término de atribución</a> de su sección 7(b).
 
 </div>

@@ -13,6 +13,7 @@ import 'package:streak/features/habits/widgets/category_editor_sheet.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/widgets/daily_quote.dart';
 import 'package:streak/features/habits/widgets/habit_heatmap.dart';
+import 'package:streak/features/habits/widgets/today_filter_sheet.dart';
 import 'package:streak/features/habits/widgets/today_intro.dart';
 
 class ExpressTodayHero extends StatelessWidget {
@@ -316,6 +317,9 @@ class ExpressTodayHeader extends StatelessWidget {
     required this.categories,
     required this.category,
     required this.onCategory,
+    required this.filtered,
+    required this.onFilter,
+    required this.allDone,
   });
 
   final List<Habit> habits;
@@ -329,6 +333,9 @@ class ExpressTodayHeader extends StatelessWidget {
   final List<String> categories;
   final String? category;
   final ValueChanged<String?> onCategory;
+  final bool filtered;
+  final VoidCallback onFilter;
+  final bool allDone;
 
   @override
   Widget build(BuildContext context) {
@@ -354,10 +361,12 @@ class ExpressTodayHeader extends StatelessWidget {
             onChanged: (i) => onMode(HeatmapMode.values[i]),
           ),
         ],
-        if (categories.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          ExpressChipBar(
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: ExpressChipBar(
             children: [
+              if (categories.isNotEmpty)
               ExpressChip(
                 label: context.l10n.all,
                 active: category == null,
@@ -372,9 +381,21 @@ class ExpressTodayHeader extends StatelessWidget {
                   onLongPress: () => showCategoryOrderSheet(context),
                 ),
             ],
-          ),
-        ],
+          )),
+            const SizedBox(width: 8),
+            Semantics(
+              label: context.l10n.today_filter,
+              child: ExpressChip(
+                label: '',
+                icon: LucideIcons.listFilter,
+                active: filtered,
+                onTap: onFilter,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
+        if (allDone) const TodayAllDone(),
       ],
     );
   }

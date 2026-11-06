@@ -10,16 +10,19 @@ import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/routing/app_navigator.dart';
 import 'package:streak/core/utils/app_dirs.dart';
 import 'package:streak/core/widgets/section_label.dart';
-import 'package:streak/features/habits/widgets/category_editor_sheet.dart';
+import 'package:streak/features/settings/data_folder_actions.dart';
 import 'package:streak/features/settings/pages/about_page.dart';
 import 'package:streak/features/settings/pages/app_style_page.dart';
 import 'package:streak/features/settings/pages/archived_habits_page.dart';
 import 'package:streak/features/settings/settings_actions.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/features/settings/widgets/import_apps_card.dart';
 import 'package:streak/features/settings/widgets/minimal_settings_widgets.dart';
+import 'package:streak/features/settings/widgets/color_theme_sheet.dart';
 import 'package:streak/features/settings/widgets/settings_sheets.dart';
 import 'package:streak/features/sleep/state/sleep_controller.dart';
 import 'package:streak/features/sleep/widgets/sleep_goal_sheet.dart';
+import 'package:streak/features/settings/widgets/widget_style_list.dart';
 
 class MinimalSettingsPage extends StatelessWidget {
   const MinimalSettingsPage({super.key});
@@ -201,9 +204,9 @@ class _ProfileRow extends StatelessWidget {
         Expanded(
           child: Semantics(
             button: true,
-            label: context.l10n.edit_name,
+            label: context.l10n.edit_profile,
             child: GestureDetector(
-              onTap: () => SettingsActions.editName(context),
+              onTap: () => SettingsActions.editProfile(context),
               behavior: HitTestBehavior.opaque,
               child: Row(
                 children: [
@@ -213,17 +216,19 @@ class _ProfileRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: 'PlayfairDisplay',
-                        fontSize: 30,
+                        fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        height: 1.1,
-                        letterSpacing: -0.6,
+                        height: 1.2,
                         color: context.colors.onSurface,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 9),
-                  Icon(LucideIcons.pencil, size: 14, color: context.tokens.muted),
+                  const SizedBox(width: 8),
+                  Icon(
+                    LucideIcons.pencil,
+                    size: 13,
+                    color: context.tokens.muted.withValues(alpha: 0.7),
+                  ),
                 ],
               ),
             ),
@@ -268,6 +273,14 @@ class _AppearancePage extends StatelessWidget {
                 onSelected: (i) => settings.setThemeMode(ThemeMode.values[i]),
               ),
             ),
+            SoftRow(
+              icon: LucideIcons.swatchBook,
+              title: context.l10n.color_theme,
+              subtitle: context.l10n.color_theme_sub,
+              value: colorThemeLabel(context, settings.colorTheme),
+              onTap: () => showColorThemeSheet(context),
+            ),
+            if (settings.colorTheme == null)
             SoftRow(
               icon: LucideIcons.palette,
               title: context.l10n.accent_color,
@@ -331,11 +344,64 @@ class _AppearancePage extends StatelessWidget {
                 ),
               ),
             ],
+            SoftRow(
+              icon: LucideIcons.gauge,
+              title: context.l10n.performance,
+              subtitle: context.l10n.performance_sub,
+              onTap: () => AppNavigator.push(const _PerformancePage()),
+            ),
+            if (Platform.isAndroid)
+              SoftRow(
+                icon: LucideIcons.layoutDashboard,
+                title: context.l10n.widgets,
+                subtitle: context.l10n.widgets_sub,
+                onTap: () => AppNavigator.push(const _WidgetsPage()),
+              ),
           ],
         ),
       ],
     );
   }
+}
+
+class _PerformancePage extends StatelessWidget {
+  const _PerformancePage();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsController>();
+
+    return MinimalPage(
+      title: context.l10n.performance,
+      subtitle: context.l10n.performance_sub,
+      children: [
+        SoftCard(
+          children: [
+            SoftRow(
+              icon: LucideIcons.sparkles,
+              title: context.l10n.animations,
+              subtitle: context.l10n.animations_sub,
+              trailing: _SoftSwitch(
+                value: settings.animations,
+                onChanged: settings.setAnimations,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _WidgetsPage extends StatelessWidget {
+  const _WidgetsPage();
+
+  @override
+  Widget build(BuildContext context) => MinimalPage(
+    title: context.l10n.widgets,
+    subtitle: context.l10n.widgets_hint,
+    children: const [WidgetStyleList()],
+  );
 }
 
 class _PreferencesPage extends StatelessWidget {
@@ -378,7 +444,8 @@ class _PreferencesPage extends StatelessWidget {
                   context.l10n.sun,
                 ],
                 index: weekIndex,
-                onSelected: (i) => settings.setWeekStart(
+                onSelected: (i) => SettingsActions.setWeekStart(
+                context,
                   switch (i) { 1 => 6, 2 => 7, _ => 1 },
                 ),
               ),
@@ -408,6 +475,15 @@ class _PreferencesPage extends StatelessWidget {
                 options: SettingsActions.celebrationLabels(context),
                 index: settings.celebration.index,
                 onSelected: settings.setCelebration,
+              ),
+            ),
+            SoftRow(
+              icon: LucideIcons.volume2,
+              title: context.l10n.check_sound,
+              subtitle: context.l10n.check_sound_sub,
+              trailing: _SoftSwitch(
+                value: settings.checkSound,
+                onChanged: settings.setCheckSound,
               ),
             ),
           ],
@@ -447,12 +523,6 @@ class _PreferencesPage extends StatelessWidget {
                 index: settings.startView,
                 onSelected: settings.setStartView,
               ),
-            ),
-            SoftRow(
-              icon: LucideIcons.tags,
-              title: context.l10n.category_order,
-              subtitle: context.l10n.category_order_sub,
-              onTap: () => showCategoryOrderSheet(context),
             ),
             SoftRow(
               icon: LucideIcons.layoutList,
@@ -508,6 +578,24 @@ class _PreferencesPage extends StatelessWidget {
                 onChanged: settings.setTodayOnly,
               ),
             ),
+            SoftRow(
+              icon: LucideIcons.listChecks,
+              title: context.l10n.hide_done,
+              subtitle: context.l10n.hide_done_sub,
+              trailing: _SoftSwitch(
+                value: settings.hideDone,
+                onChanged: settings.setHideDone,
+              ),
+            ),
+            SoftRow(
+              icon: LucideIcons.history,
+              title: context.l10n.past_first,
+              subtitle: context.l10n.past_first_sub,
+              trailing: _SoftSwitch(
+                value: settings.pastFirst,
+                onChanged: settings.setPastFirst,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 22),
@@ -532,14 +620,20 @@ class _PreferencesPage extends StatelessWidget {
                 onChanged: settings.setNotesEnabled,
               ),
             ),
-
             SoftRow(
               icon: LucideIcons.calendarClock,
               title: context.l10n.plan_day,
               subtitle: context.l10n.plan_day_sub,
+              value: SettingsActions.planOptions(context)[settings.planChoice],
+              onTap: () => SettingsActions.pickPlan(context),
+            ),
+            SoftRow(
+              icon: LucideIcons.moveHorizontal,
+              title: context.l10n.swipe_cards,
+              subtitle: context.l10n.swipe_cards_sub,
               trailing: _SoftSwitch(
-                value: settings.planningEnabled,
-                onChanged: settings.setPlanningEnabled,
+                value: settings.swipeCards,
+                onChanged: settings.setSwipeCards,
               ),
             ),
             SoftRow(
@@ -661,14 +755,10 @@ class _DataPage extends StatelessWidget {
       title: context.l10n.data,
       subtitle: context.l10n.data_sub,
       children: [
+        ImportAppsCard(onTap: () => SettingsActions.importFromApp(context)),
+        const SizedBox(height: 12),
         SoftCard(
           children: [
-            SoftRow(
-              icon: LucideIcons.import,
-              title: context.l10n.import_from_app,
-              subtitle: context.l10n.import_from_app_sub,
-              onTap: () => SettingsActions.importFromApp(context),
-            ),
             SoftRow(
               icon: LucideIcons.upload,
               title: context.l10n.import_backup,
@@ -693,6 +783,13 @@ class _DataPage extends StatelessWidget {
                 title: context.l10n.refresh_now,
                 subtitle: context.l10n.refresh_now_sub,
                 onTap: () => SettingsActions.refreshFolder(context),
+              ),
+            if (DataFolderActions.available)
+              SoftRow(
+                icon: LucideIcons.folderInput,
+                title: context.l10n.data_folder,
+                subtitle: dataPath,
+                onTap: () => DataFolderActions.pick(context),
               ),
             SoftRow(
               icon: LucideIcons.archive,

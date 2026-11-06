@@ -17,6 +17,7 @@ import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/widgets/statistics_filters.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class AllNotesPage extends StatefulWidget {
   const AllNotesPage({super.key, this.habitId});
@@ -138,13 +139,13 @@ class _AllNotesPageState extends State<AllNotesPage> {
                               NotesPage(
                                 habitId: habit.id,
                                 date: parseDayKey(note.date),
-                                accent: habit.color,
+                                accent: habit.color.shownIn(context),
                               ),
                             ),
                             child: NoteCard(
                               note: note,
                               date: parseDayKey(note.date),
-                              accent: habit.color,
+                              accent: habit.color.shownIn(context),
                               habitName: _habitId == null ? habit.name : '',
                             ),
                           ),

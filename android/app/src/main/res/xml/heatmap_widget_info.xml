@@ -13,4 +13,4 @@
     android:description="@string/widget_description"
     android:initialLayout="@layout/widget_heatmap"
     android:previewLayout="@layout/widget_preview_heatmap"
-    android:previewImage="@drawable/widget_preview_img_heatmap" />
+    android:previewImage="@drawable/widget_preview_shot_heatmap" />

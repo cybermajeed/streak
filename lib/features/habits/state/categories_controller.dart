@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:streak/core/database/local_store.dart';
 import 'package:streak/features/habits/data/category.dart';
@@ -6,7 +8,36 @@ import 'package:uuid/uuid.dart';
 class CategoriesController extends ChangeNotifier {
   CategoriesController() {
     _categories = LocalStore.readCategories();
-    if (!LocalStore.hasCategories) _seedDefaults();
+    _keepOwnNames();
+    if (!LocalStore.hasCategories) {
+      _seedDefaults();
+    } else {
+      unawaited(_dropDuplicates());
+    }
+  }
+
+  Future<void> _dropDuplicates() async {
+    final once = await LocalStore.readCategoriesOnce();
+    if (once.length == _categories.length) return;
+    _categories = once;
+    notifyListeners();
+  }
+
+  static Set<String> ownNames = {};
+
+  static bool isSeed(Category category) => category.id.startsWith('seed-');
+
+  void _keepOwnNames() {
+    ownNames = {
+      for (final category in _categories)
+        if (!isSeed(category)) category.name,
+    };
+  }
+
+  @override
+  void notifyListeners() {
+    _keepOwnNames();
+    super.notifyListeners();
   }
 
   static const seededNames = {
@@ -29,7 +60,11 @@ class CategoriesController extends ChangeNotifier {
 
   void reload() {
     _categories = LocalStore.readCategories();
-    if (!LocalStore.hasCategories) _seedDefaults();
+    if (!LocalStore.hasCategories) {
+      _seedDefaults();
+    } else {
+      unawaited(_dropDuplicates());
+    }
     notifyListeners();
   }
 
@@ -51,7 +86,7 @@ class CategoriesController extends ChangeNotifier {
     ];
     for (final (name, color, icon) in defaults) {
       final category = Category(
-        id: _uuid.v4(),
+        id: 'seed-${name.toLowerCase()}',
         name: name,
         color: Color(color),
         icon: icon,
@@ -67,6 +102,10 @@ class CategoriesController extends ChangeNotifier {
     required Color color,
     required String icon,
   }) async {
+    final key = LocalStore.categoryKey(name);
+    for (final existing in _categories) {
+      if (LocalStore.categoryKey(existing.name) == key) return existing;
+    }
     final category = Category(
       id: _uuid.v4(),
       name: name,
@@ -89,6 +128,15 @@ class CategoriesController extends ChangeNotifier {
     for (final category in _categories) {
       await LocalStore.writeCategory(category);
     }
+  }
+
+  Future<void> replace(Category before, Category after) async {
+    final index = _categories.indexWhere((c) => c.id == before.id);
+    if (index == -1) return;
+    _categories[index] = after;
+    if (before.id != after.id) await LocalStore.removeCategory(before.id);
+    await LocalStore.writeCategory(after);
+    notifyListeners();
   }
 
   Future<void> update(Category category) async {

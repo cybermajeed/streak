@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:streak/core/utils/amount_format.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/express/express_button.dart';
-import 'package:streak/core/express/express_motion.dart';
 import 'package:streak/core/express/express_surface.dart';
-import 'package:streak/core/express/express_type.dart';
 import 'package:streak/features/settings/widgets/minimal_settings_widgets.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/extensions/inset_extensions.dart';
-import 'package:streak/core/i18n/date_labels.dart';
-import 'package:streak/core/minimal/minimal_type.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/icons/habit_glyph.dart';
 import 'package:streak/core/routing/app_navigator.dart';
@@ -19,16 +16,27 @@ import 'package:streak/core/widgets/app_empty_state.dart';
 import 'package:streak/core/widgets/celebration_overlay.dart';
 import 'package:streak/core/widgets/entrance.dart';
 import 'package:streak/core/widgets/section_label.dart';
+import 'package:streak/core/widgets/glass.dart';
 import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/pages/habit_details_page.dart';
+import 'package:streak/features/habits/pages/note_editor_page.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/widgets/day_timeline_parts.dart';
+import 'package:streak/features/habits/widgets/timeline_week_strip.dart';
 import 'package:streak/features/habits/widgets/focus_only_dialog.dart';
 import 'package:streak/features/habits/widgets/unscheduled_day_dialog.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/features/todos/data/todo.dart';
+import 'package:streak/features/todos/pages/todo_editor_page.dart';
+import 'package:streak/features/todos/state/todos_controller.dart';
+import 'package:streak/features/todos/widgets/todo_paper.dart';
+import 'package:streak/features/todos/widgets/todo_tile.dart';
+import 'package:streak/features/todos/widgets/todos_page_parts.dart';
+import 'package:streak/features/todos/widgets/todo_trash.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
-const _entrance = Duration(milliseconds: 320);
+const _entrance = Duration(milliseconds: 60);
 
 class DayTimelinePage extends StatefulWidget {
   const DayTimelinePage({super.key});
@@ -40,19 +48,67 @@ class DayTimelinePage extends StatefulWidget {
 class _DayTimelinePageState extends State<DayTimelinePage> {
   late DateTime _day = AppClock.today();
   final _celebration = ValueNotifier(0);
+  final _scrolled = ValueNotifier(false);
+  final _completing = <String>{};
+  int _direction = 0;
+  int _flip = 0;
+  Widget? _page;
 
   @override
   void dispose() {
     _celebration.dispose();
+    _scrolled.dispose();
     super.dispose();
   }
 
-  bool get _isToday => _day.isSameDay(AppClock.now());
+  bool get _isToday => _day.isSameDay(AppClock.today());
 
-  void _select(DateTime day) => setState(() => _day = day.atMidnight);
+  DateTime _anchor(DateTime day) {
+    final settings = context.read<SettingsController>();
+    return settings.planMonth
+        ? DateTime(day.year, day.month)
+        : day.startOfWeek(settings.weekStart);
+  }
 
-  void _shiftWeek(int weeks) => setState(
-        () => _day = DateTime(_day.year, _day.month, _day.day + weeks * 7),
+  void _select(DateTime day) => setState(() {
+        _direction = day.atMidnight.compareTo(_day).sign;
+        if (_anchor(day) != _anchor(_day)) _flip++;
+        _day = day.atMidnight;
+      });
+
+  void _shift(int by) {
+    if (!context.read<SettingsController>().planMonth) {
+      return _select(_day.addDays(by * 7));
+    }
+    final last = DateTime(_day.year, _day.month + by + 1, 0).day;
+    _select(DateTime(_day.year, _day.month + by, _day.day.clamp(1, last)));
+  }
+
+  Future<void> _toggleTodo(Todo todo) async {
+    final todos = context.read<TodosController>();
+    if (todo.done) return todos.toggle(todo.id);
+    if (!await allowManualTodo(context, todo) || !mounted) return;
+    if (!_completing.add(todo.id)) return;
+    setState(() {});
+    await Future<void>.delayed(const Duration(milliseconds: 380));
+    if (!mounted) return;
+    await todos.toggle(todo.id);
+    if (mounted) setState(() => _completing.remove(todo.id));
+  }
+
+  Future<void> _newTodo() => openTodoEditor(context, date: _day.dayKey);
+
+  Future<void> _openTodo(Todo todo) async {
+    final deleted = await openTodoEditor(context, todo: todo);
+    if (deleted == true && mounted) discardTodo(context, todo);
+  }
+
+  void _addNote(Habit habit) => AppNavigator.push(
+        NoteEditorPage(
+          habitId: habit.id,
+          dayKey: _day.dayKey,
+          accent: habit.color.shownIn(context),
+        ),
       );
 
   Future<void> _check(Habit habit) async {
@@ -77,23 +133,102 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
 
   Color _neighbourColor(DayPlan plan, int from, int step) {
     for (var i = from; i >= 0 && i < plan.slots.length; i += step) {
-      final habit = plan.slots[i].habit;
-      if (habit != null) return habit.color;
+      final slot = plan.slots[i];
+      final habit = slot.habit;
+      if (habit != null) return habit.color.shownIn(context);
+      final todo = slot.todo;
+      if (todo != null) return timelineTodoColor(context, todo);
     }
     return context.colors.primary;
   }
 
-  List<Widget> _rows(BuildContext context, DayPlan plan) {
-    final rows = <Widget>[];
+  List<Todo> _todosOf(BuildContext context) {
+    final settings = context.watch<SettingsController>();
+    if (!settings.planTodos) return const [];
+    return context.select<TodosController, List<Todo>>(
+      (todos) => todos.dueOn(_day),
+    ).toList()
+      ..sort((a, b) => a.done != b.done
+          ? (a.done ? 1 : -1)
+          : (a.minutes ?? Habit.dayMinutes).compareTo(
+              b.minutes ?? Habit.dayMinutes,
+            ));
+  }
+
+  Widget _todos(List<Todo> todos, int from) =>
+      context.read<SettingsController>().todoPapers
+          ? _papers(todos, from)
+          : _tiles(todos, from);
+
+  Widget _tiles(List<Todo> todos, int from) {
+    final express = context.read<SettingsController>().isExpressStyle;
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      sliver: SliverList.builder(
+        itemCount: todos.length,
+        itemBuilder: (context, i) => Entrance(
+          key: ValueKey(todos[i].id),
+          index: from + i,
+          delay: _entrance,
+          child: TodoTile(
+            todo: todos[i],
+            overdue: false,
+            corners: todoCorners(express, i, todos.length),
+            showProject: true,
+            checking: _completing.contains(todos[i].id),
+            onToggle: () => _toggleTodo(todos[i]),
+            onEdit: () => _openTodo(todos[i]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _papers(List<Todo> todos, int from) => PaperLanes(
+        notes: [
+          for (final (i, todo) in todos.indexed)
+            (
+              todo: todo,
+              build: () => Entrance(
+                key: ValueKey(todo.id),
+                index: from + i,
+                delay: _entrance,
+                child: TodoPaper(
+                  todo: todo,
+                  overdue: false,
+                  showProject: true,
+                  checking: _completing.contains(todo.id),
+                  onToggle: () => _toggleTodo(todo),
+                  onEdit: () => _openTodo(todo),
+                ),
+              ),
+            ),
+        ],
+      );
+
+  List<Widget Function()> _rows(BuildContext context, DayPlan plan) {
+    final rows = <Widget Function()>[];
     var index = 0;
     for (var i = 0; i < plan.slots.length; i++) {
       final slot = plan.slots[i];
       final habit = slot.habit;
+      final todo = slot.todo;
+      final at = index;
       rows.add(
-        Entrance(
-          index: index,
+        () => Entrance(
+          index: at,
           delay: _entrance,
-          child: habit == null
+          child: todo != null
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: TimelineTodo(
+                    todo: todo,
+                    checking: _completing.contains(todo.id),
+                    onToggle: () => _toggleTodo(todo),
+                    onOpen: () => _openTodo(todo),
+                  ),
+                )
+              : habit == null
               ? TimelineGap(
                   minutes: slot.minutes,
                   from: _neighbourColor(plan, i - 1, -1),
@@ -102,7 +237,9 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
               : Padding(
                   padding: const EdgeInsets.symmetric(vertical: 3),
                   child: TimelineBlock(
-                    slot: slot,
+                    habit: habit,
+                    start: slot.start,
+                    minutes: slot.minutes,
                     date: _day,
                     done: habit.isCompletedOn(_day),
                     onOpen: () => AppNavigator.push(
@@ -110,6 +247,7 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
                       fade: true,
                     ),
                     onCheck: () => _check(habit),
+                    onAddNote: () => _addNote(habit),
                   ),
                 ),
         ),
@@ -118,12 +256,13 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
     }
 
     if (plan.anytime.isNotEmpty) {
-      rows.add(const SizedBox(height: 22));
-      rows.add(SectionLabel(context.l10n.day_timeline_anytime));
+      rows.add(() => const SizedBox(height: 22));
+      rows.add(() => SectionLabel(context.l10n.day_timeline_anytime));
       for (final habit in plan.anytime) {
+        final at = index;
         rows.add(
-          Entrance(
-            index: index,
+          () => Entrance(
+            index: at,
             delay: _entrance,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -136,6 +275,7 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
                   fade: true,
                 ),
                 onCheck: () => _check(habit),
+                onAddNote: () => _addNote(habit),
               ),
             ),
           ),
@@ -148,9 +288,18 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
 
   @override
   Widget build(BuildContext context) {
+    final page = _page;
+    if (page != null && !TickerMode.valuesOf(context).enabled) return page;
     final habits = context.watch<HabitsController>().habits;
     final weekStart = context.watch<SettingsController>().weekStart;
-    final plan = DayPlan.of(habits, _day);
+    final dueTodos = _todosOf(context);
+    final plan = DayPlan.of(
+      context.watch<SettingsController>().planHabits ? habits : const [],
+      _day,
+      todos: dueTodos,
+    );
+    final rows = _rows(context, plan);
+    final todos = dueTodos.where((t) => t.minutes == null).toList();
     final locale = Localizations.localeOf(context).toString();
     final first = _day.startOfWeek(weekStart);
 
@@ -159,7 +308,7 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
     final minimal = style.isMinimalStyle;
     final pushed = ModalRoute.of(context)?.canPop ?? false;
 
-    return Scaffold(
+    return _page = Scaffold(
       appBar: AppBar(
         toolbarHeight: express ? 60 : null,
         leadingWidth: express && pushed ? 68 : null,
@@ -181,6 +330,30 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
             ? null
             : Text(DateFormat.yMMMM(locale).format(_day)),
         actions: [
+          if (style.planTodos)
+            express
+                ? Padding(
+                    padding: EdgeInsets.only(right: _isToday ? 16 : 8),
+                    child: Center(child: ExpressIconButton(
+                      icon: LucideIcons.listPlus,
+                      tooltip: context.l10n.todo_new,
+                      onPressed: _newTodo,
+                    )),
+                  )
+                : minimal
+                ? IconButton(
+                    tooltip: context.l10n.todo_new,
+                    icon: const Icon(LucideIcons.listPlus),
+                    onPressed: _newTodo,
+                  )
+                : Padding(
+                    padding: EdgeInsets.only(right: _isToday ? 16 : 8),
+                    child: GlassIconButton(
+                      icon: LucideIcons.listPlus,
+                      tooltip: context.l10n.todo_new,
+                      onTap: _newTodo,
+                    ),
+                  ),
           if (!_isToday)
             express
                 ? Padding(
@@ -191,10 +364,19 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
                       onPressed: () => _select(AppClock.now()),
                     )),
                   )
-                : IconButton(
+                : minimal
+                ? IconButton(
                     tooltip: context.l10n.today,
                     icon: const Icon(LucideIcons.calendarCheck),
                     onPressed: () => _select(AppClock.now()),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: GlassIconButton(
+                      icon: LucideIcons.calendarCheck,
+                      tooltip: context.l10n.today,
+                      onTap: () => _select(AppClock.now()),
+                    ),
                   ),
         ],
       ),
@@ -217,26 +399,79 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
                     title: DateFormat.yMMMM(locale).format(_day),
                   ),
                 ),
-              _WeekStrip(
+              TimelineWeekStrip(
                 first: first,
                 selected: _day,
                 habits: habits,
                 style: style.appStyle,
+                direction: _direction,
+                page: _flip,
+                month: style.planMonth,
                 onSelected: _select,
-                onShift: _shiftWeek,
+                onShift: _shift,
+                onFold: () {
+                  style.setPlanMonth(!style.planMonth);
+                  setState(() {});
+                },
               ),
               Expanded(
-                child: plan.isEmpty
+                child: NotificationListener<ScrollUpdateNotification>(
+                  onNotification: (note) {
+                    if (note.depth == 0 && note.metrics.axis == Axis.vertical) {
+                      _scrolled.value = note.metrics.pixels > 2;
+                    }
+                    return false;
+                  },
+                  child: Stack(
+                    children: [
+                plan.isEmpty && todos.isEmpty
                     ? AppEmptyState(
                         icon: LucideIcons.calendarClock,
                         title: context.l10n.day_timeline_empty,
-                        message: context.l10n.day_timeline_empty_sub,
+                        message: style.planHabits
+                            ? context.l10n.day_timeline_empty_sub
+                            : context.l10n.day_timeline_empty_todos,
                       )
-                    : ListView(
-                        padding:
-                            context.pagePadding(16, 8, 16, pushed ? 28 : 148),
-                        children: _rows(context, plan),
+                    : CustomScrollView(
+                        key: ValueKey(_day.epochDay),
+                        slivers: [
+                          SliverPadding(
+                            padding: context.pagePadding(
+                              16,
+                              8,
+                              16,
+                              pushed ? 28 : 148,
+                            ),
+                            sliver: SliverMainAxisGroup(
+                              slivers: [
+                                SliverList.builder(
+                                  itemCount: rows.length,
+                                  itemBuilder: (context, i) => rows[i](),
+                                ),
+                                if (todos.isNotEmpty) ...[
+                                  SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                        top: plan.isEmpty ? 0 : 22,
+                                      ),
+                                      child: SectionLabel(
+                                        context.l10n.todos,
+                                        trailing: _EstimateTotal(todos: todos),
+                                      ),
+                                    ),
+                                  ),
+                                  _todos(todos, rows.length),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
+                      if (!express && !minimal)
+                        HeaderBlur(scrolled: _scrolled, height: 30),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -255,264 +490,6 @@ class _DayTimelinePageState extends State<DayTimelinePage> {
   }
 }
 
-class _WeekStrip extends StatelessWidget {
-  const _WeekStrip({
-    required this.first,
-    required this.selected,
-    required this.habits,
-    required this.style,
-    required this.onSelected,
-    required this.onShift,
-  });
-
-  final DateTime first;
-  final DateTime selected;
-  final List<Habit> habits;
-  final int style;
-  final ValueChanged<DateTime> onSelected;
-  final ValueChanged<int> onShift;
-
-  @override
-  Widget build(BuildContext context) {
-    final express = style == 2;
-    final labels = WeekdayLabels.shortFrom(
-      Localizations.localeOf(context).languageCode,
-      first.weekday,
-    );
-
-    final row = Row(
-      children: [
-        express
-            ? ExpressIconButton(
-                icon: LucideIcons.chevronLeft,
-                size: 26,
-                tint: context.tokens.muted,
-                background: Colors.transparent,
-                tooltip: context.l10n.a11y_previous_week,
-                onPressed: () => onShift(-1),
-              )
-            : IconButton(
-                icon: const Icon(LucideIcons.chevronLeft, size: 18),
-                tooltip: context.l10n.a11y_previous_week,
-                visualDensity: VisualDensity.compact,
-                onPressed: () => onShift(-1),
-              ),
-        for (var i = 0; i < 7; i++)
-          Expanded(
-            child: _DayChip(
-              day: DateTime(first.year, first.month, first.day + i),
-              label: labels[i],
-              selected: DateTime(
-                first.year,
-                first.month,
-                first.day + i,
-              ).isSameDay(selected),
-              habits: habits,
-              style: style,
-              onTap: onSelected,
-            ),
-          ),
-        express
-            ? ExpressIconButton(
-                icon: LucideIcons.chevronRight,
-                size: 26,
-                tint: context.tokens.muted,
-                background: Colors.transparent,
-                tooltip: context.l10n.a11y_next_week,
-                onPressed: () => onShift(1),
-              )
-            : IconButton(
-                icon: const Icon(LucideIcons.chevronRight, size: 18),
-                tooltip: context.l10n.a11y_next_week,
-                visualDensity: VisualDensity.compact,
-                onPressed: () => onShift(1),
-              ),
-      ],
-    );
-
-    return Column(
-      children: [
-        Padding(
-          padding: express
-              ? const EdgeInsets.symmetric(horizontal: 6)
-              : const EdgeInsets.symmetric(horizontal: 4),
-          child: express
-              ? GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onHorizontalDragEnd: (details) =>
-                      onShift((details.primaryVelocity ?? 0) < 0 ? 1 : -1),
-                  child: row,
-                )
-              : row,
-        ),
-        SizedBox(height: express ? 14 : 8),
-      ],
-    );
-  }
-}
-
-class _DayChip extends StatelessWidget {
-  const _DayChip({
-    required this.day,
-    required this.label,
-    required this.selected,
-    required this.habits,
-    required this.style,
-    required this.onTap,
-  });
-
-  final DateTime day;
-  final String label;
-  final bool selected;
-  final List<Habit> habits;
-  final int style;
-  final ValueChanged<DateTime> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final express = style == 2;
-    final minimal = style == 1;
-    final scheme = context.colors;
-    final accent = scheme.primary;
-    final today = day.isSameDay(AppClock.now());
-    final dots = [
-      for (final habit in habits)
-        if (DayPlan.isDueOn(habit, day) && habit.isPlanned) habit.color,
-    ].take(4).toList();
-
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: GestureDetector(
-        onTap: () => onTap(day),
-        child: AnimatedContainer(
-          duration: express ? Express.morph : const Duration(milliseconds: 180),
-          curve: express ? Express.bouncy : Curves.easeOut,
-          margin: EdgeInsets.symmetric(horizontal: express ? 1.5 : 2.5),
-          padding: EdgeInsets.symmetric(vertical: express ? 8 : 7),
-          decoration: express
-              ? BoxDecoration(
-                  color: selected
-                      ? accent
-                      : scheme.surfaceContainerHigh.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(selected ? 22 : 14),
-                )
-              : minimal
-                  ? BoxDecoration(
-                      color: selected
-                          ? scheme.onSurface
-                          : scheme.surfaceContainerHighest.withValues(
-                              alpha: 0.5,
-                            ),
-                      borderRadius: BorderRadius.circular(12),
-                    )
-                  : BoxDecoration(
-                      color: selected ? accent.withValues(alpha: 0.12) : null,
-                      borderRadius: BorderRadius.circular(11),
-                      border: Border.all(
-                        color: selected
-                            ? accent
-                            : scheme.outlineVariant.withValues(alpha: 0.5),
-                        width: selected ? 1.5 : 1,
-                      ),
-                    ),
-          child: MediaQuery.withClampedTextScaling(
-            maxScaleFactor: 1.2,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label.replaceAll('.', ''),
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  softWrap: false,
-                  style: express
-                      ? ExpressType.body.at(
-                          10,
-                          weight: 800,
-                          height: 1.1,
-                          color: selected
-                              ? scheme.onPrimary
-                              : context.tokens.muted,
-                        )
-                      : minimal
-                          ? MinimalType.label(
-                              size: 10.5,
-                              color: selected
-                                  ? scheme.surface
-                                  : context.tokens.muted,
-                            )
-                          : TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              height: 1.1,
-                              color: selected ? accent : context.tokens.muted,
-                            ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${day.day}',
-                  maxLines: 1,
-                  style: express
-                      ? ExpressType.display.at(
-                          17,
-                          height: 1.1,
-                          color: selected
-                              ? scheme.onPrimary
-                              : today
-                                  ? scheme.onSurface
-                                  : context.tokens.muted,
-                          tabular: true,
-                        )
-                      : minimal
-                          ? MinimalType.figure(
-                              16,
-                              height: 1.1,
-                              color: selected
-                                  ? scheme.surface
-                                  : today
-                                      ? scheme.onSurface
-                                      : context.tokens.muted,
-                            )
-                          : TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              height: 1.1,
-                              color: selected
-                                  ? accent
-                                  : today
-                                      ? scheme.onSurface
-                                      : context.tokens.muted,
-                            ),
-                ),
-                const SizedBox(height: 4),
-                SizedBox(
-                  height: 4,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      for (final color in dots)
-                        Container(
-                          width: 4,
-                          height: 4,
-                          margin: const EdgeInsets.symmetric(horizontal: 1),
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _AnytimeRow extends StatelessWidget {
   const _AnytimeRow({
     required this.habit,
@@ -520,6 +497,7 @@ class _AnytimeRow extends StatelessWidget {
     required this.done,
     required this.onOpen,
     required this.onCheck,
+    required this.onAddNote,
   });
 
   final Habit habit;
@@ -527,6 +505,7 @@ class _AnytimeRow extends StatelessWidget {
   final bool done;
   final VoidCallback onOpen;
   final VoidCallback onCheck;
+  final VoidCallback onAddNote;
 
   @override
   Widget build(BuildContext context) {
@@ -536,6 +515,7 @@ class _AnytimeRow extends StatelessWidget {
       button: true,
       child: GestureDetector(
         onTap: onOpen,
+        onLongPress: onAddNote,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
@@ -544,18 +524,21 @@ class _AnytimeRow extends StatelessWidget {
             ),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+          Row(
             children: [
               Container(
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: habit.color.withValues(alpha: done ? 0.5 : 0.18),
+                  color: habit.color.shownIn(context).withValues(alpha: done ? 0.5 : 0.18),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: HabitGlyph(
                   glyph: habit.icon,
-                  color: done ? scheme.surface : habit.color,
+                  color: done ? scheme.surface : habit.color.shownIn(context),
                   size: 18,
                 ),
               ),
@@ -583,8 +566,41 @@ class _AnytimeRow extends StatelessWidget {
               ),
             ],
           ),
+          TimelineNotes(habit: habit, date: date),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _EstimateTotal extends StatelessWidget {
+  const _EstimateTotal({required this.todos});
+
+  final List<Todo> todos;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = todos
+        .where((todo) => !todo.done)
+        .fold<int>(0, (sum, todo) => sum + (todo.estimate ?? 0));
+    if (total == 0) return const SizedBox.shrink();
+    final muted = context.tokens.muted;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(LucideIcons.hourglass, size: 13, color: muted),
+        const SizedBox(width: 4),
+        Text(
+          formatMinutes(total.toDouble()),
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: muted,
+          ),
+        ),
+      ],
     );
   }
 }

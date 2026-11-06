@@ -204,7 +204,7 @@ class ExpressChip extends StatelessWidget {
                   const SizedBox(width: 7),
                 ] else if (icon != null) ...[
                   Icon(icon, size: 15, color: foreground),
-                  const SizedBox(width: 7),
+                  if (label.isNotEmpty) const SizedBox(width: 7),
                 ],
                 AnimatedDefaultTextStyle(
                   duration: Express.quick,

@@ -18,6 +18,7 @@ class MinimalNavRail extends StatelessWidget {
     required this.onSelect,
     required this.brand,
     this.footer,
+    this.compact = false,
   });
 
   static const width = 208.0;
@@ -27,15 +28,16 @@ class MinimalNavRail extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final Widget brand;
   final Widget? footer;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: width,
+      width: compact ? 76 : width,
       child: SafeArea(
         right: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 24, 14, 16),
+          padding: EdgeInsets.fromLTRB(compact ? 12 : 14, 24, compact ? 12 : 14, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -47,6 +49,7 @@ class MinimalNavRail extends StatelessWidget {
                   child: _RailTile(
                     item: items[i],
                     selected: i == index,
+                    compact: compact,
                     onTap: () => onSelect(i),
                   ),
                 ),
@@ -63,11 +66,13 @@ class _RailTile extends StatefulWidget {
   const _RailTile({
     required this.item,
     required this.selected,
+    required this.compact,
     required this.onTap,
   });
 
   final MinimalNavItem item;
   final bool selected;
+  final bool compact;
   final VoidCallback onTap;
 
   @override
@@ -109,7 +114,12 @@ class _RailTileState extends State<_RailTile> {
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Row(
+            child: widget.compact
+                ? Tooltip(
+                    message: item.label,
+                    child: Icon(item.icon, size: 18, color: tint),
+                  )
+                : Row(
               children: [
                 Icon(item.icon, size: 18, color: tint),
                 const SizedBox(width: 11),

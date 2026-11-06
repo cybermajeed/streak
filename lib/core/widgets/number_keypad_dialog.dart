@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/i18n/l10n.dart';
@@ -13,7 +14,11 @@ Future<double?> showNumberKeypadDialog(
   double? target,
   double min = 0,
   bool decimals = false,
+  bool clock = false,
   Color? accent,
+  ValueNotifier<bool>? replacing,
+  String? extraLabel,
+  VoidCallback? onExtra,
 }) {
   return showDialog<double>(
     context: context,
@@ -24,7 +29,11 @@ Future<double?> showNumberKeypadDialog(
       target: target,
       min: min,
       decimals: decimals,
+      clock: clock,
       accent: accent,
+      replacing: replacing,
+      extraLabel: extraLabel,
+      onExtra: onExtra,
     ),
   );
 }
@@ -37,7 +46,11 @@ class _NumberKeypadDialog extends StatefulWidget {
     required this.target,
     required this.min,
     required this.decimals,
+    required this.clock,
     required this.accent,
+    required this.replacing,
+    this.extraLabel,
+    this.onExtra,
   });
 
   final String title;
@@ -46,23 +59,40 @@ class _NumberKeypadDialog extends StatefulWidget {
   final double? target;
   final double min;
   final bool decimals;
+  final bool clock;
   final Color? accent;
+  final ValueNotifier<bool>? replacing;
+  final String? extraLabel;
+  final VoidCallback? onExtra;
 
   @override
   State<_NumberKeypadDialog> createState() => _NumberKeypadDialogState();
 }
 
 class _NumberKeypadDialogState extends State<_NumberKeypadDialog> {
-  late String _text =
-      widget.value == 0 ? '' : formatAmount(widget.value);
+  late String _text = widget.value == 0
+      ? ''
+      : widget.clock
+          ? _clockDigits(widget.value)
+          : formatAmount(widget.value);
+
+  static String _clockDigits(double minutes) {
+    final total = minutes.round();
+    final hours = total ~/ 60;
+    final rest = total % 60;
+    return hours == 0 ? '$rest' : '$hours${rest.toString().padLeft(2, '0')}';
+  }
+
+  double get _clockMinutes => clockMinutes(_text);
 
   double get _value {
-    final parsed = double.tryParse(_text) ?? 0;
+    final parsed =
+        widget.clock ? _clockMinutes : double.tryParse(_text) ?? 0;
     return parsed < widget.min ? widget.min : roundAmount(parsed);
   }
 
   void _type(String digit) {
-    if (_text.length >= 8) return;
+    if (_text.length >= (widget.clock ? 4 : 8)) return;
     setState(() {
       final next = _text + digit;
       _text = next.replaceFirst(RegExp(r'^0+(?=\d)'), '');
@@ -82,6 +112,29 @@ class _NumberKeypadDialogState extends State<_NumberKeypadDialog> {
   void _clear() {
     if (_text.isEmpty) return;
     setState(() => _text = '');
+  }
+
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyUpEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final char = event.character ?? '';
+    if (RegExp(r'^\d$').hasMatch(char)) {
+      _type(char);
+    } else if ((char == '.' || char == ',') &&
+        widget.decimals &&
+        !widget.clock) {
+      _dot();
+    } else if (key == LogicalKeyboardKey.backspace) {
+      _backspace();
+    } else if (key == LogicalKeyboardKey.delete) {
+      _clear();
+    } else if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter) {
+      Navigator.of(context).pop(_value);
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
   }
 
   Widget _key(Widget child, {VoidCallback? onTap, VoidCallback? onLongPress}) {
@@ -122,10 +175,20 @@ class _NumberKeypadDialogState extends State<_NumberKeypadDialog> {
     final scheme = context.colors;
     final accent = widget.accent ?? scheme.primary;
     final target = widget.target;
-    final suffix = target != null
-        ? '/ ${formatAmount(target)} ${widget.unit}'.trimRight()
-        : widget.unit;
-    return Dialog(
+    final suffix = widget.clock
+        ? (target != null ? '/ ${formatMinutes(target)}' : '')
+        : target != null
+            ? '/ ${formatAmount(target)} ${widget.unit}'.trimRight()
+            : widget.unit;
+    final shown = widget.clock
+        ? formatMinutes(_clockMinutes)
+        : _text.isEmpty
+            ? '0'
+            : _text;
+    return Focus(
+      autofocus: true,
+      onKeyEvent: _onKeyEvent,
+      child: Dialog(
       backgroundColor: scheme.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -139,6 +202,53 @@ class _NumberKeypadDialogState extends State<_NumberKeypadDialog> {
               textAlign: TextAlign.center,
               style: sheetTitleStyle(context, size: 17),
             ),
+            if (widget.replacing case final replacing?) ...[
+              const SizedBox(height: 12),
+              ValueListenableBuilder<bool>(
+                valueListenable: replacing,
+                builder: (context, replace, _) => Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      for (final (index, label) in [
+                        context.l10n.quant_mode_add,
+                        context.l10n.quant_mode_replace,
+                      ].indexed)
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => replacing.value = index == 1,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              decoration: BoxDecoration(
+                                color: replace == (index == 1)
+                                    ? accent.withValues(alpha: 0.18)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                label,
+                                style: sheetActionStyle(
+                                  context,
+                                  size: 14,
+                                  color: replace == (index == 1)
+                                      ? accent
+                                      : context.tokens.muted,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             FittedBox(
               fit: BoxFit.scaleDown,
@@ -148,7 +258,7 @@ class _NumberKeypadDialogState extends State<_NumberKeypadDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    _text.isEmpty ? '0' : _text,
+                    shown,
                     style: sheetFigureStyle(
                       context,
                       color: _text.isEmpty ? context.tokens.muted : accent,
@@ -176,7 +286,7 @@ class _NumberKeypadDialogState extends State<_NumberKeypadDialog> {
               Row(children: [for (final d in row) _digit(d)]),
             Row(
               children: [
-                widget.decimals
+                widget.decimals && !widget.clock
                     ? _key(
                         Text(
                           '.',
@@ -211,7 +321,7 @@ class _NumberKeypadDialogState extends State<_NumberKeypadDialog> {
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       backgroundColor: scheme.surfaceContainerHighest,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -230,7 +340,7 @@ class _NumberKeypadDialogState extends State<_NumberKeypadDialog> {
                     style: FilledButton.styleFrom(
                       backgroundColor: accent,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -243,8 +353,23 @@ class _NumberKeypadDialogState extends State<_NumberKeypadDialog> {
                 ),
               ],
             ),
+            if (widget.extraLabel case final extra?) ...[
+              const SizedBox(height: 6),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  widget.onExtra?.call();
+                },
+                icon: Icon(LucideIcons.play, size: 16, color: accent),
+                label: Text(
+                  extra,
+                  style: sheetActionStyle(context, size: 14, color: accent),
+                ),
+              ),
+            ],
           ],
         ),
+      ),
       ),
     );
   }

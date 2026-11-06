@@ -3,6 +3,7 @@ import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/widgets/habit_heatmap.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class CompactActivityStrip extends StatelessWidget {
   const CompactActivityStrip({
@@ -25,7 +26,9 @@ class CompactActivityStrip extends StatelessWidget {
     for (final entry in habit.completions.values) {
       final day = parseDayKey(entry.date);
       if (day.year != today.year || day.isAfter(today)) continue;
-      if (negative || entry.count >= habit.effectiveTarget) {
+      if (negative ||
+          entry.count >= habit.effectiveTarget ||
+          habit.isDoneEntry(entry)) {
         logged[day.month - 1]++;
       }
     }
@@ -43,7 +46,7 @@ class CompactActivityStrip extends StatelessWidget {
           final ratio = (done / span).clamp(0.0, 1.0);
           return ratio <= 0
               ? base
-              : Color.lerp(habit.color.withValues(alpha: 0.3), habit.color,
+              : Color.lerp(habit.color.shownIn(context).withValues(alpha: 0.3), habit.color.shownIn(context),
                   ratio)!;
         }(),
     ];

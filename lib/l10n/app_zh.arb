@@ -204,10 +204,22 @@
       }
     }
   },
-  "every_n_weeks": "每 {n} 周",
-  "@every_n_weeks": {"placeholders": {"n": {"type": "int"}}},
-  "every_n_months": "每 {n} 个月",
-  "@every_n_months": {"placeholders": {"n": {"type": "int"}}},
+  "every_n_weeks": "{n, plural, =1{每周} other{每 {n} 周}}",
+  "@every_n_weeks": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "every_n_months": "{n, plural, =1{每月} other{每 {n} 个月}}",
+  "@every_n_months": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "sched_unit_days": "天",
   "sched_unit_weeks": "周",
   "sched_unit_months": "月",
@@ -235,11 +247,23 @@
   "todo_tag_folders": "文件夹",
   "todo_tag_list": "列表",
   "todo_tag_count": "{n} 项待办",
-  "@todo_tag_count": {"placeholders": {"n": {"type": "int"}}},
+  "@todo_tag_count": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "todo_tag_icon": "图标",
   "todo_tag_pick": "选择标签",
   "todo_tag_filtered": "按 {name} 筛选",
-  "@todo_tag_filtered": {"placeholders": {"name": {"type": "String"}}},
+  "@todo_tag_filtered": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "uncategorized": "未分类",
   "more_icons": "更多图标",
   "less_icons": "精简图标",
@@ -429,8 +453,6 @@
     }
   },
   "notif_streak": "🔥连续 {streak} 天",
-  "notif_streak_week": "🔥连续 {streak} 周",
-  "notif_streak_month": "🔥连续 {streak} 个月",
   "@notif_streak": {
     "placeholders": {
       "streak": {
@@ -438,6 +460,8 @@
       }
     }
   },
+  "notif_streak_week": "🔥连续 {streak} 周",
+  "notif_streak_month": "🔥连续 {streak} 个月",
   "message_copied": "消息已复制",
   "share_background": "背景",
   "focus_sessions": "次数",
@@ -675,7 +699,7 @@
   },
   "focus": "专注",
   "wipe_data_warning": "此操作将删除此手机上的所有习惯、笔记、专注记录和设置。该操作无法撤销，除非您有可导入的备份文件。",
-  "auto_backup_where": "打开应用时会自动创建完整备份，仅保留最近 5 个备份。",
+  "auto_backup_where": "打开应用时会自动创建完整备份，并额外保存一份可用任意编辑器打开的习惯数据。仅保留最近 5 个备份。",
   "widget_demo_run": "跑步",
   "widget_cfg_style_classic": "经典",
   "archived_habits_sub": "可恢复或永久删除",
@@ -753,7 +777,7 @@
   "focus_log_saved": "已添加记录",
   "perfect_streak": "完美天数连胜",
   "edit_note": "编辑笔记",
-  "notes_hint": "打开一个习惯，长按其日历中的某一天即可查看或添加笔记",
+  "notes_hint": "长按某一天即可查看或添加笔记",
   "focus_total": "专注时间",
   "widget_cfg_opacity": "不透明度  {value}%",
   "@widget_cfg_opacity": {
@@ -846,7 +870,7 @@
   "collapse_cards": "折叠卡片",
   "expand_cards": "展开卡片",
   "view_switcher": "视图切换器",
-  "view_switcher_sub": "在「今天」页面显示周 / 月 / 年按钮",
+  "view_switcher_sub": "在「今天」页面显示周 / 月 / 年按钮。关闭后，这些选项会移至筛选菜单",
   "app_lock_failed": "无法验证您的身份",
   "focus_style_flip": "翻页",
   "legend_note_added": "笔记已添加",
@@ -866,7 +890,7 @@
   "auto_backup_folder_set": "文件夹已保存",
   "widget_open_to_sync": "打开 Streak 进行同步",
   "archive_habit": "归档习惯",
-  "focus_track_limit": "最多 10 首音频",
+  "focus_track_limit": "最多 30 首音频",
   "style_minimal_desc": "习惯网格和设置被分为四个板块。",
   "focus_keep_awake": "保持屏幕常亮",
   "data_sub": "备份与导入",
@@ -876,7 +900,6 @@
   "widget_cfg_dark_color": "深色主题",
   "widget_cfg_light_color": "浅色主题",
   "focus_pause": "暂停",
-  "focus_track_rain": "雨声",
   "unit_hours": "小时",
   "focus_end_tasks": "还有 {count} 项任务未勾选。",
   "@focus_end_tasks": {
@@ -994,12 +1017,10 @@
     "description": "Screen reader label for a colour swatch in the picker"
   },
   "report_issue": "报告问题",
-  "widget_cfg_todos_scope": "任务",
   "todo_time": "时间",
   "vacation_all_sub": "开启后，任何习惯都不会算作未完成",
   "currency_hint": "符号或代码",
   "money_saved": "已省金额",
-  "clean_days": "",
   "cost_per_day": "每日花费",
   "currency": "货币",
   "quant_average": "平均每天",
@@ -1008,7 +1029,7 @@
   "repeat_hours": "重复",
   "quant_logged_days": "记录天数",
   "widget_cfg_todos_hint": "关闭仅显示今天、逾期和无日期的任务",
-  "widget_todos_open": "",
+  "widget_todos_open": "待办  {count}",
   "@widget_todos_open": {
     "placeholders": {
       "count": {
@@ -1037,7 +1058,7 @@
   "todo_search": "搜索待办",
   "todo_search_empty": "没有匹配项",
   "heatmap_path": "连接日期",
-  "heatmap_path_sub": "把日期连成一条连续路径",
+  "heatmap_path_sub": "把日期网格连成一条连续路径",
   "focus_only_clear_body": "只有完成一次专注才能再次打卡「{name}」。",
   "@focus_only_clear_body": {
     "placeholders": {
@@ -1107,5 +1128,367 @@
   "difficulty_option_sub": "让更难的习惯在当天进度中占比更高",
   "todo_save_another": "保存并继续添加",
   "todo_add_subtask": "添加子任务",
-  "pin_paste": "粘贴恢复码"
+  "pin_paste": "粘贴恢复码",
+  "island_p_bougainvillea": "三角梅",
+  "gamification_beta": "游戏化（测试版）",
+  "island_t_lilac": "淡紫色",
+  "island_p_crop_patch": "小块农田",
+  "island_enable_sub": "把习惯变成一座座地中海小岛，一点点建成你的群岛",
+  "island_how": "如何获得点数",
+  "island_p_garden_bed": "花圃",
+  "island_p_signpost": "路标",
+  "island_p_dry_grass": "枯草",
+  "island_reset": "重新建造岛屿",
+  "report_issue_sub": "反馈问题或提出功能建议",
+  "island_placed": "{name} 已建造在岛上",
+  "@island_placed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "focus_daily_goal_sub": "每天的专注目标",
+  "island_t_silver": "银色",
+  "app_icon_sub": "主屏幕上的应用图标",
+  "island_p_blue_railing": "蓝色栏杆",
+  "quotes_sub": "「今天」显示的语录",
+  "heatmap_rolling": "过去12个月",
+  "island_p_boulder": "巨石",
+  "island_p_small_bridge": "木码头",
+  "island_only_affordable": "只看可购买",
+  "island_g_terrazas": "梯田",
+  "island_g_pueblo": "村庄",
+  "island_how_todo": "每完成一个待办 +4",
+  "island_g_ermita": "礼拜堂岛",
+  "island_p_storage_box": "储物箱",
+  "island_g_cabo": "海角",
+  "island_p_water_bucket": "水桶",
+  "refresh_now": "更新",
+  "readable_copy": "可读副本",
+  "streak_unit_month": "{count}个月",
+  "@streak_unit_month": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "island_p_altar": "神龛",
+  "island_t_autumn": "秋色",
+  "gamification": "游戏化",
+  "island_built": "已建造{done} / {total}",
+  "@island_built": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "average_short": "平均",
+  "island_build": "建造",
+  "refresh_brought": "你的习惯已是最新状态",
+  "island_turn": "旋转视角",
+  "island_p_cube_house": "方形小屋",
+  "refresh_now_sub": "从文件夹导入其他设备生成的数据",
+  "check_never": "从不",
+  "just_tracking_option_sub": "创建习惯时添加此开关",
+  "island_tap_hint": "点击轮廓查看这里可以建造什么",
+  "celebration_sub": "完成习惯时显示的动画",
+  "island_empty": "完成一个习惯，开始建造岛屿",
+  "readable_copy_sub": "同时将你的习惯保存为 Markdown 文件",
+  "island_complete": "群岛已全部建造完成",
+  "island_p_hanging_lantern": "吊灯",
+  "island_g_astillero": "船坞",
+  "island_p_stone_lantern": "石灯",
+  "island_nothing_here": "这里还没有东西",
+  "island_p_archway": "拱门",
+  "check_style_sub": "方形或圆形标记",
+  "theme_sub": "浅色、深色或跟随系统",
+  "island_t_clay": "陶土色",
+  "island_open": "打开岛屿",
+  "island_p_veg_garden": "菜园",
+  "island_p_well": "水井",
+  "github_star_sub": "给项目点个 Star，让更多人发现它",
+  "emoji_own": "输入或粘贴任意表情符号",
+  "island_p_villa": "别墅",
+  "language_sub": "整个应用的语言",
+  "island_g_mirador": "观景台",
+  "island_p_tower_chapel": "钟楼",
+  "island_p_terracotta_pot": "陶土花盆",
+  "island_how_perfect": "完美的一天额外 +25",
+  "island_beta": "这是游戏化功能的初版，目前仍处于测试阶段。后续可能会根据大家的使用情况继续扩展、调整。",
+  "times_completed": "完成次数",
+  "island_rename": "给你的岛屿命名",
+  "island_p_main_chapel": "主礼拜堂",
+  "island_p_stone_pile": "石堆",
+  "island_p_bench": "长椅",
+  "island_reset_sub": "拆除所有建筑，已使用的点数将全部返还。",
+  "last_check": "上次记录",
+  "heatmap_rolling_sub": "年度网格显示至今天，而不是 12 月 31 日",
+  "app_background_sub": "卡片后的背景",
+  "island_reset_go": "重新开始",
+  "island_how_focus": "每专注 1 分钟 +1，每天最多 60",
+  "pane_hint": "从列表中打开一项在此查看",
+  "island_p_stone_basin": "石盆",
+  "quotes_off": "关闭",
+  "check_marks": "{count} 个标记",
+  "@check_marks": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "island_need": "还差 {count} 点",
+  "@island_need": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "accent_color_sub": "用于按钮和高亮显示",
+  "island_coins": "金币",
+  "sort_completed_last_sub": "将已完成的习惯移至列表底部",
+  "week_start_sub": "每个网格的第一列",
+  "check_history": "历史记录",
+  "island_p_windmill": "风车",
+  "island_g_puerto": "港口",
+  "island_t_white": "白色",
+  "island_p_hay_bale": "干草捆",
+  "island_done": "已建造",
+  "island_p_agave": "龙舌兰",
+  "island_p_mossy_stone": "苔石",
+  "island_how_streak": "习惯连续达到 7、30、100 和 365 天时获得奖励",
+  "island_goal": "全部建造完成后将呈现的效果。",
+  "island_p_house": "小屋",
+  "island_p_crate": "木箱",
+  "island_t_coral": "珊瑚色",
+  "app_lock_delay_sub": "退出后多久再次询问",
+  "just_tracking_sub": "保留记录的数据，但不计入目标和当天的完成数量",
+  "check_no_time": "未记录时间",
+  "island_p_flat_stone": "扁石",
+  "island_t_teal": "蓝绿色",
+  "island_p_olive": "橄榄树",
+  "island_zoom_hint": "单指拖动可移动视角，双指捏合可缩放，双指旋转可转动岛屿。",
+  "island_t_deep": "深色",
+  "island_p_large_rock": "大岩石",
+  "island_p_terrace_house": "露台小屋",
+  "streak_unit_week": "{count}周",
+  "@streak_unit_week": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "island_p_wood_pile": "木柴堆",
+  "island_default_name": "我的岛屿",
+  "island_how_check": "每完成一个习惯 +10",
+  "island_p_banner": "旗帜",
+  "card_activity_sub": "在卡片上显示最近几天的打卡记录",
+  "today_only_sub": "隐藏今天未安排的习惯",
+  "island_p_flower_pot": "花盆",
+  "check_history_sub": "已完成 {count} 天",
+  "@check_history_sub": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "island_p_lantern_post": "路灯",
+  "view_switcher_needs": "请先开启卡片上的打卡记录功能",
+  "island": "岛屿",
+  "island_g_molino": "风车山脊",
+  "island_g_cala": "海湾",
+  "island_g_huerta": "果园",
+  "island_g_faro": "海蚀柱",
+  "island_p_pottery_jar": "陶罐",
+  "island_p_pebbles": "卵石",
+  "island_g_vega": "草地",
+  "island_p_two_story": "双层小屋",
+  "island_shop": "商店",
+  "island_p_rocks": "岩石",
+  "just_tracking": "仅记录",
+  "island_p_pergola_house": "凉棚小屋",
+  "island_p_cypress": "柏树",
+  "island_g_caleta": "小海湾",
+  "island_how_note": "金币来自你的历史记录，恢复备份后也会一起回来。",
+  "period_all_time": "全部时间",
+  "just_tracking_option": "仅记录",
+  "start_view_sub": "「今天」的默认显示方式",
+  "refresh_nothing": "文件夹中没有新内容",
+  "discard": "放弃",
+  "todo_discard_body": "你对此待办所做的更改将会丢失。",
+  "keep_editing": "继续编辑",
+  "discard_changes": "放弃更改？",
+  "discard_changes_body": "你对此待办所做的更改将会丢失。",
+  "no_goal_sub": "只需记录数值，例如体重。填写任意数值都会将当天标记为完成。",
+  "any_amount": "任意数值都算完成",
+  "any_amount_sub": "记录任意数值都会将当天标记为完成，即使未达到目标。",
+  "animations": "动画效果",
+  "animations_sub": "进入动画、页面切换和文字动效",
+  "widgets_sub": "小组件样式，适用于不支持小组件编辑的手机",
+  "widgets_hint": "如果您在添加或长按某个小部件时，主屏幕无法打开编辑器，请在此处更改其样式。这一设置适用于所有未单独进行自定义的同类型小部件。",
+  "widget_kind_habit": "习惯",
+  "widget_kind_today": "今天",
+  "widget_cfg_today_band": "高亮今天",
+  "widget_cfg_show_art": "显示插图",
+  "widget_cfg_show_header": "标题",
+  "widget_cfg_show_icons": "习惯图标",
+  "widget_cfg_show_cards": "每个习惯后的背景",
+  "widget_cfg_show_details": "名称下方显示连续天数",
+  "widget_cfg_buttons": "按钮",
+  "widget_cfg_buttons_round": "圆形",
+  "widget_cfg_buttons_square": "方形",
+  "widget_cfg_hide_done": "隐藏已完成内容",
+  "widget_cfg_compact": "紧凑型",
+  "widget_cfg_compact_hint": "缩小行高，并在名称旁显示连续天数",
+  "widget_cfg_compact_todos_hint": "缩小行高，并在待办旁显示时间",
+  "widget_cfg_show_habits_hint": "可选择一个或多个。只选择一个习惯时，概览会显示其连续天数。",
+  "onb_blurb": "每天一点点坚持，慢慢养成习惯。",
+  "onb_free_title": "永久免费",
+  "onb_free_body": "无广告、无订阅，也没有受限功能。",
+  "onb_kicker": "欢迎使用",
+  "onb_private_title": "隐私且离线",
+  "onb_private_body": "所有数据都保存在你的设备上，无需账号。",
+  "onb_yours_title": "你的数据由你掌控",
+  "onb_yours_body": "随时备份，也可以随时带走你的数据。",
+  "onb_step": "第 {step} / {total} 步",
+  "@onb_step": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "data_folder": "数据文件夹",
+  "data_folder_documents": "文档",
+  "data_folder_app": "应用旁边",
+  "data_folder_pick": "选择文件夹",
+  "data_folder_inside": "请选择当前文件夹以外的位置。",
+  "data_folder_taken": "该文件夹中已有 Streak 数据。",
+  "data_folder_denied": "Streak 无法写入该文件夹。",
+  "data_folder_move_title": "移动数据",
+  "data_folder_move_body": "Streak 将关闭并把数据移动到 {path}。关闭后请重新打开应用。如果移动失败，数据仍会保留在原位置。",
+  "@data_folder_move_body": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "data_folder_move_confirm": "移动并关闭",
+  "clean_goal_again": "连续记录仍在继续，继续保持",
+  "clean_goal_of": "/ {goal}",
+  "@clean_goal_of": {
+    "placeholders": {
+      "goal": {
+        "type": "int"
+      }
+    }
+  },
+  "reminders_ready_body": "Streak 会在这里提醒你。",
+  "pick_one_day": "请至少选择一天",
+  "relapse_spent": "本次破戒花费",
+  "money_spent": "花费",
+  "avoid_month": "月度概览",
+  "total_goal": "总目标",
+  "total_goal_sub": "为整个习惯设置目标，例如 1000 页或 50 次",
+  "total_goal_left": "还差 {amount}",
+  "@total_goal_left": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "total_goal_of": "共 {amount}",
+  "@total_goal_of": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "count_times": "{count} 次",
+  "@count_times": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "focus_change_timer": "更改计时器",
+  "focus_retime_hint": "已专注的时间会保留。",
+  "focus_retime_apply": "应用",
+  "widget_focus_today": "今日专注",
+  "focus_streak": "专注连续天数",
+  "focus_by_hour": "专注时",
+  "focus_by_weekday": "每日专注",
+  "focus_heatmap": "专注活动",
+  "focus_plan_vs_real": "计划与实际",
+  "focus_avg_longer": "平均比计划多 {pct}",
+  "@focus_avg_longer": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "focus_avg_shorter": "平均比计划少 {pct}",
+  "@focus_avg_shorter": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "focus_avg_on_plan": "平均与计划一致",
+  "focus_session_longer": "比计划多 {pct}",
+  "@focus_session_longer": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "focus_session_shorter": "比计划少 {pct}",
+  "@focus_session_shorter": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "focus_session_on_plan": "与计划一致",
+  "focus_pauses_avg": "每次专注的暂停次数",
+  "focus_pause_count": "{count, plural, =0{无暂停} =1{暂停 1 次} other{暂停 {count} 次}}",
+  "@focus_pause_count": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "focus_vs_previous": "较上一周期 {change}",
+  "@focus_vs_previous": {
+    "placeholders": {
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "habit_time_sub": "习惯将在这个时间显示在「计划」页。但它仍会显示在「今日」页一整天。",
+  "todo_delete_body": "你只有几秒钟的时间撤销它。",
+  "any_step": "完成任一步骤就算完成",
+  "any_step_sub": "无需做完所有步骤，勾选任一步骤当天就算完成。"
 }

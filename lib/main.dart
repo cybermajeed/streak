@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,7 +15,9 @@ import 'package:streak/core/routing/app_navigator.dart';
 import 'package:streak/features/focus/pages/focus_page.dart';
 import 'package:streak/features/focus/state/focus_actions.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
+import 'package:streak/features/focus/widgets/focus_pill.dart';
 import 'package:streak/features/habits/pages/habit_details_page.dart';
+import 'package:streak/features/habits/pages/health_info_page.dart';
 import 'package:streak/features/habits/state/categories_controller.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
@@ -27,6 +30,18 @@ import 'package:streak/services/notification_service.dart';
 import 'package:streak/services/focus_service.dart';
 import 'package:streak/services/home_widget_service.dart';
 import 'package:streak/features/sleep/state/sleep_controller.dart';
+import 'package:streak/services/portable_traces.dart';
+import 'package:streak/features/habits/state/notes_controller.dart';
+import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/features/statistics/pages/statistics_page.dart';
+import 'package:streak/services/widget_action_service.dart';
+import 'package:streak/services/folder_sync.dart';
+import 'package:streak/services/image_cleanup_service.dart';
+import 'package:streak/services/notification_service.dart';
+import 'package:streak/services/focus_service.dart';
+import 'package:streak/services/home_widget_service.dart';
+import 'package:streak/features/sleep/state/sleep_controller.dart';
+import 'package:streak/services/portable_traces.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -34,11 +49,32 @@ Future<void> main() async {
   } catch (e, s) {
     debugPrint('Streak could not start: $e');
     debugPrintStack(stackTrace: s);
-    runApp(StartupFailure(error: '$e', logPath: _writeStartupLog(e, s)));
+    runApp(
+      StartupFailure(
+        error: '$e',
+        logPath: _writeStartupLog(e, s),
+        blocked: _blockedByWindows(e),
+      ),
+    );
     return;
   }
   _run();
 }
+
+Future<AppExitResponse> _leaveNoTrace() async {
+  try {
+    await NotificationService().cancelAll();
+    await PortableTraces.clear(NotificationService.windowsAppId);
+  } catch (e) {
+    debugPrint('Could not clear what the portable app left: $e');
+  }
+  return AppExitResponse.exit;
+}
+
+bool _blockedByWindows(Object error) =>
+    Platform.isWindows &&
+    error is FileSystemException &&
+    error.osError?.errorCode == 5;
 
 String? _writeStartupLog(Object error, StackTrace stack) {
   if (isMobile) return null;
@@ -66,6 +102,7 @@ Future<void> _startup() async {
   unawaited(ImageCleanupService.run());
 
   NotificationService.onOpenHabit = _openHabit;
+  NotificationService.onHabitsChanged = _reloadHabits;
   FocusService.onPending = drainFocusActions;
   FocusService.listen();
   try {
@@ -73,6 +110,7 @@ Future<void> _startup() async {
   } catch (e, s) {
     debugPrint('Startup init (notifications/widget) failed: $e\n$s');
   }
+  if (isPortable) AppLifecycleListener(onExitRequested: _leaveNoTrace);
 
   _appChannel.setMethodCallHandler((call) async {
     if (call.method == 'openHabit') {
@@ -87,14 +125,21 @@ Future<void> _startup() async {
       final page = call.arguments as String?;
       if (page != null) _openPage(page);
     }
+    if (call.method == 'link') {
+      final link = Uri.tryParse(call.arguments as String? ?? '');
+      final context = AppNavigator.key.currentContext;
+      if (link == null || context == null) throw StateError('No app to take the link');
+      await context.read<HabitsController>().applyLink(link);
+    }
     return null;
   });
 
   WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await drainFocusActions();
     final pending = NotificationService().pendingHabitId;
     if (pending != null) {
       NotificationService().pendingHabitId = null;
-      _openHabit(pending);
+      NotificationService.openFromPayload(pending);
     }
     if (isMobile) {
       final launched =
@@ -105,7 +150,6 @@ Future<void> _startup() async {
       final page = await _appChannel.invokeMethod<String>('consumeLaunchPage');
       if (page != null) _openPage(page);
     }
-    await drainFocusActions();
   });
 }
 
@@ -140,8 +184,61 @@ void _openHabit(String habitId) {
   AppNavigator.push(HabitDetailsPage(habitId: habitId), fade: true);
 }
 
+void _reloadHabits() {
+  AppNavigator.key.currentContext?.read<HabitsController>().reload();
+}
+
 void _openPage(String page) {
   if (page == 'stats') AppNavigator.push(const StatisticsPage(), fade: true);
+  if (page == 'focus') _openFocus();
+  if (page == 'focusPage') _openFocusHome();
+  if (page == 'focusStart') _startFreeFocus();
+  if (page.startsWith('focusStart:')) _startFocus(page.substring(11));
+  if (page == 'health') AppNavigator.push(const HealthInfoPage(), fade: true);
+  if (page.startsWith('day:')) _openDay(page.substring(4));
+}
+
+void _openDay(String target) {
+  final split = target.lastIndexOf(':');
+  final context = AppNavigator.key.currentContext;
+  if (split <= 0 || context == null) return;
+  final habit = context.read<HabitsController>().byId(target.substring(0, split));
+  if (habit == null) return;
+  showDayActionsSheet(
+    context,
+    habit: habit,
+    date: parseDayKey(target.substring(split + 1)),
+    notesEnabled: context.read<SettingsController>().notesEnabled,
+  );
+}
+
+void _openFocusHome() {
+  final context = AppNavigator.key.currentContext;
+  if (context == null || AppNavigator.isShowing(FocusPage.routeName)) return;
+  openFocus(context);
+}
+
+void _openFocus() {
+  final context = AppNavigator.key.currentContext;
+  if (context == null || !context.read<FocusController>().isActive) return;
+  if (AppNavigator.isShowing(FocusPage.routeName)) return;
+  AppNavigator.push(const FocusPage(), fade: true, name: FocusPage.routeName);
+}
+
+void _startFreeFocus() {
+  final context = AppNavigator.key.currentContext;
+  if (context == null || AppNavigator.isShowing(FocusPage.routeName)) return;
+  final settings = context.read<SettingsController>();
+  AppNavigator.push(
+    context.read<FocusController>().isActive
+        ? const FocusPage()
+        : FocusPage(
+            startMinutes: settings.focusMinutes,
+            breakMinutes: settings.focusBreakMinutes,
+          ),
+    fade: true,
+    name: FocusPage.routeName,
+  );
 }
 
 void _startFocus(String habitId) {

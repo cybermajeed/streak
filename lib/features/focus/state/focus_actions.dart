@@ -5,6 +5,7 @@ import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
+import 'package:streak/features/todos/state/todos_controller.dart';
 import 'package:streak/services/focus_service.dart';
 
 Future<void> applyFocusAction(FocusAction action) async {
@@ -15,8 +16,11 @@ Future<void> applyFocusAction(FocusAction action) async {
   if (!focus.isActive) return;
 
   final habits = context.read<HabitsController>();
+  final todos = context.read<TodosController>();
   final habitId = focus.habitId;
+  final todoId = focus.todoId;
   final session = await focus.apply(action);
+  await creditFocusTodo(todos, todoId, session);
   if (session == null || habitId.isEmpty) return;
 
   final habit = habits.byId(habitId);
@@ -31,6 +35,32 @@ Future<void> applyFocusAction(FocusAction action) async {
   if (!session.completed || habit.kind != HabitKind.positive) return;
   if (habit.isCompletedOn(today)) return;
   habits.toggle(habit.id, today, fromFocus: true);
+}
+
+Future<void> creditFocusTodo(
+  TodosController todos,
+  String todoId,
+  FocusSession? session,
+) async {
+  if (todoId.isEmpty || session == null || !session.completed) return;
+  final todo = todos.byId(todoId);
+  if (todo == null || todo.done) return;
+  await todos.toggle(todoId, fromFocus: true);
+}
+
+Future<void> creditFocusRound(
+  HabitsController habits,
+  FocusController focus,
+  FocusSession session, {
+  DateTime? on,
+}) async {
+  final habit = habits.byId(session.habitId);
+  if (habit == null) return;
+  if (habit.isTimeAmount) return countFocusTime(habits, focus, session);
+  final day = on ?? AppClock.now();
+  if (!session.completed || habit.kind != HabitKind.positive) return;
+  if (habit.isCompletedOn(day)) return;
+  await habits.toggle(habit.id, day, fromFocus: true);
 }
 
 Future<void> countFocusTime(
@@ -48,12 +78,14 @@ Future<void> countFocusTime(
       habit.id,
       piece.countedOn,
       undo ? -minutes : minutes,
+      chime: false,
     );
     if (!undo) await focus.markCounted(piece.id);
   }
 }
 
 Future<void> drainFocusActions() async {
+  if (AppNavigator.key.currentContext == null) return;
   for (final action in await FocusService.drain()) {
     await applyFocusAction(action);
   }

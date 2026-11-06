@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:streak/app/home_shell.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/i18n/l10n.dart';
+import 'package:streak/core/utils/responsive.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+
+void pickAppStyle(BuildContext context, int value) {
+  final settings = context.read<SettingsController>();
+  if (settings.appStyle == value) return;
+  final leaving = settings.isMinimalStyle && !hasSideRail(context);
+  settings.setAppStyle(value);
+  if (leaving) HomeShell.showSettings();
+}
 
 class AppStylePicker extends StatelessWidget {
   const AppStylePicker({super.key, this.width = 96});
@@ -14,10 +24,7 @@ class AppStylePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>();
 
-    void choose(int value) {
-      if (settings.appStyle == value) return;
-      settings.setAppStyle(value);
-    }
+    void choose(int value) => pickAppStyle(context, value);
 
     final options = [
       (context.l10n.style_classic, const _ClassicSkeleton()),
@@ -166,10 +173,7 @@ class AppStyleLegend extends StatelessWidget {
               title: rows[i].$1,
               description: rows[i].$2,
               selected: settings.appStyle == i,
-              onTap: () {
-                if (settings.appStyle == i) return;
-                settings.setAppStyle(i);
-              },
+              onTap: () => pickAppStyle(context, i),
             ),
           ),
       ],

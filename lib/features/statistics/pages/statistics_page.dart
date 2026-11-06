@@ -21,6 +21,7 @@ import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/data/habit_stats.dart';
 import 'package:streak/features/statistics/pages/express_statistics_page.dart';
 import 'package:streak/features/statistics/pages/minimal_statistics_page.dart';
+import 'package:streak/features/statistics/widgets/consistency_period.dart';
 import 'package:streak/features/statistics/widgets/stat_charts.dart';
 import 'package:streak/features/statistics/widgets/statistics_filters.dart';
 import 'package:streak/features/statistics/widgets/stat_donut.dart';
@@ -29,6 +30,8 @@ import 'package:streak/features/statistics/widgets/period_totals.dart';
 import 'package:streak/features/statistics/widgets/stat_kit.dart';
 import 'package:streak/features/statistics/widgets/stat_line_charts.dart';
 import 'package:streak/features/statistics/widgets/year_heatmap.dart';
+import 'package:streak/core/widgets/glass.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -40,6 +43,13 @@ class StatisticsPage extends StatefulWidget {
 class _StatisticsPageState extends State<StatisticsPage> {
   int _year = AppClock.now().year;
   String? _habitId;
+  final _scrolled = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _scrolled.dispose();
+    super.dispose();
+  }
 
   ({List<Habit> habits, String? id, int year})? _statsKey;
   HabitStats _stats = HabitStats.empty;
@@ -52,7 +62,13 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final key = (habits: all, id: _habitId, year: _year);
     if (_statsKey != key) {
       _statsKey = key;
-      _stats = HabitStats.compute(scoped, _year);
+      if (HabitStats.isLight(scoped)) {
+        _stats = HabitStats.compute(scoped, _year);
+      } else {
+        HabitStats.inBackground(scoped, _year).then((stats) {
+          if (mounted && _statsKey == key) setState(() => _stats = stats);
+        });
+      }
     }
     return _stats;
   }
@@ -64,8 +80,20 @@ class _StatisticsPageState extends State<StatisticsPage> {
     if (settings.isMinimalStyle) return const MinimalStatisticsPage();
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.statistics)),
-      body: Consumer<HabitsController>(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text(context.l10n.statistics),
+      ),
+      body: Stack(
+        children: [
+          NotificationListener<ScrollUpdateNotification>(
+        onNotification: (note) {
+          if (note.depth == 0 && note.metrics.axis == Axis.vertical) {
+            _scrolled.value = note.metrics.pixels > 2;
+          }
+          return false;
+        },
+        child: Consumer<HabitsController>(
         builder: (context, controller, _) {
           final all = controller.habits;
           if (all.isEmpty) {
@@ -89,7 +117,12 @@ class _StatisticsPageState extends State<StatisticsPage> {
           final currentYear = AppClock.now().year;
 
           return ListView(
-            padding: context.pagePadding(16, 8, 16, 104),
+            padding: context.pagePadding(
+              16,
+              8 + MediaQuery.paddingOf(context).top,
+              16,
+              104,
+            ),
             children: spanned(context, [
               HabitFilter(
                 habits: all,
@@ -104,20 +137,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
               ),
               const SizedBox(height: 16),
               StatReveal(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: context.colors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: YearHeatmap(
-                      year: _year,
-                      dailyCounts: stats.dailyCounts,
-                      maxCount: scoped.length,
-                      color: accent,
-                      habit: _habitId == null ? null : scoped.first,
-                    ),
+                child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: YearHeatmap(
+                    year: _year,
+                    dailyCounts: stats.dailyCounts,
+                    maxCount: scoped.length,
+                    color: accent,
+                    habit: _habitId == null ? null : scoped.first,
+
                   ),
                 ),
               ),
@@ -189,7 +218,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   ),
                 ),
               ),
-              if (scoped.length == 1 && scoped.first.hasCost) ...[
+              if (scoped.length == 1 && showsMoney(scoped.first)) ...[
                 const SizedBox(height: 12),
                 StatReveal(child: SavedMoneyStats(habit: scoped.first)),
               ],
@@ -199,7 +228,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 StatReveal(child: QuantStatsRow(habit: scoped.first)),
               ],
               if (context.watch<SettingsController>().focusEnabled &&
-                  context.watch<FocusController>().sessionCount > 0) ...[
+                  context.select<FocusController, int>((f) => f.sessionCount) >
+                      0) ...[
                 const SizedBox(height: 12),
                 StatReveal(
                   child: _FocusStats(habitId: _habitId, accent: accent),
@@ -242,12 +272,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                         icon: LucideIcons.target,
                         color: accent,
                         child: Center(
-                          child: ConsistencyGauge(
-                            percent: stats.consistency,
-                            color: accent,
-                            caption: context.l10n.last_90_days,
-                            size: 130,
-                          ),
+                          child: _ConsistencyCard(stats: stats, color: accent),
                         ),
                       ),
                     ),
@@ -286,14 +311,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     title: context.l10n.by_habit,
                     icon: LucideIcons.chartPie,
                     color: accent,
-                    child: HabitDonut(entries: _ranking(all, stats)),
+                    child: HabitDonut(entries: _ranking(context, all, stats)),
                   ),
                 ),
                 const SizedBox(height: 16),
                 StatReveal(
                   child: _RankingCard(
                     accent: accent,
-                    entries: _ranking(all, stats, limit: all.length),
+                    entries: _ranking(context, all, stats, limit: all.length),
                   ),
                 ),
               ],
@@ -304,12 +329,17 @@ class _StatisticsPageState extends State<StatisticsPage> {
             ]),
           );
         },
+        ),
+      ),
+          HeaderBlur(scrolled: _scrolled),
+        ],
       ),
     );
   }
 }
 
 List<({String name, Color color, int count})> _ranking(
+  BuildContext context,
   List<Habit> habits,
   HabitStats stats, {
   int limit = 5,
@@ -318,7 +348,7 @@ List<({String name, Color color, int count})> _ranking(
     for (final habit in habits)
       (
         name: habit.name,
-        color: habit.color,
+        color: habit.color.shownIn(context),
         count: stats.perHabit[habit.id] ?? 0,
       ),
   ]..sort((a, b) => b.count.compareTo(a.count));
@@ -576,6 +606,55 @@ class _PerfectStreakCard extends StatelessWidget {
   }
 }
 
+class _ConsistencyCard extends StatelessWidget {
+  const _ConsistencyCard({required this.stats, required this.color});
+
+  final HabitStats stats;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final period = consistencyPeriodOf(context);
+    final value = stats.consistencyOver(period);
+    return ConsistencyGauge(
+      percent: value.now,
+      color: color,
+      caption: consistencyChange(context, value) ?? '',
+      size: 130,
+      footer: Semantics(
+        button: true,
+        child: InkWell(
+          onTap: () => pickConsistencyPeriod(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(10, 5, 6, 5),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      consistencyCaption(context, period),
+                      style: statLabel(context).copyWith(color: color),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(LucideIcons.chevronDown, size: 14, color: color),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ChartPlaceholder extends StatelessWidget {
   const _ChartPlaceholder({required this.text});
 
@@ -602,7 +681,8 @@ class _FocusStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final focus = context.watch<FocusController>();
+    context.select<FocusController, int>((f) => f.revision);
+    final focus = context.read<FocusController>();
     final seconds = habitId == null
         ? focus.totalSeconds
         : focus.secondsForHabit(habitId!);

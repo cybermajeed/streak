@@ -13,4 +13,5 @@
     android:widgetFeatures="reconfigurable"
     android:description="@string/widget_todos_description"
     android:initialLayout="@layout/widget_loading"
-    android:previewLayout="@layout/widget_preview_todos" />
+    android:previewLayout="@layout/widget_preview_todos"
+    android:previewImage="@drawable/widget_preview_shot_todos" />

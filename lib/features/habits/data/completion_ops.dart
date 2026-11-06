@@ -92,7 +92,11 @@ class CompletionOps {
     return completions;
   }
 
-  static Map<String, Completion> logRelapse(Habit habit, DateTime date) {
+  static Map<String, Completion> logRelapse(
+    Habit habit,
+    DateTime date, {
+    double? spent,
+  }) {
     if (_isFuture(date)) return habit.completions;
     final completions = {...habit.completions};
     completions[date.dayKey] = Completion(
@@ -100,14 +104,109 @@ class CompletionOps {
       hour: AppClock.wallNow().hour,
       minute: AppClock.wallNow().minute,
       marks: [_nowMinutes()],
+      spent: spent ?? (habit.logsSpent ? habit.dailyCost : 0),
     );
     return completions;
+  }
+
+  static Map<String, Completion> setSpent(
+    Habit habit,
+    DateTime date,
+    double spent,
+  ) {
+    final entry = habit.completions[date.dayKey];
+    if (entry == null) return habit.completions;
+    return {
+      ...habit.completions,
+      date.dayKey: entry.copyWith(spent: spent < 0 ? 0 : spent),
+    };
+  }
+
+  static Map<String, Completion> addRelapse(Habit habit, DateTime date) {
+    final entry = habit.completions[date.dayKey];
+    if (entry == null) return logRelapse(habit, date);
+    if (_isFuture(date)) return habit.completions;
+    return {
+      ...habit.completions,
+      date.dayKey: entry.copyWith(
+        count: entry.count.roundToDouble() + 1,
+        hour: AppClock.wallNow().hour,
+        minute: AppClock.wallNow().minute,
+        marks: entry.plus(_nowMinutes()),
+      ),
+    };
+  }
+
+  static Map<String, Completion> dropRelapse(Habit habit, DateTime date) {
+    final entry = habit.completions[date.dayKey];
+    if (entry == null || entry.count <= 1) return clearRelapse(habit, date);
+    return {
+      ...habit.completions,
+      date.dayKey: entry.copyWith(
+        count: entry.count.roundToDouble() - 1,
+        marks: entry.marks.isEmpty
+            ? entry.marks
+            : entry.marks.sublist(0, entry.marks.length - 1),
+      ),
+    };
+  }
+
+  static Map<String, Completion> retime(
+    Habit habit,
+    String dayKey,
+    int? from,
+    int to,
+  ) {
+    final entry = habit.completions[dayKey];
+    if (entry == null) return habit.completions;
+    final marks = [...entry.times];
+    final index = from == null ? -1 : marks.indexOf(from);
+    if (index < 0) {
+      marks.add(to);
+    } else {
+      marks[index] = to;
+    }
+    marks.sort();
+    return {
+      ...habit.completions,
+      dayKey: entry.copyWith(
+        hour: marks.last ~/ 60,
+        minute: marks.last % 60,
+        marks: marks,
+      ),
+    };
   }
 
   static Map<String, Completion> clearRelapse(Habit habit, DateTime date) {
     final completions = {...habit.completions};
     completions.remove(date.dayKey);
     return completions;
+  }
+
+  static Map<String, Completion> clearDay(Habit habit, DateTime date) =>
+      clearRelapse(habit, date);
+
+  static Map<String, Completion> raiseCounts(
+    Habit habit,
+    Map<DateTime, double> counts,
+  ) {
+    Map<String, Completion>? completions;
+    for (final MapEntry(key: date, value: count) in counts.entries) {
+      if (_isFuture(date)) continue;
+      final previous = habit.completions[date.dayKey];
+      if (count <= (previous?.count ?? 0)) continue;
+      final today = date.isSameDay(AppClock.today());
+      completions ??= {...habit.completions};
+      completions[date.dayKey] = previous?.copyWith(count: count) ??
+          Completion(
+            date: date.dayKey,
+            count: count,
+            hour: today ? AppClock.wallNow().hour : null,
+            minute: today ? AppClock.wallNow().minute : null,
+            marks: today ? [_nowMinutes()] : const [],
+          );
+    }
+    return completions ?? habit.completions;
   }
 
   static Map<String, Completion> addProgress(

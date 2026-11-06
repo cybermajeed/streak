@@ -6,27 +6,29 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/extensions/clock_extensions.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/icons/habit_glyph.dart';
-import 'package:streak/core/widgets/app_confirm_dialog.dart';
+import 'package:streak/features/habits/widgets/relapse_dialog.dart';
 import 'package:streak/core/widgets/cover_image.dart';
 import 'package:streak/core/widgets/scrolling_text.dart';
-import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/widgets/amount_actions.dart';
 import 'package:streak/features/habits/widgets/streak_label.dart';
-import 'package:streak/features/habits/data/quant_progress.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
-import 'package:streak/features/habits/widgets/check_progress.dart';
 import 'package:streak/features/habits/widgets/frequency_chip.dart';
 import 'package:streak/features/habits/widgets/compact_activity_strip.dart';
 import 'package:streak/features/habits/widgets/habit_checklist.dart';
 import 'package:streak/features/habits/widgets/habit_heatmap.dart';
 import 'package:streak/features/habits/widgets/strength_bar.dart';
+import 'package:streak/features/habits/widgets/focus_only_dialog.dart';
 import 'package:streak/features/habits/widgets/unscheduled_day_dialog.dart';
 import 'package:streak/features/habits/widgets/water_cup.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/app/theme/app_theme.dart';
+import 'package:streak/core/widgets/glass.dart';
 
 class HabitCard extends StatelessWidget {
   const HabitCard({
@@ -58,13 +60,22 @@ class HabitCard extends StatelessWidget {
     final compact = settings.compactCards;
     final corners = this.corners ?? BorderRadius.circular(24);
 
-    return Card(
+    return _HoverRing(
+      corners: corners,
+      child: Pressable(
+      scale: 0.98,
+      child: Card(
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: corners),
+      shape: RoundedRectangleBorder(
+        borderRadius: corners,
+        side: AppTheme.cardEdge(Theme.of(context).brightness == Brightness.dark),
+      ),
       child: Semantics(
         button: true,
         child: InkWell(
           onTap: onOpen,
+          hoverColor: Colors.transparent,
+          onSecondaryTap: onLongPress,
           onLongPress: onLongPress == null
               ? null
               : () {
@@ -100,12 +111,12 @@ class HabitCard extends StatelessWidget {
                           width: compact ? 34 : 46,
                           height: compact ? 34 : 46,
                           decoration: BoxDecoration(
-                            color: habit.color.withValues(alpha: 0.18),
+                            color: habit.color.shownIn(context).withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(compact ? 11 : 14),
                           ),
                           child: HabitGlyph(
                             glyph: habit.icon,
-                            color: habit.color,
+                            color: habit.color.shownIn(context),
                             size: compact ? 18 : 24,
                           ),
                         ),
@@ -147,11 +158,11 @@ class HabitCard extends StatelessWidget {
                                     Icon(
                                       habitMarkIcon(habit),
                                       size: 14,
-                                      color: habit.color,
+                                      color: habit.color.shownIn(context),
                                     ),
                                     const SizedBox(width: 3),
                                     Text(
-                                      habitMarkLabel(context, habit),
+                                      habitMarkLabel(context, habit, mode),
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
@@ -168,7 +179,7 @@ class HabitCard extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
-                                        minuteLabel(habit.startMinute),
+                                        context.clockAt(habit.startMinute),
                                         style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
@@ -211,7 +222,7 @@ class HabitCard extends StatelessWidget {
                                     Expanded(
                                       child: StrengthBar(
                                         value: habit.strength,
-                                        color: habit.color,
+                                        color: habit.color.shownIn(context),
                                         track: scheme.surfaceContainerHighest,
                                       ),
                                     ),
@@ -324,6 +335,43 @@ class HabitCard extends StatelessWidget {
           ),
         ),
       ),
+      ),
+      ),
+    );
+  }
+}
+
+class _HoverRing extends StatefulWidget {
+  const _HoverRing({required this.corners, required this.child});
+
+  final BorderRadius corners;
+  final Widget child;
+
+  @override
+  State<_HoverRing> createState() => _HoverRingState();
+}
+
+class _HoverRingState extends State<_HoverRing> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: widget.corners,
+          border: Border.all(
+            color: _hover
+                ? context.colors.onSurface.withValues(alpha: 0.16)
+                : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: widget.child,
+      ),
     );
   }
 }
@@ -336,18 +384,20 @@ class _AmountLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = habit.completions[AppClock.now().dayKey]?.count ?? 0;
-    final progress = QuantProgress.of(count: count, target: habit.perDayTarget);
+    final progress = habit.progressFor(count);
     final unit = habit.isTimeAmount || habit.unitLabel.isEmpty
         ? ''
         : ' ${habit.unitLabel}';
     return Text(
-      '·  ${habit.amountText(count)}/'
-      '${habit.amountText(habit.perDayTarget)}$unit',
+      habit.hasGoal
+          ? '·  ${habit.amountText(count)}/'
+              '${habit.amountText(habit.perDayTarget)}$unit'
+          : '·  ${habit.amountText(count)}$unit',
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
         color: progress.reachedGoal
-            ? progress.solidColor(habit.color)
+            ? progress.solidColor(habit.color.shownIn(context))
             : context.tokens.muted,
       ),
     );
@@ -374,15 +424,9 @@ class _ActionButton extends StatelessWidget {
       await controller.clearRelapse(habit.id, today);
       return;
     }
-    final confirmed = await showAppConfirmDialog(
-      context,
-      title: context.l10n.log_relapse_title,
-      message: context.l10n.log_relapse_body(habit.name),
-      confirmLabel: context.l10n.log_relapse_confirm,
-      icon: LucideIcons.ban,
-    );
-    if (confirmed == true) {
-      await controller.logRelapse(habit.id, today);
+    final spent = await askRelapse(context, habit);
+    if (spent != null) {
+      await controller.logRelapse(habit.id, today, spent: spent);
     }
   }
 
@@ -414,7 +458,7 @@ class _ActionButton extends StatelessWidget {
     switch (habit.kind) {
       case HabitKind.positive:
         return _TodayButton(
-          color: habit.color,
+          color: habit.color.shownIn(context),
           done: doneToday,
           circle: circle,
           onTap: () {
@@ -424,7 +468,7 @@ class _ActionButton extends StatelessWidget {
       case HabitKind.negative:
         final relapsed = !doneToday;
         return _RelapseButton(
-          color: habit.color,
+          color: habit.color.shownIn(context),
           relapsed: relapsed,
           circle: circle,
           onTap: () => _handleRelapseTap(context, relapsed),
@@ -433,20 +477,19 @@ class _ActionButton extends StatelessWidget {
         final today = AppClock.now();
         final count = habit.completions[today.dayKey]?.count ?? 0;
         final ratio = habit.perDayTarget <= 0
-            ? 0.0
+            ? (count > 0 ? 1.0 : 0.0)
             : count / habit.perDayTarget;
         Future<void> addProgress() async {
           final controller = context.read<HabitsController>();
+          if (!await allowManualCheck(context, habit: habit, date: today)) return;
+          if (!context.mounted) return;
           final allowed =
               await confirmUnscheduledDay(context, habit: habit, date: today);
           if (!allowed) return;
           await controller.addProgress(habit.id, today, habit.incrementAmount);
         }
 
-        final progress = QuantProgress.of(
-          count: count,
-          target: habit.perDayTarget,
-        );
+        final progress = habit.progressFor(count);
 
         void addCustom() => unawaited(addCustomAmount(context, habit));
 
@@ -458,20 +501,46 @@ class _ActionButton extends StatelessWidget {
               onLongPress: addCustom,
             );
           case QuantKind.reading:
-            return _BookButton(
-              color: progress.solidColor(habit.color),
+            final color = progress.solidColor(habit.color.shownIn(context));
+            return _ArtButton(
+              size: const Size(30, 35),
+              painter: (t) => BookPainter(fill: t, color: color, ribbon: true),
+              color: color,
+              ratio: ratio.clamp(0.0, 1.0),
+              done: doneToday,
+              onTap: addProgress,
+              onLongPress: addCustom,
+            );
+          case QuantKind.time:
+            final color = progress.solidColor(habit.color.shownIn(context));
+            return _ArtButton(
+              size: const Size(32, 37),
+              painter: (t) => StopwatchPainter(fill: t, color: color),
+              color: color,
+              ratio: ratio.clamp(0.0, 1.0),
+              done: false,
+              onTap: addProgress,
+              onLongPress: addCustom,
+            );
+          case QuantKind.generic when habit.readsSteps:
+            final color = progress.solidColor(habit.color.shownIn(context));
+            return _ArtButton(
+              size: const Size(28, 38),
+              painter: (t) => FootPainter(fill: t, color: color),
+              color: color,
               ratio: ratio.clamp(0.0, 1.0),
               done: doneToday,
               onTap: addProgress,
               onLongPress: addCustom,
             );
           case QuantKind.generic:
-          case QuantKind.time:
-            return _QuantityButton(
-              color: habit.color,
-              progress: progress,
-              done: doneToday,
-              circle: circle,
+            final color = progress.solidColor(habit.color.shownIn(context));
+            return _ArtButton(
+              size: const Size(36, 36),
+              painter: (t) => DialPainter(fill: t, color: color),
+              color: color,
+              ratio: ratio.clamp(0.0, 1.0),
+              done: false,
               onTap: addProgress,
               onLongPress: addCustom,
             );
@@ -516,8 +585,10 @@ class _WaterButton extends StatelessWidget {
   }
 }
 
-class _BookButton extends StatelessWidget {
-  const _BookButton({
+class _ArtButton extends StatelessWidget {
+  const _ArtButton({
+    required this.size,
+    required this.painter,
     required this.color,
     required this.ratio,
     required this.done,
@@ -525,6 +596,8 @@ class _BookButton extends StatelessWidget {
     this.onLongPress,
   });
 
+  final Size size;
+  final CustomPainter Function(double t) painter;
   final Color color;
   final double ratio;
   final bool done;
@@ -544,21 +617,17 @@ class _BookButton extends StatelessWidget {
             tween: Tween(begin: 0, end: ratio),
             duration: const Duration(milliseconds: 700),
             curve: Curves.easeOutCubic,
-            builder: (context, t, _) => SizedBox(
-              width: 30,
-              height: 38,
+            builder: (context, t, _) => SizedBox.fromSize(
+              size: size,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  CustomPaint(
-                    size: const Size(30, 38),
-                    painter: BookPainter(fill: t, color: color),
-                  ),
+                  CustomPaint(size: size, painter: painter(t)),
                   if (done)
-                    const Icon(
+                    Icon(
                       LucideIcons.check,
                       size: 15,
-                      color: Colors.white,
+                      color: color.ink,
                     ),
                 ],
               ),
@@ -639,7 +708,9 @@ class _TodayButtonState extends State<_TodayButton>
           child: Icon(
             LucideIcons.check,
             size: 22,
-            color: widget.done ? Colors.white : widget.color,
+            color: widget.done
+                ? widget.color.ink
+                : widget.color.withValues(alpha: 0.3),
           ),
         ),
       ),
@@ -716,108 +787,6 @@ class _RelapseButtonState extends State<_RelapseButton>
             widget.relapsed ? LucideIcons.x : LucideIcons.shield,
             size: 22,
             color: widget.relapsed ? Colors.white : widget.color,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuantityButton extends StatefulWidget {
-  const _QuantityButton({
-    required this.color,
-    required this.progress,
-    required this.done,
-    required this.onTap,
-    this.onLongPress,
-    this.circle = false,
-  });
-
-  final Color color;
-  final QuantProgress progress;
-  final bool done;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-  final bool circle;
-
-  @override
-  State<_QuantityButton> createState() => _QuantityButtonState();
-}
-
-class _QuantityButtonState extends State<_QuantityButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pop = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 260),
-  );
-
-  @override
-  void didUpdateWidget(_QuantityButton old) {
-    super.didUpdateWidget(old);
-    if (widget.progress.laps != old.progress.laps ||
-        widget.progress.fraction != old.progress.fraction) {
-      _pop.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _pop.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = widget.progress;
-    final reached = progress.reachedGoal;
-    final reachedColor = progress.reachedColor(widget.color);
-    final activeColor = progress.activeColor(widget.color);
-    final track = reached ? reachedColor : widget.color.withValues(alpha: 0.14);
-    return GestureDetector(
-      onTap: widget.onTap,
-      onLongPress: widget.onLongPress,
-      child: AnimatedBuilder(
-        animation: _pop,
-        builder: (context, child) {
-          final t = _pop.value;
-          final scale = 1 + 0.18 * (t < 0.5 ? t * 2 : (1 - t) * 2);
-          return Transform.scale(scale: scale, child: child);
-        },
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: progress.fraction),
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeOutCubic,
-                builder: (context, t, _) => CheckProgress(
-                  value: t,
-                  size: 44,
-                  color: activeColor,
-                  track: track,
-                  circle: widget.circle,
-                ),
-              ),
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: widget.done
-                      ? reachedColor
-                      : widget.color.withValues(alpha: 0.14),
-                  shape: widget.circle ? BoxShape.circle : BoxShape.rectangle,
-                  borderRadius: widget.circle ? null : BorderRadius.circular(9),
-                ),
-                child: Icon(
-                  widget.done ? LucideIcons.check : LucideIcons.plus,
-                  size: 15,
-                  color: widget.done ? Colors.white : widget.color,
-                ),
-              ),
-            ],
           ),
         ),
       ),

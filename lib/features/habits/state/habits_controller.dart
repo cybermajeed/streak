@@ -9,10 +9,14 @@ import 'package:streak/core/utils/cover_storage.dart';
 import 'package:streak/features/habits/data/completion.dart';
 import 'package:streak/features/habits/data/completion_ops.dart';
 import 'package:streak/features/habits/data/habit.dart';
+import 'package:streak/features/habits/data/habit_links.dart';
 import 'package:streak/features/habits/data/reminder.dart';
 import 'package:streak/features/habits/data/substep.dart';
 import 'package:streak/features/habits/data/vacation.dart';
+import 'package:streak/services/backup_archive.dart';
 import 'package:streak/services/backup_service.dart';
+import 'package:streak/services/check_sound.dart';
+import 'package:streak/services/folder_sync.dart';
 import 'package:streak/services/home_widget_service.dart';
 import 'package:streak/services/import_service.dart';
 import 'package:streak/services/notification_service.dart';
@@ -28,6 +32,8 @@ class HabitsController extends ChangeNotifier {
 
   late Map<String, Habit> _habits;
   List<Habit>? _active;
+  List<Habit>? _every;
+  int _countedOn = AppClock.today().epochDay;
   bool _disposed = false;
 
   @override
@@ -40,12 +46,15 @@ class HabitsController extends ChangeNotifier {
   void notifyListeners() {
     if (_disposed) return;
     _active = null;
+    _every = null;
     super.notifyListeners();
   }
 
   List<Habit> get habits => _active ??=
       _habits.values.where((h) => !h.isArchived).toList()
         ..sort((a, b) => a.order.compareTo(b.order));
+
+  List<Habit> get withArchived => _every ??= _habits.values.toList();
 
   List<Habit> get archived {
     final list = _habits.values.where((h) => h.isArchived).toList()
@@ -63,6 +72,15 @@ class HabitsController extends ChangeNotifier {
   Habit? byId(String id) => _habits[id];
 
   Future<void> rescheduleReminders() async {
+    try {
+      await _notifications.cancelOrphans({
+        for (final habit in _habits.values)
+          if (!habit.isArchived) habit.id,
+      });
+      await _notifications.dropUnusedSoundChannels(_habits.values);
+    } catch (e) {
+      debugPrint('Could not clear stale reminders: $e');
+    }
     if (NotificationService.armedToday('habitRemindersArmedOn')) return;
     for (final habit in _habits.values) {
       if (habit.isArchived || habit.reminders.isEmpty) continue;
@@ -72,12 +90,47 @@ class HabitsController extends ChangeNotifier {
 
   Future<void> reload() async {
     if (LocalStore.isWriting) return;
+    final before = _habits;
     await LocalStore.reloadHabits();
     _habits = LocalStore.readHabits();
+    _countedOn = AppClock.today().epochDay;
+    notifyListeners();
+    await _rescheduleChanged(before);
+  }
+
+  Future<void> _rescheduleChanged(Map<String, Habit> before) async {
+    String plan(Habit habit) => jsonEncode(habit.toMap()
+      ..remove('completions')
+      ..remove('missReasons'));
+    try {
+      for (final id in before.keys) {
+        if (!_habits.containsKey(id)) await _notifications.cancelFor(id);
+      }
+      for (final habit in _habits.values) {
+        final old = before[habit.id];
+        if (old == null ? habit.reminders.isEmpty : plan(old) == plan(habit)) {
+          continue;
+        }
+        await _notifications.scheduleFor(habit);
+      }
+    } catch (e) {
+      debugPrint('Could not reschedule synced reminders: $e');
+    }
+  }
+
+  void recount() {
+    _habits = {for (final entry in _habits.entries) entry.key: entry.value.copyWith()};
+    _countedOn = AppClock.today().epochDay;
     notifyListeners();
   }
 
+  Future<void> refresh() async {
+    if (LocalStore.habitsChangedElsewhere) return reload();
+    if (_countedOn != AppClock.today().epochDay) recount();
+  }
+
   Future<void> clearProgress() async {
+    await BackupService.safetyCopy();
     final photos = [
       for (final note in LocalStore.readNotes()) ...note.photos,
     ];
@@ -99,24 +152,40 @@ class HabitsController extends ChangeNotifier {
     List<int> scheduleWeekdays = const [],
     int scheduleEvery = 2,
     ScheduleUnit scheduleUnit = ScheduleUnit.days,
+    DateTime? scheduleStart,
+    bool fromLastDone = false,
+    bool monthWeekday = false,
     required List<Reminder> reminders,
+    String soundUri = '',
+    String soundName = '',
     String coverPath = '',
     int coverClarity = 100,
     HabitKind kind = HabitKind.positive,
     double dailyCost = 0,
+    bool trackSpent = false,
+    int cleanGoal = 0,
+    double totalGoal = 0,
     double perDayTarget = 1,
     String unitLabel = '',
     double incrementAmount = 1,
     QuantKind quantKind = QuantKind.generic,
     String bookCoverPath = '',
+    double bookPages = 0,
     bool focusOnly = false,
     bool tracking = false,
+    bool healthSteps = false,
+    bool anyAmount = false,
+    bool atMost = false,
+    bool anySteps = false,
+    int stepsNeeded = 1,
     int difficulty = 0,
     int focusMinutes = 25,
     int focusBreakMinutes = 0,
     int startMinute = -1,
     int durationMinutes = 0,
+    List<(int, int)> moreTimes = const [],
     List<Substep> substeps = const [],
+    List<int> restDays = const [],
   }) async {
     final id = _uuid.v4();
     final habit = Habit(
@@ -132,37 +201,67 @@ class HabitsController extends ChangeNotifier {
       scheduleWeekdays: scheduleWeekdays,
       scheduleEvery: scheduleEvery,
       scheduleUnit: scheduleUnit,
+      scheduleStart: scheduleStart,
+      fromLastDone: fromLastDone,
+      monthWeekday: monthWeekday,
       reminders: reminders,
+      soundUri: soundUri,
+      soundName: soundName,
       coverPath: coverPath,
       coverClarity: coverClarity,
       kind: kind,
       dailyCost: dailyCost,
+      trackSpent: trackSpent,
+      cleanGoal: cleanGoal,
+      totalGoal: totalGoal,
       perDayTarget: perDayTarget,
       unitLabel: unitLabel,
       incrementAmount: incrementAmount,
       quantKind: quantKind,
       bookCoverPath: bookCoverPath,
+      bookPages: bookPages,
       focusOnly: focusOnly,
       tracking: tracking,
+      healthSteps: healthSteps,
+      anyAmount: anyAmount,
+      atMost: atMost,
+      anySteps: anySteps,
+      stepsNeeded: stepsNeeded,
       difficulty: difficulty,
       focusMinutes: focusMinutes,
       focusBreakMinutes: focusBreakMinutes,
       startMinute: startMinute,
       durationMinutes: durationMinutes,
+      moreTimes: moreTimes,
       substeps: substeps,
+      restDays: restDays,
     );
     _habits[id] = habit;
     await LocalStore.writeHabit(habit);
     notifyListeners();
-    if (reminders.isNotEmpty) await _notifications.scheduleFor(habit);
+    if (reminders.isNotEmpty) {
+      try {
+        await _notifications.scheduleFor(habit);
+      } catch (e) {
+        debugPrint('Scheduling ${habit.name} failed: $e');
+      }
+    }
     HomeWidgetService.syncSoon(() => asMap);
   }
 
   Future<void> update(Habit habit) async {
+    final soundChanged = _habits[habit.id]?.soundUri != habit.soundUri;
     _habits[habit.id] = habit;
     await LocalStore.writeHabit(habit);
     notifyListeners();
     await _notifications.scheduleFor(habit);
+    if (soundChanged) {
+      try {
+        await _notifications.dropUnusedSoundChannels(_habits.values);
+      } catch (e) {
+        debugPrint('Could not drop sound channels: $e');
+      }
+    }
     HomeWidgetService.syncSoon(() => asMap);
   }
 
@@ -170,13 +269,49 @@ class HabitsController extends ChangeNotifier {
     final habit = _habits[id];
     if (habit == null) return;
     if (habit.blocksManualCheck(date, fromFocus: fromFocus)) return;
-    await _apply(habit, CompletionOps.toggle(habit, date));
+    await _apply(habit, CompletionOps.toggle(habit, date), chime: !fromFocus);
   }
 
-  Future<void> logRelapse(String id, DateTime date) async {
+  Future<void> logRelapse(String id, DateTime date, {double? spent}) async {
     final habit = _habits[id];
     if (habit == null) return;
-    await _apply(habit, CompletionOps.logRelapse(habit, date));
+    await _apply(habit, CompletionOps.logRelapse(habit, date, spent: spent));
+  }
+
+  Future<void> setSpent(String id, DateTime date, double spent) async {
+    final habit = _habits[id];
+    if (habit == null) return;
+    await _apply(habit, CompletionOps.setSpent(habit, date, spent));
+  }
+
+  Future<void> addRelapse(String id, DateTime date) async {
+    final habit = _habits[id];
+    if (habit == null) return;
+    await _apply(habit, CompletionOps.addRelapse(habit, date));
+  }
+
+  Future<void> dropRelapse(String id, DateTime date) async {
+    final habit = _habits[id];
+    if (habit == null) return;
+    await _apply(habit, CompletionOps.dropRelapse(habit, date));
+  }
+
+  Future<void> retime(String id, String dayKey, int? from, int to) async {
+    final habit = _habits[id];
+    if (habit == null) return;
+    await _apply(habit, CompletionOps.retime(habit, dayKey, from, to));
+  }
+
+  Future<void> setMissReason(String id, String dayKey, String? reason) async {
+    final habit = _habits[id];
+    if (habit == null) return;
+    final reasons = {...habit.missReasons};
+    if (reason == null || reason.trim().isEmpty) {
+      reasons.remove(dayKey);
+    } else {
+      reasons[dayKey] = reason.trim();
+    }
+    await update(habit.copyWith(missReasons: reasons));
   }
 
   Future<void> clearRelapse(String id, DateTime date) async {
@@ -185,10 +320,22 @@ class HabitsController extends ChangeNotifier {
     await _apply(habit, CompletionOps.clearRelapse(habit, date));
   }
 
-  Future<void> addProgress(String id, DateTime date, double delta) async {
+  Future<void> applyLink(Uri link) async {
+    final habit = _habits[link.queryParameters['habit']];
+    if (habit == null) return;
+    final completions = HabitLinks.apply(habit, link);
+    if (completions != null) await _apply(habit, completions);
+  }
+
+  Future<void> addProgress(
+    String id,
+    DateTime date,
+    double delta, {
+    bool chime = true,
+  }) async {
     final habit = _habits[id];
     if (habit == null) return;
-    await _apply(habit, CompletionOps.addProgress(habit, date, delta));
+    await _apply(habit, CompletionOps.addProgress(habit, date, delta), chime: chime);
   }
 
 
@@ -196,7 +343,19 @@ class HabitsController extends ChangeNotifier {
     final habit = _habits[id];
     if (habit == null) return;
     final current = habit.completions[date.dayKey]?.count ?? 0;
-    await _apply(habit, CompletionOps.addProgress(habit, date, value - current));
+    await _apply(
+      habit,
+      CompletionOps.addProgress(habit, date, value - current),
+      chime: true,
+    );
+  }
+
+  Future<void> logSteps(String id, Map<DateTime, double> counts) async {
+    final habit = _habits[id];
+    if (habit == null || !habit.readsSteps) return;
+    final completions = CompletionOps.raiseCounts(habit, counts);
+    if (identical(completions, habit.completions)) return;
+    await _apply(habit, completions);
   }
 
   Future<void> setStep(
@@ -207,7 +366,11 @@ class HabitsController extends ChangeNotifier {
   ) async {
     final habit = _habits[id];
     if (habit == null) return;
-    await _apply(habit, CompletionOps.setStep(habit, date, stepId, checked));
+    await _apply(
+      habit,
+      CompletionOps.setStep(habit, date, stepId, checked),
+      chime: true,
+    );
   }
 
   Future<void> setVacation(String id, bool on, {bool bulk = false}) async {
@@ -219,8 +382,7 @@ class HabitsController extends ChangeNotifier {
         periods.add(VacationPeriod(start: AppClock.now(), bulk: bulk));
       }
     } else {
-      final yesterday =
-          AppClock.today().subtract(const Duration(days: 1));
+      final yesterday = AppClock.today().addDays(-1);
       final next = <VacationPeriod>[];
       for (final p in periods) {
         if (!p.isOngoing) {
@@ -265,8 +427,8 @@ class HabitsController extends ChangeNotifier {
     final habit = _habits[id];
     if (habit == null) return;
     final day = date.atMidnight;
-    final previous = day.subtract(const Duration(days: 1));
-    final next = day.add(const Duration(days: 1));
+    final previous = day.addDays(-1);
+    final next = day.addDays(1);
 
     if (!habit.isPausedOn(day)) {
       await update(
@@ -287,7 +449,7 @@ class HabitsController extends ChangeNotifier {
         periods.add(VacationPeriod(start: period.start, end: previous));
       }
       if (period.end == null) {
-        periods.add(VacationPeriod(start: next));
+        if (!next.isAfter(AppClock.today())) periods.add(VacationPeriod(start: next));
       } else if (period.end!.isAfter(day)) {
         periods.add(VacationPeriod(start: next, end: period.end));
       }
@@ -297,16 +459,25 @@ class HabitsController extends ChangeNotifier {
 
   Future<void> _apply(
     Habit habit,
-    Map<String, Completion> completions,
-  ) async {
+    Map<String, Completion> completions, {
+    bool chime = false,
+  }) async {
     final updated = habit.copyWith(completions: completions);
+    if (chime &&
+        !habit.tracking &&
+        !habit.isCompletedOn(AppClock.now()) &&
+        updated.isCompletedOn(AppClock.now())) {
+      CheckSound.play();
+    }
     _habits[habit.id] = updated;
     notifyListeners();
     HomeWidgetService.syncSoon(() => asMap);
     await LocalStore.guardWrites(() => LocalStore.writeHabit(updated));
     final today = AppClock.now();
     if (habit.reminders.isNotEmpty &&
-        habit.silencesRemindersOn(today) != updated.silencesRemindersOn(today)) {
+        (habit.fromLastDone ||
+            habit.silencesRemindersOn(today) !=
+                updated.silencesRemindersOn(today))) {
       _refreshReminders(habit.id);
     }
   }
@@ -411,11 +582,12 @@ class HabitsController extends ChangeNotifier {
     await HomeWidgetService.sync(asMap);
   }
 
-  Future<bool> exportBackup({Rect? origin}) async {
+  Future<bool> exportBackup({Rect? origin, Habit? only}) async {
     try {
       return await BackupService.export(
         _habits.values.toList(),
         origin: origin,
+        only: only,
       );
     } catch (_) {
       return false;
@@ -445,18 +617,52 @@ class HabitsController extends ChangeNotifier {
     if (outcome == null) return null;
     await LocalStore.guardWrites(() async {
       var order = habits.length;
-      for (final habit in outcome!.habits) {
-        final placed = habit.copyWith(order: order++);
+      final into = <String, String>{};
+      for (final habit in outcome.habits) {
+        final same = _namedLike(habit);
+        final placed = same == null
+            ? habit.copyWith(order: order++)
+            : same.copyWith(
+                completions: FolderSync.mergeCompletions(
+                  same.completions,
+                  habit.completions,
+                ),
+                createdAt: habit.createdAt.isBefore(same.createdAt)
+                    ? habit.createdAt
+                    : same.createdAt,
+              );
+        into[habit.id] = placed.id;
         _habits[placed.id] = placed;
         await LocalStore.writeHabit(placed);
         if (placed.reminders.isNotEmpty) {
           await _notifications.scheduleFor(placed);
         }
       }
+      final known = {
+        for (final note in LocalStore.readNotes())
+          (note.habitId, note.date, note.text),
+      };
+      for (final note in outcome.notes) {
+        final moved = note.copyWith(habitId: into[note.habitId]);
+        if (known.contains((moved.habitId, moved.date, moved.text))) continue;
+        await LocalStore.writeNote(moved);
+      }
     });
     notifyListeners();
     await HomeWidgetService.sync(asMap);
     return outcome;
+  }
+
+  Habit? _namedLike(Habit imported) {
+    final name = imported.name.trim().toLowerCase();
+    for (final habit in habits) {
+      if (habit.id != imported.id &&
+          habit.kind == imported.kind &&
+          habit.name.trim().toLowerCase() == name) {
+        return habit;
+      }
+    }
+    return null;
   }
 
   Future<String?> importBackup({bool replace = false}) async {
@@ -473,44 +679,74 @@ class HabitsController extends ChangeNotifier {
 
   Future<void> _applyBackup(BackupData data, {required bool replace}) async {
     if (replace) {
+      await BackupService.safetyCopy();
       for (final id in _habits.keys.toList()) {
         await _notifications.cancelFor(id);
       }
       await LocalStore.wipeContent();
       _habits.clear();
     }
-    for (final habit in data.habits) {
+    for (final theirs in data.habits) {
+      final ours = _habits[theirs.id];
+      final habit = ours == null
+          ? theirs
+          : ours.copyWith(
+              completions:
+                  FolderSync.mergeCompletions(ours.completions, theirs.completions),
+              missReasons: {...theirs.missReasons, ...ours.missReasons},
+            );
       _habits[habit.id] = habit;
       await LocalStore.writeHabit(habit);
     }
+    Set<String> known<T>(List<T> items, String Function(T) id) =>
+        replace ? const {} : items.map(id).toSet();
+    final categories = known(LocalStore.readCategories(), (c) => c.id);
+    final notes = known(LocalStore.readNotes(), (n) => n.id);
+    final focus = known(LocalStore.readFocusSessions(), (f) => f.id);
+    final sleep = known(LocalStore.readSleepEntries(), (s) => s.id);
     for (final category in data.categories) {
-      await LocalStore.writeCategory(category);
+      if (categories.contains(category.id)) continue;
+      replace
+          ? await LocalStore.writeCategory(category)
+          : await LocalStore.mergeCategory(category);
     }
     for (final note in data.notes) {
-      await LocalStore.writeNote(note);
+      if (!notes.contains(note.id)) await LocalStore.writeNote(note);
     }
     for (final session in data.focus) {
-      await LocalStore.writeFocusSession(session);
+      if (!focus.contains(session.id)) await LocalStore.writeFocusSession(session);
     }
     for (final entry in data.sleep) {
-      await LocalStore.writeSleepEntry(entry);
+      if (!sleep.contains(entry.id)) await LocalStore.writeSleepEntry(entry);
     }
 
     if (data.settings.isNotEmpty) {
       if (data.profilePhotoBase64 != null) {
         try {
           final dir = await getApplicationDocumentsDirectory();
-          final dest = '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final dest =
+              '${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
           await File(dest).writeAsBytes(base64Decode(data.profilePhotoBase64!));
           data.settings['profilePhoto'] = dest;
         } catch (e) {
           debugPrint('Could not restore profile photo: $e');
         }
       }
-      await LocalStore.writeAllSettings(data.settings);
+      if (replace) {
+        for (final entry in data.settings.entries) {
+          final value = entry.value;
+          if (value == null || !backupSettingKeys.contains(entry.key)) continue;
+          await LocalStore.writeSetting(entry.key, value);
+        }
+      } else {
+        await LocalStore.writeAllSettings(data.settings);
+      }
     }
     for (final habit in data.habits) {
-      if (habit.reminders.isNotEmpty) await _notifications.scheduleFor(habit);
+      final current = _habits[habit.id];
+      if (current != null && current.reminders.isNotEmpty) {
+        await _notifications.scheduleFor(current);
+      }
     }
   }
 

@@ -142,7 +142,7 @@ void main() {
       final slots = ReminderSchedule.hourlySlots(
         hour: 18,
         minute: 30,
-        everyHours: 2,
+        everyMinutes: 120,
       );
 
       expect(slots, [18 * 60 + 30, 20 * 60 + 30, 22 * 60 + 30]);
@@ -152,39 +152,78 @@ void main() {
       final slots = ReminderSchedule.hourlySlots(
         hour: 23,
         minute: 0,
-        everyHours: 3,
+        everyMinutes: 180,
       );
 
       expect(slots, [23 * 60]);
     });
 
-    test('a whole day never fires more than the cap', () {
+    test('every hour fills the whole day when it rings daily', () {
       final slots = ReminderSchedule.hourlySlots(
         hour: 0,
         minute: 0,
-        everyHours: 2,
+        everyMinutes: 60,
+        cap: ReminderSchedule.hourlyCap(1),
       );
 
-      expect(slots.length, ReminderSchedule.maxHourlyPerDay);
+      expect(slots.length, 24);
+    });
+
+    test('it stops at the until time, counting that hour', () {
+      final slots = ReminderSchedule.hourlySlots(
+        hour: 9,
+        minute: 0,
+        everyMinutes: 60,
+        until: 17 * 60,
+      );
+
+      expect(slots.first, 9 * 60);
+      expect(slots.last, 17 * 60);
+      expect(slots.length, 9);
+    });
+
+    test('an until before the start means the end of the day', () {
+      final slots = ReminderSchedule.hourlySlots(
+        hour: 20,
+        minute: 0,
+        everyMinutes: 60,
+        until: 8 * 60,
+      );
+
+      expect(slots, [20 * 60, 21 * 60, 22 * 60, 23 * 60]);
+    });
+
+    test('the cap shares the slots between the chosen days', () {
+      expect(ReminderSchedule.hourlyCap(5), 12);
+      expect(ReminderSchedule.hourlyCap(7), 9);
+      final slots = ReminderSchedule.hourlySlots(
+        hour: 0,
+        minute: 0,
+        everyMinutes: 60,
+        cap: ReminderSchedule.hourlyCap(5),
+      );
+
+      expect(slots.length, 12);
     });
 
     test('without hours it keeps the single time', () {
       expect(
-        ReminderSchedule.hourlySlots(hour: 9, minute: 5, everyHours: 0),
+        ReminderSchedule.hourlySlots(hour: 9, minute: 5, everyMinutes: 0),
         [9 * 60 + 5],
       );
     });
 
     test('every slot of every day gets its own id, and none overflow', () {
-      final ids = <int>{};
-      for (var day = 1; day <= 7; day++) {
-        for (var slot = 0; slot < ReminderSchedule.maxHourlyPerDay; slot++) {
-          ids.add(ReminderSchedule.hourlyId('habit-1', 'rem-1', day, slot));
-        }
-      }
+      final cap = ReminderSchedule.hourlyCap(7);
+      final ids = <int>{
+        for (var day = 0; day < 7; day++)
+          for (var slot = 0; slot < cap; slot++)
+            ReminderSchedule.notificationId('habit-1', 'rem-1', day * cap + slot),
+      };
       final other = ReminderSchedule.notificationId('habit-1', 'rem-2', 0);
 
-      expect(ids.length, 7 * ReminderSchedule.maxHourlyPerDay);
+      expect(ids.length, 7 * cap);
+      expect(7 * cap <= ReminderSchedule.slotsPerReminder, true);
       expect(ids.contains(other), false);
     });
   });

@@ -91,6 +91,31 @@ void main() {
     });
   });
 
+  test('a weekly goal counts the week the way the settings start it', () {
+    addTearDown(() => Habit.weekStart = DateTime.monday);
+    final sunday = today.atMidnight.startOfWeek(DateTime.sunday).addDays(-7);
+    Habit weekly() => Habit(
+          id: 'w',
+          name: 'Gym',
+          color: const Color(0xFF00FF00),
+          order: 0,
+          interval: HabitInterval.weekly,
+          targetFrequency: 2,
+          completions: {
+            for (final day in [sunday, sunday.addDays(1)])
+              day.dayKey: Completion(date: day.dayKey, count: 1),
+          },
+          createdAt: sunday.addDays(-30),
+        );
+
+    Habit.weekStart = DateTime.monday;
+    expect(weekly().longestStreak, 0);
+
+    Habit.weekStart = DateTime.sunday;
+    expect(weekly().longestStreak, 1);
+    expect(weekly().currentStreak, 1);
+  });
+
   group('vacation', () {
     Map<String, Completion> completed(List<DateTime> days) => {
           for (final d in days)
@@ -126,6 +151,19 @@ void main() {
       expect(
         habit.isNeutralOn(today.subtract(const Duration(days: 3))),
         isTrue,
+      );
+    });
+
+    test('a pause from before the habit existed is not a neutral day', () {
+      final vac = VacationPeriod(
+        start: today.subtract(const Duration(days: 400)),
+        end: today.subtract(const Duration(days: 390)),
+      );
+      final habit = _base(vacations: [vac]);
+      expect(habit.isPausedOn(today.subtract(const Duration(days: 395))), isTrue);
+      expect(
+        habit.isNeutralOn(today.subtract(const Duration(days: 395))),
+        isFalse,
       );
     });
 

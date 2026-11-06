@@ -16,10 +16,24 @@ object WidgetText {
         return if (value.isEmpty()) fallback else value
     }
 
+    fun title(context: Context, key: String, fallback: String): String =
+        get(context, key, fallback)
+            .replace(Regex("""\{\w+\}"""), "")
+            .replace("/", "")
+            .trim()
+            .ifEmpty { fallback }
+
     fun amount(value: Double): String {
         val rounded = Math.round(value * 100.0) / 100.0
         if (rounded == Math.floor(rounded)) return rounded.toLong().toString()
         return rounded.toString().trimEnd('0').trimEnd('.')
+    }
+
+    fun clock(minutes: Double): String {
+        val total = Math.round(minutes).toInt()
+        val hours = total / 60
+        val rest = total % 60
+        return if (hours == 0) "${rest}m" else "$hours:${rest.toString().padStart(2, '0')}"
     }
 
     fun compact(value: Double): String =

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/app/theme/app_theme.dart';
 
 TextStyle statNumber(BuildContext context, double size, {Color? color}) =>
     TextStyle(
-      fontFamily: 'Figtree',
+      fontFamily: AppTheme.isClassic(context) ? AppTheme.classicFont : 'Figtree',
       fontSize: size,
       fontWeight: FontWeight.w900,
       height: 1,
@@ -185,6 +186,9 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final titleSize = MediaQuery.textScalerOf(context).scale(16);
+    final titleLines = titleSize > 19 ? 3 : 2;
+    final titleHeight = titleSize * 1.25 * titleLines;
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
@@ -192,25 +196,12 @@ class StatCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: 44,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 1.25,
-                        fontWeight: FontWeight.w800,
-                        color: context.colors.onSurface,
-                      ),
-                    ),
-                  ),
-                  StatIconSquare(icon: icon, color: color),
-                ],
+              height: titleHeight > 44 ? titleHeight : 44,
+              child: _StatHeader(
+                title: title,
+                icon: icon,
+                color: color,
+                lines: titleLines,
               ),
             ),
             const SizedBox(height: 12),
@@ -218,6 +209,79 @@ class StatCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StatHeader extends StatelessWidget {
+  const _StatHeader({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.lines,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color color;
+  final int lines;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = context.colors.onSurface;
+    final scale = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    final base = DefaultTextStyle.of(context).style;
+    TextStyle style(double size) => TextStyle(
+          fontSize: size,
+          height: 1.25,
+          fontWeight: FontWeight.w800,
+          color: textColor,
+        );
+    bool fits(double size, double width) {
+      final painter = TextPainter(
+        text: TextSpan(text: title, style: base.merge(style(size))),
+        maxLines: lines,
+        textDirection: direction,
+        textScaler: scale,
+      )..layout(maxWidth: width);
+      var ok = !painter.didExceedMaxLines;
+      for (final word in title.split(' ')) {
+        if (!ok) break;
+        painter
+          ..text = TextSpan(text: word, style: base.merge(style(size)))
+          ..maxLines = 1
+          ..layout();
+        ok = painter.width <= width;
+      }
+      painter.dispose();
+      return ok;
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final withIcon = fits(16, width - 44);
+        var size = 16.0;
+        while (!withIcon && size > 10 && !fits(size, width)) {
+          size -= 1;
+        }
+        final text = Text(
+          title,
+          maxLines: lines,
+          overflow: TextOverflow.ellipsis,
+          style: style(size),
+        );
+        if (!withIcon) return text;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: text),
+            const SizedBox(width: 8),
+            StatIconSquare(icon: icon, color: color),
+          ],
+        );
+      },
     );
   }
 }
@@ -251,6 +315,7 @@ class MiniStat extends StatelessWidget {
     required this.icon,
     required this.color,
     this.unit,
+    this.wide = false,
   });
 
   final String value;
@@ -258,30 +323,78 @@ class MiniStat extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String? unit;
+  final bool wide;
 
   @override
   Widget build(BuildContext context) {
+    final classic = context.watch<SettingsController>().appStyle == 0;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final badge = classic
+        ? Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 15, color: color),
+          )
+        : Icon(icon, size: 16, color: color);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: context.colors.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(height: 10),
-          _StatValue(value: value, unit: unit),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: statLabel(context),
-          ),
-        ],
-      ),
+      decoration: classic
+          ? BoxDecoration(
+              color: Theme.of(context).cardTheme.color,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.fromBorderSide(AppTheme.cardEdge(dark)),
+              boxShadow: [
+                if (!dark)
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+              ],
+            )
+          : BoxDecoration(
+              color: context.colors.surfaceContainerHighest.withValues(
+                alpha: 0.5,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+      child: wide
+          ? Row(
+              children: [
+                badge,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: statLabel(context),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _StatValue(value: value, unit: unit),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                badge,
+                const SizedBox(height: 10),
+                _StatValue(value: value, unit: unit),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: statLabel(context),
+                ),
+              ],
+            ),
+
     );
   }
 }

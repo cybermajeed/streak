@@ -12,6 +12,7 @@ Future<bool?> showAppConfirmDialog(
   String? cancelLabel,
   String? extraLabel,
   VoidCallback? onExtra,
+  Widget? body,
   IconData icon = LucideIcons.trash2,
   bool danger = true,
 }) {
@@ -52,6 +53,10 @@ Future<bool?> showAppConfirmDialog(
                 textAlign: TextAlign.center,
                 style: sheetBodyStyle(dialogContext, size: 14),
               ),
+              if (body != null) ...[
+                const SizedBox(height: 16),
+                body,
+              ],
               const SizedBox(height: 22),
               Row(
                 children: [
@@ -59,7 +64,7 @@ Future<bool?> showAppConfirmDialog(
                     child: TextButton(
                       onPressed: () => Navigator.of(dialogContext).pop(false),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         backgroundColor: scheme.surfaceContainerHighest,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -87,7 +92,7 @@ Future<bool?> showAppConfirmDialog(
                         foregroundColor: accent.computeLuminance() > 0.6
                             ? Colors.black
                             : Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),

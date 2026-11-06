@@ -33,8 +33,6 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Plugins like home_widget default to JVM 1.8 but inline JVM-11 bytecode from
-// Glance/Compose; align every module to 11, matching :app.
 subprojects {
     val alignJvm: Project.() -> Unit = {
         extensions.findByType(com.android.build.gradle.LibraryExtension::class.java)

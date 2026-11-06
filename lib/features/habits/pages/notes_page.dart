@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:streak/app/theme/app_theme.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/express/express_button.dart';
 import 'package:streak/core/express/express_surface.dart';
@@ -50,6 +51,10 @@ class NotesPage extends StatelessWidget {
     final style = context.watch<SettingsController>();
     final express = style.isExpressStyle;
     final minimal = style.isMinimalStyle;
+    final ink = AppTheme.adaptAccent(
+      accent,
+      Theme.of(context).brightness == Brightness.dark,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -189,10 +194,9 @@ class NotesPage extends StatelessWidget {
                     ),
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: accent,
-                    foregroundColor: accent.computeLuminance() > 0.6
-                        ? Colors.black
-                        : Colors.white,
+                    backgroundColor: ink.withValues(alpha: 0.14),
+                    foregroundColor: ink,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

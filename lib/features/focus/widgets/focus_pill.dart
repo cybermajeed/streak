@@ -9,12 +9,19 @@ import 'package:streak/features/focus/pages/focus_page.dart';
 import 'package:streak/features/focus/pages/focus_setup_page.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/core/widgets/glass.dart';
 
 class FocusPill extends StatelessWidget {
-  const FocusPill({super.key, this.compact = false, this.dense = false});
+  const FocusPill({
+    super.key,
+    this.compact = false,
+    this.dense = false,
+    this.glass = false,
+  });
 
   final bool compact;
   final bool dense;
+  final bool glass;
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +33,30 @@ class FocusPill extends StatelessWidget {
     final active = focus.isActive;
     final accent = context.colors.primary;
 
-    void open() => active
-        ? AppNavigator.push(
-            const FocusPage(),
-            fade: true,
-            name: FocusPage.routeName,
-          )
-        : AppNavigator.push(const FocusSetupPage(), fullscreenDialog: true);
+    void open() => openFocus(context);
+
+    if (glass) {
+      final ink = active ? accent : context.colors.onSurface;
+      return GlassPill(
+        onTap: open,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.timer, size: 16, color: ink),
+            const SizedBox(width: 6),
+            Text(
+              active ? formatDuration(focus.displaySeconds) : context.l10n.focus,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: ink,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (compact && !active) {
       return IconButton(
@@ -89,3 +113,11 @@ class FocusPill extends StatelessWidget {
     );
   }
 }
+
+void openFocus(BuildContext context) => context.read<FocusController>().isActive
+    ? AppNavigator.push(
+        const FocusPage(),
+        fade: true,
+        name: FocusPage.routeName,
+      )
+    : AppNavigator.push(const FocusSetupPage(), fullscreenDialog: true);

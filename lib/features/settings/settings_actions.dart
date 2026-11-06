@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/app_lock.dart';
+import 'package:streak/app/lock_design.dart';
 import 'package:streak/app/pin_setup_page.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/database/local_store.dart';
@@ -26,7 +27,9 @@ import 'package:streak/services/notification_service.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/settings/widgets/minimal_settings_widgets.dart';
 import 'package:streak/services/backup_service.dart';
+import 'package:streak/services/auto_sync.dart';
 import 'package:streak/services/folder_sync.dart';
+import 'package:streak/services/home_widget_service.dart';
 import 'package:streak/services/import_service.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -34,6 +37,7 @@ import 'package:url_launcher/url_launcher.dart';
 const kGitHubUrl = 'https://github.com/cybermajeed/streak';
 const kIssuesUrl = 'https://github.com/cybermajeed/streak/issues';
 const kCoffeeUrl = 'https://ko-fi.com/inlitx';
+const kSiteUrl = 'https://inlitx.github.io/streak';
 
 class SettingsActions {
   const SettingsActions._();
@@ -55,6 +59,12 @@ class SettingsActions {
         : AppSnackbar.warning(context, context.l10n.export_cancelled);
   }
 
+  static Future<void> setWeekStart(BuildContext context, int weekday) async {
+    final habits = context.read<HabitsController>();
+    await context.read<SettingsController>().setWeekStart(weekday);
+    habits.recount();
+  }
+
   static Future<void> importBackup(BuildContext context) async {
     final controller = context.read<HabitsController>();
     final replace = await _askImportMode(context);
@@ -62,7 +72,7 @@ class SettingsActions {
     final error = await controller.importBackup(replace: replace);
     if (!context.mounted) return;
     if (error == null) {
-      await context.read<SettingsController>().reloadFromStore();
+      if (replace) await context.read<SettingsController>().reloadFromStore();
       if (!context.mounted) return;
       context.read<NotesController>().reload();
       context.read<FocusController>().reload();
@@ -74,24 +84,60 @@ class SettingsActions {
     }
   }
 
+  static List<String> planOptions(BuildContext context) => [
+        context.l10n.off,
+        context.l10n.plan_show_habits,
+      ];
+
+  static Future<void> pickPlan(BuildContext context) {
+    final settings = context.read<SettingsController>();
+    return showOptionSheet(
+      context,
+      title: context.l10n.plan_day,
+      options: planOptions(context),
+      index: settings.planChoice,
+      onSelected: settings.setPlanChoice,
+    );
+  }
+
+  static List<String> todoStyles(BuildContext context) => [
+        context.l10n.todo_view_list,
+        context.l10n.todo_view_papers,
+      ];
+
+  static Future<void> pickTodoStyle(BuildContext context) {
+    final settings = context.read<SettingsController>();
+    return showOptionSheet(
+      context,
+      title: context.l10n.todo_style,
+      options: todoStyles(context),
+      index: settings.todoPapers ? 1 : 0,
+      onSelected: (i) => settings.setTodoPapers(i == 1),
+    );
+  }
+
   static bool canRefresh(BuildContext context) {
     final settings = context.watch<SettingsController>();
     return settings.autoBackup > 0 && settings.autoBackupFolder.isNotEmpty;
   }
 
+  static Future<void> reloadAll(BuildContext context) async {
+    final habits = context.read<HabitsController>();
+    await habits.reload();
+    if (!context.mounted) return;
+    context.read<NotesController>().reload();
+    context.read<FocusController>().reload();
+    context.read<SleepController>().reload();
+    context.read<CategoriesController>().reload();
+    await HomeWidgetService.sync(habits.asMap);
+  }
+
   static Future<void> refreshFolder(BuildContext context) async {
     final settings = context.read<SettingsController>();
-    final habits = context.read<HabitsController>();
     final brought = await LocalStore.guardWrites(FolderSync.pull);
     if (!context.mounted) return;
-    if (brought > 0) {
-      await habits.reload();
-      if (!context.mounted) return;
-      context.read<NotesController>().reload();
-      context.read<FocusController>().reload();
-      context.read<SleepController>().reload();
-      context.read<CategoriesController>().reload();
-    }
+    if (brought > 0) await reloadAll(context);
+    if (!context.mounted) return;
     await settings.runAutoBackup(force: true);
     if (!context.mounted) return;
     brought > 0
@@ -112,6 +158,8 @@ class SettingsActions {
         context.read<FocusController>().reload();
         context.read<SleepController>().reload();
         context.read<CategoriesController>().reload();
+      } else if (outcome.notes.isNotEmpty) {
+        context.read<NotesController>().reload();
       }
       if (!context.mounted) return;
       AppSnackbar.success(
@@ -192,6 +240,16 @@ class SettingsActions {
                 SheetTitle(
                   context.l10n.auto_backup,
                   subtitle: context.l10n.auto_backup_where,
+                  trailing: IconButton(
+                    icon: Icon(LucideIcons.circleHelp, color: context.tokens.muted),
+                    tooltip: context.l10n.sync_guide,
+                    onPressed: () => openUrl(
+                      context,
+                      Localizations.localeOf(context).languageCode == 'es'
+                          ? '$kSiteUrl/es/blog/sync-without-internet/'
+                          : '$kSiteUrl/blog/sync-without-internet/',
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 for (var i = 0; i < 3; i++)
@@ -245,6 +303,25 @@ class SettingsActions {
                   subtitle: Text(context.l10n.readable_copy_sub),
                   value: s.readableCopy,
                   onChanged: settings.setReadableCopy,
+                ),
+                if (s.autoBackupFolder.isNotEmpty)
+                SwitchListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  secondary: Icon(
+                    LucideIcons.refreshCw,
+                    color: context.tokens.muted,
+                  ),
+                  title: Text(
+                    context.l10n.auto_sync,
+                    style: sheetOptionStyle(sheetContext, size: 15),
+                  ),
+                  subtitle: Text(context.l10n.auto_sync_sub),
+                  value: s.autoSync,
+                  onChanged: (value) async {
+                    await settings.setAutoSync(value);
+                    if (value) AutoSync.changed();
+                  },
                 ),
                 const SizedBox(height: 4),
                 SizedBox(
@@ -309,6 +386,7 @@ class SettingsActions {
     );
     if (again != true || !context.mounted) return;
 
+    await BackupService.safetyCopy();
     await NotificationService().cancelAll();
     await LocalStore.wipeEverything();
     if (!context.mounted) return;
@@ -321,7 +399,7 @@ class SettingsActions {
     await context.read<SettingsController>().reloadFromStore();
     if (!context.mounted) return;
     AppSnackbar.success(context, context.l10n.wipe_data_done);
-    if (!Platform.isLinux) await openAppSettings();
+    if (isMobile) await openAppSettings();
   }
 
   static Future<void> toggleAppLock(BuildContext context, bool value) async {
@@ -368,10 +446,8 @@ class SettingsActions {
   static Future<void> chooseLockMethod(BuildContext context) async {
     final settings = context.read<SettingsController>();
     final reason = context.l10n.app_lock_sub;
-    await showOptionSheet(
+    await showLockMethodSheet(
       context,
-      title: context.l10n.app_lock_method,
-      options: [context.l10n.app_lock_biometric, context.l10n.pin_lock],
       index: settings.appLockMode,
       onSelected: (i) async {
         if (i == settings.appLockMode) return;
@@ -498,6 +574,17 @@ class SettingsActions {
     await settings.setVacationAll(true, await habits.pauseAll());
   }
 
+  static Future<void> editProfile(BuildContext context) {
+    return showOptionSheet(
+      context,
+      title: context.l10n.edit_profile,
+      options: [context.l10n.change_photo, context.l10n.edit_name],
+      icons: const [LucideIcons.image, LucideIcons.userPen],
+      index: -1,
+      onSelected: (i) => i == 0 ? pickProfilePhoto(context) : editName(context),
+    );
+  }
+
   static Future<void> editName(BuildContext context) async {
     final settings = context.read<SettingsController>();
     final name = await showDialog<String>(
@@ -549,14 +636,6 @@ class SettingsActions {
         _ => context.l10n.bg_solid,
       };
 
-  static const shippedLanguages = {
-    'de', 'en', 'es', 'fr', 'ko', 'pt', 'ru', 'uk', 'zh',
-  };
-
-  static List<Locale> get shippedLocales => AppLocalizations.supportedLocales
-      .where((l) => shippedLanguages.contains(l.languageCode))
-      .toList();
-
   static String languageLabel(BuildContext context, String code) =>
       code.isEmpty ? context.l10n.system : languageName(localeFromCode(code));
 
@@ -564,6 +643,7 @@ class SettingsActions {
     const names = <String, String>{
       'en': 'English',
       'es': 'Español',
+      'ca': 'Català',
       'zh': '简体中文',
       'de': 'Deutsch',
       'fr': 'Français',
@@ -576,6 +656,7 @@ class SettingsActions {
       'tr': 'Türkçe',
       'nl': 'Nederlands',
       'pl': 'Polski',
+      'ro': 'Română',
       'uk': 'Українська',
       'hi': 'हिन्दी',
       'id': 'Bahasa Indonesia',

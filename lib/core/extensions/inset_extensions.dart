@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 extension SystemInsets on BuildContext {
-  EdgeInsets get safeInsets => MediaQuery.paddingOf(this);
+  EdgeInsets get safeInsets => MediaQuery.viewPaddingOf(this);
 
   double get bottomInset => safeInsets.bottom;
 

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:streak/app/theme/app_theme.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/features/statistics/widgets/stat_kit.dart';
 
@@ -31,6 +32,13 @@ class _HabitDonutState extends State<HabitDonut> with TickerProviderStateMixin {
   int? _selected;
   List<double> _from = const [];
   List<double> _to = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _reveal;
+    _select;
+  }
 
   @override
   void didUpdateWidget(HabitDonut old) {
@@ -104,6 +112,9 @@ class _HabitDonutState extends State<HabitDonut> with TickerProviderStateMixin {
                                 total: total,
                                 name: context.colors.onSurface,
                                 muted: context.tokens.muted,
+                                font: AppTheme.isClassic(context)
+                                    ? AppTheme.classicFont
+                                    : null,
                               ),
                             ),
                           ),
@@ -342,6 +353,7 @@ class _DonutPainter extends CustomPainter {
     required this.total,
     required this.name,
     required this.muted,
+    this.font,
   });
 
   final _DonutLayout layout;
@@ -350,6 +362,7 @@ class _DonutPainter extends CustomPainter {
   final int total;
   final Color name;
   final Color muted;
+  final String? font;
 
   double _grown(int i) => i < expansion.length ? expansion[i] : 0;
 
@@ -404,6 +417,7 @@ class _DonutPainter extends CustomPainter {
     final labelText = _painter(
       slice.entry.name,
       TextStyle(
+        fontFamily: font,
         fontSize: 12.5,
         fontWeight: FontWeight.w700,
         height: 1.15,
@@ -415,7 +429,7 @@ class _DonutPainter extends CustomPainter {
     final subText = _painter(
       '${slice.entry.count} · ${(slice.entry.count * 100 / total).round()}%',
       TextStyle(
-        fontFamily: 'Figtree',
+        fontFamily: font ?? 'Figtree',
         fontSize: 11,
         fontWeight: FontWeight.w800,
         height: 1.15,
@@ -491,5 +505,6 @@ class _DonutPainter extends CustomPainter {
       old.reveal != reveal ||
       !listEquals(old.expansion, expansion) ||
       old.total != total ||
-      old.name != name;
+      old.name != name ||
+      old.font != font;
 }

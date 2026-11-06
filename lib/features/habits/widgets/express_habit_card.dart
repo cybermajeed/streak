@@ -12,23 +12,24 @@ import 'package:streak/core/express/express_streak_row.dart';
 import 'package:streak/core/express/express_surface.dart';
 import 'package:streak/core/express/express_type.dart';
 import 'package:streak/core/express/express_wave.dart';
+import 'package:streak/core/extensions/clock_extensions.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/icons/habit_glyph.dart';
-import 'package:streak/core/widgets/app_confirm_dialog.dart';
+import 'package:streak/features/habits/widgets/relapse_dialog.dart';
 import 'package:streak/core/widgets/cover_image.dart';
 import 'package:streak/core/widgets/scrolling_text.dart';
-import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/widgets/amount_actions.dart';
-import 'package:streak/features/habits/data/quant_progress.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/widgets/frequency_chip.dart';
 import 'package:streak/features/habits/widgets/habit_checklist.dart';
 import 'package:streak/features/habits/widgets/habit_heatmap.dart';
+import 'package:streak/features/habits/widgets/focus_only_dialog.dart';
 import 'package:streak/features/habits/widgets/unscheduled_day_dialog.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/habits/widgets/streak_label.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class ExpressHabitCard extends StatelessWidget {
   const ExpressHabitCard({
@@ -62,7 +63,7 @@ class ExpressHabitCard extends StatelessWidget {
     final cover = CoverImage.exists(habit.coverPath);
     final skin = done
         ? Color.alphaBlend(
-            habit.color.withValues(alpha: 0.06),
+            habit.color.shownIn(context).withValues(alpha: 0.06),
             expressSurface(context),
           )
         : expressSurface(context);
@@ -119,6 +120,7 @@ class ExpressHabitCard extends StatelessWidget {
                       _MetaPills(
                         habit: habit,
                         planning: settings.planningEnabled,
+                        mode: mode,
                       ),
                     ],
                   ),
@@ -179,23 +181,28 @@ class _Glyph extends StatelessWidget {
       width: 48,
       height: 48,
       decoration: ShapeDecoration(
-        color: habit.color.withValues(alpha: done ? 0.28 : 0.16),
+        color: habit.color.shownIn(context).withValues(alpha: done ? 0.28 : 0.16),
         shape: ExpressBorder(
           shape: done
               ? ExpressShape.cookie.copyWith(rotation: 0.2)
               : ExpressShape.squircle,
         ),
       ),
-      child: HabitGlyph(glyph: habit.icon, color: habit.color, size: 23),
+      child: HabitGlyph(glyph: habit.icon, color: habit.color.shownIn(context), size: 23),
     );
   }
 }
 
 class _MetaPills extends StatelessWidget {
-  const _MetaPills({required this.habit, required this.planning});
+  const _MetaPills({
+    required this.habit,
+    required this.planning,
+    required this.mode,
+  });
 
   final Habit habit;
   final bool planning;
+  final HeatmapMode mode;
 
   @override
   Widget build(BuildContext context) {
@@ -215,13 +222,13 @@ class _MetaPills extends StatelessWidget {
           ),
         _Pill(
           icon: habitMarkIcon(habit),
-          text: habitMarkLabel(context, habit),
-          tint: habit.color,
+          text: habitMarkLabel(context, habit, mode),
+          tint: habit.color.shownIn(context),
         ),
         if (habit.isPlanned && planning)
           _Pill(
             icon: LucideIcons.clock,
-            text: minuteLabel(habit.startMinute),
+            text: context.clockAt(habit.startMinute),
             tint: muted,
           ),
         if (habitHasExplicitFrequency(habit))
@@ -273,8 +280,8 @@ class _QuantWave extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = habit.completions[AppClock.now().dayKey]?.count ?? 0;
-    final progress = QuantProgress.of(count: count, target: habit.perDayTarget);
-    final tint = progress.activeColor(habit.color);
+    final progress = habit.progressFor(count);
+    final tint = progress.activeColor(habit.color.shownIn(context));
     final unit = habit.isTimeAmount || habit.unitLabel.isEmpty
         ? ''
         : ' ${habit.unitLabel}';
@@ -293,8 +300,10 @@ class _QuantWave extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          '${habit.amountText(count)} / '
-          '${habit.amountText(habit.perDayTarget)}$unit',
+          habit.hasGoal
+              ? '${habit.amountText(count)} / '
+                  '${habit.amountText(habit.perDayTarget)}$unit'
+              : '${habit.amountText(count)}$unit',
           style: ExpressType.body.at(
             12.5,
             weight: 700,
@@ -327,19 +336,17 @@ class ExpressAction extends StatelessWidget {
       await controller.clearRelapse(habit.id, today);
       return;
     }
-    final confirmed = await showAppConfirmDialog(
-      context,
-      title: context.l10n.log_relapse_title,
-      message: context.l10n.log_relapse_body(habit.name),
-      confirmLabel: context.l10n.log_relapse_confirm,
-      icon: LucideIcons.ban,
-    );
-    if (confirmed == true) await controller.logRelapse(habit.id, today);
+    final spent = await askRelapse(context, habit);
+    if (spent != null) {
+      await controller.logRelapse(habit.id, today, spent: spent);
+    }
   }
 
   Future<void> _addAmount(BuildContext context) async {
     final controller = context.read<HabitsController>();
     final today = AppClock.now();
+    if (!await allowManualCheck(context, habit: habit, date: today)) return;
+    if (!context.mounted) return;
     if (!await confirmUnscheduledDay(context, habit: habit, date: today)) {
       return;
     }
@@ -362,18 +369,17 @@ class ExpressAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final today = AppClock.now();
     final (icon, color, onTap) = switch (habit.kind) {
-      HabitKind.positive => (LucideIcons.check, habit.color, onToggleToday),
+      HabitKind.positive => (LucideIcons.check, habit.color.shownIn(context), onToggleToday),
       HabitKind.negative => (
         done ? LucideIcons.shieldCheck : LucideIcons.ban,
-        done ? habit.color : context.tokens.danger,
+        done ? habit.color.shownIn(context) : context.tokens.danger,
         () => _relapse(context, !done),
       ),
       HabitKind.quantitative => (
         LucideIcons.plus,
-        QuantProgress.of(
-          count: habit.completions[today.dayKey]?.count ?? 0,
-          target: habit.perDayTarget,
-        ).activeColor(habit.color),
+        habit
+            .progressFor(habit.completions[today.dayKey]?.count ?? 0)
+            .activeColor(habit.color.shownIn(context)),
         () => _addAmount(context),
       ),
     };
@@ -388,6 +394,7 @@ class ExpressAction extends StatelessWidget {
         icon: icon,
         size: size,
         circle: context.watch<SettingsController>().isCircleCheck,
+        restAlpha: habit.kind == HabitKind.positive ? 0.3 : 0.7,
         onTap: onTap,
         onLongPress: habit.kind == HabitKind.quantitative
             ? () => unawaited(addCustomAmount(context, habit))

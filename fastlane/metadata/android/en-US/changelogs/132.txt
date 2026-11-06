@@ -1,0 +1,10 @@
+Streak 2.2.0 🚀
+
+- Classic redesigned and a smoother Minimal
+- Choose which habits each widget shows
+- Plan: whole month view, and timed to-dos in the timeline
+- A fixed day of the month, any amount or any step counts
+- Hourly reminders until a set time
+- Focus: labels for sessions, volume, up to 30 tracks
+- Hide just tracking habits from Today
+- Fixed categories repeated after syncing devices

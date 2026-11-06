@@ -40,15 +40,13 @@ class _YearHeatmapState extends State<YearHeatmap> {
 
   bool _rollingFor(bool on) => on && widget.year == AppClock.now().year;
 
-  DateTime _startFrom(bool rolling) {
+  DateTime _startFrom(bool rolling, int weekStart) {
     if (rolling) {
-      final today = AppClock.today();
-      return today
-          .addDays(-(today.weekday - 1))
+      return AppClock.today()
+          .startOfWeek(weekStart)
           .addDays(-(7 * 52));
     }
-    final firstOfYear = DateTime(widget.year, 1, 1);
-    return firstOfYear.addDays(-(firstOfYear.weekday - 1));
+    return DateTime(widget.year, 1, 1).startOfWeek(weekStart);
   }
 
   @override
@@ -74,12 +72,11 @@ class _YearHeatmapState extends State<YearHeatmap> {
       if (!mounted || !_scroll.hasClients) return;
       final position = _scroll.position;
       final today = AppClock.today();
-      final rolling = _rollingFor(
-        context.read<SettingsController>().heatmapRolling,
-      );
+      final settings = context.read<SettingsController>();
+      final rolling = _rollingFor(settings.heatmapRolling);
       final target = today.year != widget.year && !rolling
           ? 0.0
-          : ((today.epochDay - _startFrom(rolling).epochDay) ~/ 7) * _step +
+          : ((today.epochDay - _startFrom(rolling, settings.weekStart).epochDay) ~/ 7) * _step +
                 _cell / 2 -
                 position.viewportDimension / 2;
       position.jumpTo(
@@ -91,9 +88,9 @@ class _YearHeatmapState extends State<YearHeatmap> {
   @override
   Widget build(BuildContext context) {
     final today = AppClock.today();
-    final rolling =
-        _rollingFor(context.watch<SettingsController>().heatmapRolling);
-    final start = _startFrom(rolling);
+    final settings = context.watch<SettingsController>();
+    final rolling = _rollingFor(settings.heatmapRolling);
+    final start = _startFrom(rolling, settings.weekStart);
     final lastOfYear = DateTime(widget.year, 12, 31);
     final columns =
         rolling ? 53 : (lastOfYear.epochDay - start.epochDay) ~/ 7 + 1;
@@ -123,7 +120,7 @@ class _YearHeatmapState extends State<YearHeatmap> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: List.generate(columns, (col) {
               final colDate = start.addDays(col * 7);
-              final prevDate = start.add(Duration(days: (col - 1) * 7));
+              final prevDate = start.addDays((col - 1) * 7);
                       final isNewMonth = (rolling || colDate.year == widget.year) &&
                   (col == 0 || colDate.month != prevDate.month);
               return Padding(
@@ -140,6 +137,8 @@ class _YearHeatmapState extends State<YearHeatmap> {
                               alignment: Alignment.centerLeft,
                               child: Text(
                                 DateFormat.MMM(locale).format(colDate),
+                                textScaler: MediaQuery.textScalerOf(context)
+                                    .clamp(maxScaleFactor: 1.2),
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,

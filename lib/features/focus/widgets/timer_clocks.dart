@@ -4,11 +4,20 @@ import 'dart:ui' as ui;
 
 import 'package:flip_board/flip_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:streak/core/express/express_type.dart';
 import 'package:streak/features/focus/data/focus_session.dart';
 
-enum ClockStyle { ring, flip, dots }
+enum ClockStyle { ring, flip, dots, plain }
 
 const _flipDepth = 0.22;
+const _flipBleed = 0.08;
+
+TextStyle _digitWeight(BuildContext context, FontWeight weight) =>
+    Theme.of(context).textTheme.bodyMedium?.fontFamily == ExpressType.family
+        ? TextStyle(
+            fontVariations: [FontVariation('wght', weight.value.toDouble())],
+          )
+        : TextStyle(fontWeight: weight);
 
 class FocusClock extends StatelessWidget {
   const FocusClock({
@@ -20,6 +29,8 @@ class FocusClock extends StatelessWidget {
     required this.label,
     required this.size,
     this.row = false,
+    this.paused = false,
+    this.resting = false,
   });
 
   final ClockStyle style;
@@ -29,8 +40,11 @@ class FocusClock extends StatelessWidget {
   final String label;
   final double size;
   final bool row;
+  final bool paused;
+  final bool resting;
 
-  static String clockText(int seconds) => formatDuration(seconds);
+  static String clockText(int seconds) =>
+      formatDuration(seconds).replaceFirst(RegExp(r'^0(?=\d)'), '');
 
   @override
   Widget build(BuildContext context) {
@@ -41,10 +55,82 @@ class FocusClock extends StatelessWidget {
           color: color,
           label: label,
           size: size,
+          paused: paused,
+          resting: resting,
         ),
       ClockStyle.flip => _FlipClock(seconds: seconds, size: size, row: row),
       ClockStyle.dots => _DotsClock(seconds: seconds, size: size),
+      ClockStyle.plain => _PlainClock(
+          seconds: seconds,
+          label: label,
+          size: size,
+          paused: paused,
+          resting: resting,
+        ),
     };
+  }
+}
+
+class _PlainClock extends StatelessWidget {
+  const _PlainClock({
+    required this.seconds,
+    required this.label,
+    required this.size,
+    required this.paused,
+    this.resting = false,
+  });
+
+  final int seconds;
+  final String label;
+  final double size;
+  final bool paused;
+  final bool resting;
+
+  @override
+  Widget build(BuildContext context) {
+    final caption = Text(
+      label,
+      maxLines: 2,
+      textAlign: TextAlign.center,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: size * (resting ? 0.085 : 0.065),
+        fontWeight: FontWeight.w600,
+        height: 1.3,
+        color: Colors.white.withValues(alpha: paused ? 0.9 : 0.6),
+      ),
+    );
+    return SizedBox(
+      width: size,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              FocusClock.clockText(seconds),
+              maxLines: 1,
+              style: _digitWeight(context, FontWeight.w300).copyWith(
+                fontSize: size * 0.32,
+                height: 1,
+                letterSpacing: -2,
+                color: Colors.white,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+          if (label.isNotEmpty) ...[
+            SizedBox(height: size * 0.05),
+            SizedBox(
+              width: size * 0.85,
+              child: paused || resting
+                  ? _Pulse(key: ValueKey(paused), slow: !paused, child: caption)
+                  : caption,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
@@ -55,6 +141,8 @@ class _RingClock extends StatelessWidget {
     required this.color,
     required this.label,
     required this.size,
+    required this.paused,
+    this.resting = false,
   });
 
   final int seconds;
@@ -62,10 +150,25 @@ class _RingClock extends StatelessWidget {
   final Color color;
   final String label;
   final double size;
+  final bool paused;
+  final bool resting;
 
   @override
   Widget build(BuildContext context) {
     final text = FocusClock.clockText(seconds);
+    final caption = Text(
+      label.toUpperCase(),
+      maxLines: 2,
+      textAlign: TextAlign.center,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: size * (resting ? 0.066 : 0.048),
+        fontWeight: FontWeight.w700,
+        letterSpacing: 3,
+        height: 1.35,
+        color: Colors.white.withValues(alpha: paused ? 0.9 : 0.55),
+      ),
+    );
     final stroke = size * 0.052;
 
     return SizedBox(
@@ -92,10 +195,9 @@ class _RingClock extends StatelessWidget {
                   child: Text(
                     text,
                     maxLines: 1,
-                    style: TextStyle(
+                    style: _digitWeight(context, FontWeight.w800).copyWith(
                       fontSize: size * 0.235,
                       height: 1,
-                      fontWeight: FontWeight.w800,
                       letterSpacing: -1.5,
                       color: Colors.white,
                       fontFeatures: const [FontFeature.tabularFigures()],
@@ -106,18 +208,9 @@ class _RingClock extends StatelessWidget {
               SizedBox(height: size * 0.045),
               SizedBox(
                 width: size * 0.6,
-                child: Text(
-                  label.toUpperCase(),
-                  maxLines: 1,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: size * 0.048,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 3,
-                    color: Colors.white.withValues(alpha: 0.55),
-                  ),
-                ),
+                child: paused || resting
+                    ? _Pulse(key: ValueKey(paused), slow: !paused, child: caption)
+                    : caption,
               ),
             ],
           ),
@@ -125,6 +218,34 @@ class _RingClock extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Pulse extends StatefulWidget {
+  const _Pulse({super.key, required this.child, this.slow = false});
+
+  final Widget child;
+  final bool slow;
+
+  @override
+  State<_Pulse> createState() => _PulseState();
+}
+
+class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: Duration(milliseconds: widget.slow ? 2200 : 900),
+    lowerBound: 0.35,
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      FadeTransition(opacity: _controller, child: widget.child);
 }
 
 class _RingPainter extends CustomPainter {
@@ -202,7 +323,7 @@ class _DotsClock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = FocusClock.clockText(seconds);
+    final text = formatDuration(seconds);
     final width = _DotTextPainter.widthFor(text, 1, 0.62);
 
     return SizedBox(
@@ -367,10 +488,19 @@ class _FlipGroupState extends State<_FlipGroup> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FlipWidget<String>(
+    final bleed = EdgeInsets.symmetric(
+      horizontal: widget.width * _flipBleed,
+      vertical: widget.height * _flipBleed,
+    );
+    return SizedBox(
+      width: widget.width,
+      height: widget.height,
+      child: OverflowBox(
+        minWidth: 0,
+        minHeight: 0,
+        maxWidth: widget.width + bleed.horizontal,
+        maxHeight: widget.height + bleed.vertical,
+        child: FlipWidget<String>(
           flipType: FlipType.middleFlip,
           itemStream: _controller.stream,
           initialValue: widget.value,
@@ -378,13 +508,16 @@ class _FlipGroupState extends State<_FlipGroup> {
           flipDuration: const Duration(milliseconds: 450),
           flipCurve: Curves.easeInOut,
           perspectiveEffect: _flipDepth / widget.height,
-          itemBuilder: (_, value) => _FlipFace(
-            value: value ?? widget.value,
-            width: widget.width,
-            height: widget.height,
+          itemBuilder: (_, value) => Padding(
+            padding: bleed,
+            child: _FlipFace(
+              value: value ?? widget.value,
+              width: widget.width,
+              height: widget.height,
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -425,10 +558,9 @@ class _FlipFace extends StatelessWidget {
         children: [
           Text(
             value,
-            style: TextStyle(
+            style: _digitWeight(context, FontWeight.w700).copyWith(
               fontSize: height * 0.56,
               height: 1,
-              fontWeight: FontWeight.w700,
               letterSpacing: -2,
               color: const Color(0xFFE6E6E6),
               fontFeatures: const [FontFeature.tabularFigures()],
@@ -443,4 +575,121 @@ class _FlipFace extends StatelessWidget {
       ),
     );
   }
+}
+
+class ClockPreview extends StatelessWidget {
+  const ClockPreview({
+    super.key,
+    required this.style,
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+    this.seconds = 25 * 60,
+  });
+
+  final ClockStyle style;
+  final String label;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+  final int seconds;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedScale(
+        scale: selected ? 1 : 0.94,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutBack,
+        child: Column(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              width: double.infinity,
+              height: 108,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF1B1B20), Color(0xFF0E0E11)],
+                ),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: selected ? color : Colors.white.withValues(alpha: 0.08),
+                  width: selected ? 2 : 1,
+                ),
+                boxShadow: [
+                  if (selected)
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.35),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                ],
+              ),
+              child: IgnorePointer(
+                child: FittedBox(
+                  child: FocusClock(
+                    style: style,
+                    seconds: seconds,
+                    progress: 1 - seconds / (25 * 60),
+                    color: color,
+                    label: '',
+                    size: 220,
+                    row: true,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 9),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 220),
+              style: DefaultTextStyle.of(context).style.copyWith(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? color : Theme.of(context).colorScheme.onSurface,
+              ),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class LiveSeconds extends StatefulWidget {
+  const LiveSeconds({super.key, required this.builder});
+
+  final Widget Function(BuildContext context, int seconds) builder;
+
+  @override
+  State<LiveSeconds> createState() => _LiveSecondsState();
+}
+
+class _LiveSecondsState extends State<LiveSeconds> {
+  int _seconds = 25 * 60;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      setState(() => _seconds = _seconds <= 0 ? 25 * 60 : _seconds - 1);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _seconds);
 }

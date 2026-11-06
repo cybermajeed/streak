@@ -38,7 +38,6 @@ android {
         versionName = flutter.versionName
     }
 
-    // F-Droid: drop the Google "Dependency metadata" signing block from the APK
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -73,9 +72,6 @@ android {
     }
 }
 
-// F-Droid ABI split: give each per-ABI APK a unique versionCode so they can
-// coexist in the repo. Scheme matches VercodeOperation in the F-Droid metadata
-// (base versionCode * 10 + abi code).
 val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 3)
 android.applicationVariants.configureEach {
     val variant = this

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:streak/features/habits/widgets/avoid_stats.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
@@ -13,10 +14,12 @@ import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/settings/widgets/settings_rows.dart';
 import 'package:streak/features/habits/pages/express_quant_stats_page.dart';
+import 'package:streak/features/habits/pages/habit_stats_page.dart';
 import 'package:streak/features/habits/pages/minimal_quant_stats_page.dart';
 import 'package:streak/core/express/express_surface.dart';
 import 'package:streak/features/habits/widgets/quant_range_bars.dart';
 import 'package:streak/features/statistics/widgets/stat_kit.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class QuantStatsPage extends StatefulWidget {
   const QuantStatsPage({super.key, required this.habitId});
@@ -61,11 +64,19 @@ class _QuantStatsPageState extends State<QuantStatsPage> {
           : ListView(
               padding: context.pagePadding(16, 8, 16, 28),
               children: [
+                if (habit.tracksBook) ...[
+                  StatReveal(child: BookCard(habit: habit)),
+                  const SizedBox(height: 12),
+                ],
+                if (habit.hasTotalGoal) ...[
+                  StatReveal(child: TotalGoalCard(habit: habit)),
+                  const SizedBox(height: 12),
+                ],
                 StatReveal(
                   child: StatPair(
                     left: MiniStat(
                       icon: LucideIcons.sun,
-                      color: habit.color,
+                      color: habit.color.shownIn(context),
                       value: habit.amountText(stats.today),
                       unit: unit,
                       label: context.l10n.today,
@@ -103,7 +114,7 @@ class _QuantStatsPageState extends State<QuantStatsPage> {
                   child: StatPair(
                     left: MiniStat(
                       icon: LucideIcons.calendarCheck,
-                      color: habit.color,
+                      color: habit.color.shownIn(context),
                       value: '${totals.loggedDays}',
                       label: context.l10n.quant_logged_days,
                     ),
@@ -139,7 +150,7 @@ class _QuantStatsPageState extends State<QuantStatsPage> {
                   child: StatCard(
                     title: context.l10n.quant_per_day,
                     icon: LucideIcons.chartColumn,
-                    color: habit.color,
+                    color: habit.color.shownIn(context),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -190,12 +201,16 @@ class QuantStatsLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = habit.color;
+    final color = habit.color.shownIn(context);
 
     return Semantics(
       button: true,
       child: GestureDetector(
-        onTap: () => AppNavigator.push(QuantStatsPage(habitId: habit.id)),
+        onTap: () => AppNavigator.push(
+          habit.kind == HabitKind.quantitative
+              ? QuantStatsPage(habitId: habit.id)
+              : HabitStatsPage(habitId: habit.id),
+        ),
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 5, 6, 5),
           decoration: BoxDecoration(
@@ -244,7 +259,7 @@ class QuantStatsRow extends StatelessWidget {
               icon: LucideIcons.sigma,
               value: habit.amountText(totals.total),
               label: unit.isEmpty ? context.l10n.total : unit,
-              tint: habit.color,
+              tint: habit.color.shownIn(context),
             ),
             ExpressMiniStat(
               icon: LucideIcons.activity,
@@ -274,7 +289,7 @@ class QuantStatsRow extends StatelessWidget {
               Expanded(
                 child: MiniStat(
                   icon: LucideIcons.sigma,
-                  color: habit.color,
+                  color: habit.color.shownIn(context),
                   value: habit.amountText(totals.total),
                   unit: unit,
                   label: context.l10n.total,

@@ -14,6 +14,7 @@ import 'package:streak/features/settings/state/settings_controller.dart';
 
 const focusPresets = [25, 45];
 const focusBreakPresets = [5, 15];
+const focusLongBreakPresets = [15, 30];
 
 class FocusDurationChips extends StatelessWidget {
   const FocusDurationChips({
@@ -155,57 +156,178 @@ class FocusPomodoroCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    context.l10n.focus_break,
-                    style: express
-                        ? ExpressType.body.at(
-                            13.5,
-                            weight: 700,
-                            color: context.tokens.muted,
-                          )
-                        : TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: context.tokens.muted,
-                          ),
+                  _MinuteChoices(
+                    title: context.l10n.focus_break,
+                    presets: focusBreakPresets,
+                    minutes: breakMinutes,
+                    onChanged: onBreakChanged,
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      for (final value in focusBreakPresets)
-                        FocusChip(
-                          label: context.l10n.minutes_short('$value'),
-                          selected: breakMinutes == value,
-                          onTap: () => onBreakChanged(value),
-                        ),
-                      if (!focusBreakPresets.contains(breakMinutes))
-                        FocusChip(
-                          label: context.l10n.minutes_short('$breakMinutes'),
-                          selected: true,
-                          onTap: () {},
-                        ),
-                      _PencilButton(
-                        onTap: () async {
-                          final value = await showNumberKeypadDialog(
-                            context,
-                            title: context.l10n.focus_break,
-                            value: breakMinutes.toDouble(),
-                            unit: context.l10n.unit_min_short,
-                            min: 1,
-                          );
-                          if (value != null) {
-                            onBreakChanged(value.round().clamp(1, 120));
-                          }
-                        },
-                      ),
-                    ],
+                  const SizedBox(height: 6),
+                  _PomodoroOption(
+                    title: context.l10n.focus_long_break,
+                    subtitle: context.l10n.focus_long_break_sub,
+                    value: style.focusLongBreak > 0,
+                    onChanged: (on) => style.setFocusLongBreak(on ? 15 : 0),
+                  ),
+                  if (style.focusLongBreak > 0)
+                    _MinuteChoices(
+                      title: context.l10n.focus_long_break,
+                      heading: false,
+                      presets: focusLongBreakPresets,
+                      minutes: style.focusLongBreak,
+                      onChanged: style.setFocusLongBreak,
+                    ),
+                  _PomodoroOption(
+                    title: context.l10n.focus_auto_next,
+                    subtitle: context.l10n.focus_auto_next_sub,
+                    value: style.focusAutoNext,
+                    onChanged: style.setFocusAutoNext,
+                  ),
+                  _PomodoroOption(
+                    title: context.l10n.focus_whole_rounds,
+                    subtitle: context.l10n.focus_whole_rounds_sub,
+                    value: style.focusWholeRounds,
+                    onChanged: style.setFocusWholeRounds,
                   ),
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MinuteChoices extends StatelessWidget {
+  const _MinuteChoices({
+    required this.title,
+    this.heading = true,
+    required this.presets,
+    required this.minutes,
+    required this.onChanged,
+  });
+
+  final String title;
+  final bool heading;
+  final List<int> presets;
+  final int minutes;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final express = context.watch<SettingsController>().isExpressStyle;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (heading) ...[
+          Text(
+            title,
+            style: express
+                ? ExpressType.body.at(
+                    13.5,
+                    weight: 700,
+                    color: context.tokens.muted,
+                  )
+                : TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: context.tokens.muted,
+                  ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            for (final value in presets)
+              FocusChip(
+                label: context.l10n.minutes_short('$value'),
+                selected: minutes == value,
+                onTap: () => onChanged(value),
+              ),
+            if (!presets.contains(minutes))
+              FocusChip(
+                label: context.l10n.minutes_short('$minutes'),
+                selected: true,
+                onTap: () {},
+              ),
+            _PencilButton(
+              onTap: () async {
+                final value = await showNumberKeypadDialog(
+                  context,
+                  title: title,
+                  value: minutes.toDouble(),
+                  unit: context.l10n.unit_min_short,
+                  min: 1,
+                );
+                if (value != null) onChanged(value.round().clamp(1, 120));
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PomodoroOption extends StatelessWidget {
+  const _PomodoroOption({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final express = context.watch<SettingsController>().isExpressStyle;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: express
+                      ? ExpressType.body.at(
+                          14,
+                          weight: 700,
+                          color: context.colors.onSurface,
+                        )
+                      : TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: context.colors.onSurface,
+                        ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: express
+                      ? ExpressType.body.at(
+                          12.5,
+                          weight: 600,
+                          color: context.tokens.muted,
+                        )
+                      : TextStyle(fontSize: 12.5, color: context.tokens.muted),
+                ),
+              ],
+            ),
+          ),
+          if (express)
+            ExpressSwitch(value: value, onChanged: onChanged)
+          else
+            Switch(value: value, onChanged: onChanged),
         ],
       ),
     );
@@ -219,15 +341,23 @@ class FocusChip extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.icon,
+    this.onLongPress,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
   final IconData? icon;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
+    final chip = _chip(context);
+    if (onLongPress == null) return chip;
+    return GestureDetector(onLongPress: onLongPress, child: chip);
+  }
+
+  Widget _chip(BuildContext context) {
     final style = context.watch<SettingsController>();
     if (style.isExpressStyle) {
       return ExpressChip(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 class ScrollingLine extends StatefulWidget {
   const ScrollingLine({
@@ -6,11 +7,15 @@ class ScrollingLine extends StatefulWidget {
     required this.child,
     this.speed = 26,
     this.pause = const Duration(milliseconds: 1600),
+    this.rounds = 3,
+    this.replayOnScrollUp = false,
   });
 
   final Widget child;
   final double speed;
   final Duration pause;
+  final int rounds;
+  final bool replayOnScrollUp;
 
   @override
   State<ScrollingLine> createState() => _ScrollingLineState();
@@ -18,14 +23,14 @@ class ScrollingLine extends StatefulWidget {
 
 class _ScrollingLineState extends State<ScrollingLine>
     with SingleTickerProviderStateMixin {
-  static const _rounds = 3;
-
   final _scroll = ScrollController();
   late final AnimationController _controller;
 
   Animation<double> _travel = const AlwaysStoppedAnimation(0);
   double _overflow = 0;
   int _round = 0;
+  ScrollPosition? _page;
+  ScrollDirection _heading = ScrollDirection.idle;
 
   @override
   void initState() {
@@ -37,7 +42,29 @@ class _ScrollingLineState extends State<ScrollingLine>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!widget.replayOnScrollUp) return;
+    final page = Scrollable.maybeOf(context)?.position;
+    if (page == _page) return;
+    _page?.removeListener(_watchPage);
+    _page = page?..addListener(_watchPage);
+  }
+
+  void _watchPage() {
+    final heading = _page!.userScrollDirection;
+    if (heading == _heading) return;
+    _heading = heading;
+    if (heading != ScrollDirection.forward) return;
+    if (_overflow <= 0 || _controller.isAnimating) return;
+    if (MediaQuery.disableAnimationsOf(context)) return;
+    _round = widget.rounds - 1;
+    _controller.forward(from: 0);
+  }
+
+  @override
   void dispose() {
+    _page?.removeListener(_watchPage);
     _controller.dispose();
     _scroll.dispose();
     super.dispose();
@@ -79,9 +106,8 @@ class _ScrollingLineState extends State<ScrollingLine>
       ),
     ]).animate(_controller);
     _round = 0;
-    _controller
-      ..duration = Duration(milliseconds: (crossing + pause) * 2)
-      ..forward(from: 0);
+    _controller.duration = Duration(milliseconds: (crossing + pause) * 2);
+    if (!MediaQuery.disableAnimationsOf(context)) _controller.forward(from: 0);
   }
 
   void _follow() {
@@ -91,18 +117,21 @@ class _ScrollingLineState extends State<ScrollingLine>
   void _nextRound(AnimationStatus status) {
     if (status != AnimationStatus.completed) return;
     _round++;
-    if (_round < _rounds) _controller.forward(from: 0);
+    if (_round < widget.rounds) _controller.forward(from: 0);
   }
 
   @override
   Widget build(BuildContext context) {
+    final still = MediaQuery.disableAnimationsOf(context);
+    if (still) _controller.stop();
     final line = SingleChildScrollView(
       controller: _scroll,
       scrollDirection: Axis.horizontal,
-      physics: const NeverScrollableScrollPhysics(),
+      physics: still
+          ? const ClampingScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       child: widget.child,
     );
-    if (MediaQuery.disableAnimationsOf(context)) return line;
 
     _scheduleTune();
     if (_overflow <= 0) return line;
@@ -136,14 +165,6 @@ class ScrollingText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.disableAnimationsOf(context)) {
-      return Text(
-        text,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: style,
-      );
-    }
     return ScrollingLine(
       speed: speed,
       pause: pause,

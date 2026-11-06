@@ -9,6 +9,7 @@ import 'package:streak/core/database/local_store.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/icons/habit_icons.dart';
 import 'package:streak/core/utils/app_dirs.dart';
+import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/l10n/app_localizations.dart';
 import 'package:streak/services/widget_icon_service.dart';
@@ -21,6 +22,8 @@ class HomeWidgetService {
     'TodayWidgetProvider',
     'StatsWidgetProvider',
     'HeatmapWidgetProvider',
+    'FocusWidgetProvider',
+    'FocusBoardWidgetProvider',
   ];
 
   static const _heatmapWeeks = 53;
@@ -63,12 +66,23 @@ class HomeWidgetService {
           'activity': l10n.widget_activity,
           'today_progress': l10n.widget_today_progress('{done}', '{total}'),
           'done_today': l10n.widget_done_today,
+          'today': l10n.today,
+          'this_week': l10n.widget_this_week,
+          'last_days': l10n.widget_last_days('{count}'),
+          'week_done': l10n.widget_week_done('{done}', '{total}'),
+          'today_done': l10n.widget_today_done('{done}', '{total}'),
+          'streak_days': l10n.widget_streak_days,
+          'focus_today': l10n.widget_focus_today,
+          'focus_start': l10n.focus_start,
+          'label_month': l10n.month,
           'todos_open': l10n.widget_todos_open('{count}'),
           'todos_empty': l10n.widget_todos_empty,
           'best_streak': l10n.widget_best_streak('{streak}'),
           'label_week': l10n.week,
           'label_best': l10n.best,
           'cfg_title': l10n.widget_cfg_title,
+          'cfg_content': l10n.widget_cfg_content,
+          'cfg_background': l10n.widget_cfg_background,
           'cfg_color': l10n.widget_cfg_color,
           'cfg_image': l10n.widget_cfg_image,
           'cfg_choose_image': l10n.widget_cfg_choose_image,
@@ -80,10 +94,32 @@ class HomeWidgetService {
           'cfg_opacity': l10n.widget_cfg_opacity('{value}'),
           'cfg_border': l10n.widget_cfg_border,
           'cfg_thickness': l10n.widget_cfg_thickness('{value}'),
-          'cfg_todos_scope': l10n.widget_cfg_todos_scope,
           'cfg_todos_all': l10n.widget_cfg_todos_all,
           'cfg_todos_hint': l10n.widget_cfg_todos_hint,
+          'cfg_show_art': l10n.widget_cfg_show_art,
+          'cfg_show_header': l10n.widget_cfg_show_header,
+          'cfg_show_icons': l10n.widget_cfg_show_icons,
+          'cfg_show_cards': l10n.widget_cfg_show_cards,
+          'cfg_show_details': l10n.widget_cfg_show_details,
+          'cfg_buttons': l10n.widget_cfg_buttons,
+          'cfg_buttons_round': l10n.widget_cfg_buttons_round,
+          'cfg_buttons_square': l10n.widget_cfg_buttons_square,
+          'cfg_buttons_flower': l10n.widget_cfg_buttons_flower,
+          'cfg_tick': l10n.widget_cfg_tick,
+          'cfg_tick_hint': l10n.widget_cfg_tick_hint,
+          'cfg_hide_done': l10n.widget_cfg_hide_done,
+          'cfg_hide_tracking': l10n.tracking_hide,
+          'cfg_today_only': l10n.today_only,
+          'cfg_compact': l10n.widget_cfg_compact,
+          'cfg_compact_hint': l10n.widget_cfg_compact_hint,
+          'cfg_compact_todos_hint': l10n.widget_cfg_compact_todos_hint,
+          'cfg_today_band': l10n.widget_cfg_today_band,
+          'cfg_habit_colors': l10n.widget_cfg_habit_colors,
+          'cfg_habit_colors_hint': l10n.widget_cfg_habit_colors_hint,
+          'cfg_days': l10n.widget_cfg_days,
           'cfg_show_activity': l10n.widget_cfg_show_activity,
+          'cfg_show_habits': l10n.widget_cfg_show_habits,
+          'cfg_show_habits_hint': l10n.widget_cfg_show_habits_hint,
           'cfg_dot_color': l10n.widget_cfg_dot_color,
           'cfg_style': l10n.widget_cfg_style,
           'cfg_style_classic': l10n.widget_cfg_style_classic,
@@ -170,9 +206,64 @@ class HomeWidgetService {
     }
   }
 
+  static String _dateLabel(String pattern, DateTime day) {
+    String plain(String text) {
+      final bare = text.replaceAll('.', '');
+      return bare.isEmpty ? bare : bare[0].toUpperCase() + bare.substring(1);
+    }
+
+    try {
+      return plain(DateFormat(pattern, _locale ?? 'en').format(day));
+    } catch (e) {
+      return '';
+    }
+  }
+
   static List<Habit> _ordered(Map<String, Habit> habits) =>
       habits.values.where((habit) => !habit.isArchived).toList()
         ..sort((a, b) => a.order.compareTo(b.order));
+
+  static Map<String, List<int>> _focusTotals(DateTime now, int weekStart) {
+    final today = now.subtract(Duration(hours: AppClock.cutoffHour)).atMidnight;
+    final todayIndex = today.epochDay;
+    final weekIndex = today.startOfWeek(weekStart).epochDay;
+    final totals = <String, List<int>>{'': List.filled(11, 0)};
+    final days = <String, Set<int>>{};
+    for (final FocusSession session in LocalStore.readFocusSessions()) {
+      final day = session.countedOn;
+      final epoch = day.epochDay;
+      final back = todayIndex - epoch;
+      if (session.seconds > 0) {
+        for (final key in {'', session.habitId}) {
+          days.putIfAbsent(key, () => {}).add(epoch);
+        }
+      }
+      final slots = [
+        epoch == todayIndex,
+        epoch - weekIndex >= 0 && epoch - weekIndex < 7,
+        day.year == today.year && day.month == today.month,
+      ];
+      final recent = back >= 0 && back < 7;
+      if (!slots.contains(true) && !recent) continue;
+      for (final key in {'', session.habitId}) {
+        final sums = totals.putIfAbsent(key, () => List.filled(11, 0));
+        for (var i = 0; i < 3; i++) {
+          if (slots[i]) sums[i] += session.seconds;
+        }
+        if (recent) sums[10 - back] += session.seconds;
+      }
+    }
+    days.forEach((key, set) {
+      var day = set.contains(todayIndex) ? todayIndex : todayIndex - 1;
+      var count = 0;
+      while (set.contains(day)) {
+        count++;
+        day--;
+      }
+      totals.putIfAbsent(key, () => List.filled(11, 0))[3] = count;
+    });
+    return totals;
+  }
 
   static String _encode(Map<String, Habit> habits, Map<String, String> icons) {
     final today = AppClock.now();
@@ -183,6 +274,7 @@ class HomeWidgetService {
     final weekStart = LocalStore.setting('weekStart', 1);
     final weekOffset = _weekDays - 1 - (today.weekday - weekStart + 7) % 7;
     final dates = window.take(_weekDays).toList();
+    final earlier = [today.addDays(-_weekDays - 1), today.addDays(-_weekDays)];
     final listed = _ordered(habits);
 
     final widgetHabits = listed.map((habit) {
@@ -199,7 +291,13 @@ class HomeWidgetService {
         'kind': habit.kind.index,
         'focusOnly': habit.needsFocusSession,
         'streak': habit.currentStreak,
+        'best': habit.longestStreak,
+        'tracking': habit.tracking,
+        'weight': habit.difficultyWeight,
         'perDayTarget': habit.effectiveTarget,
+        'clock': habit.isTimeAmount,
+        'anyAmount': habit.acceptsAnyAmount,
+        'atMost': habit.capsAmount,
         'incrementAmount': habit.incrementAmount,
         'counts': window
             .map((d) => habit.completions[d.dayKey]?.count ?? 0.0)
@@ -208,17 +306,26 @@ class HomeWidgetService {
             .map((d) => !habit.isPausedOn(d) && habit.isScheduledOn(d))
             .toList(),
         'heatmap': _levelsOf(habit, today),
+        'earlier': {
+          'completions': earlier.map(habit.isCompletedOn).toList(),
+          'counts': earlier
+              .map((d) => habit.completions[d.dayKey]?.count ?? 0.0)
+              .toList(),
+          'scheduled': earlier
+              .map((d) => !habit.isPausedOn(d) && habit.isScheduledOn(d))
+              .toList(),
+        },
       };
     }).toList();
 
     final narrow = _narrowWeekdays();
-    final days = window.map((date) {
-      return {
-        'key': date.dayKey,
-        'label': narrow[date.weekday % 7],
-        'isToday': date.dayKey == today.dayKey,
-      };
-    }).toList();
+    Map<String, Object> dayOf(DateTime date) => {
+          'key': date.dayKey,
+          'label': narrow[date.weekday % 7],
+          'short': _dateLabel('ccc', date),
+          'isToday': date.dayKey == today.dayKey,
+        };
+    final days = window.map(dayOf).toList();
 
     final counted = listed.where((h) => !h.tracking).toList();
 
@@ -230,6 +337,11 @@ class HomeWidgetService {
         .where((h) => !h.isPausedOn(today) && h.isScheduledOn(today))
         .toList();
 
+    final finished = due
+        .where((h) => h.isCompletedOn(today) || h.isCoveredOn(today))
+        .toList();
+    final weight = due.fold<int>(0, (sum, h) => sum + h.difficultyWeight);
+
     var weekDone = 0;
     for (final habit in counted) {
       for (final date in dates) {
@@ -240,14 +352,23 @@ class HomeWidgetService {
     return json.encode({
       'habits': widgetHabits,
       'days': days,
+      'earlierDays': earlier.map(dayOf).toList(),
       'weekOffset': weekOffset,
       'todayKey': today.dayKey,
+      'dateLabel': _dateLabel('MMMd', today),
+      'weekdayLabel': _dateLabel('EEEE', today),
       'dayCutoff': AppClock.cutoffHour,
+      'pastFirst': LocalStore.setting('pastFirst', false),
       'heatmap': _heatmapLevels(listed, today),
+      'focus': _focusTotals(today, weekStart),
       'fallbackIconPath': icons[_allHabitsIcon] ?? '',
       if (Platform.isIOS) 'fallbackIconData': _iconData(icons[_allHabitsIcon]),
       'summary': {
-        'doneToday': due.where((h) => h.isCompletedOn(today)).length,
+        'doneToday': finished.length,
+        'ratio': weight == 0
+            ? 0.0
+            : finished.fold<int>(0, (sum, h) => sum + h.difficultyWeight) /
+                weight,
         'total': due.length,
         'bestStreak': bestStreak,
         'weekDone': weekDone,
@@ -266,14 +387,10 @@ class HomeWidgetService {
   }
 
   static List<DateTime> _heatmapDays(DateTime midnight) {
-    final monday = midnight.subtract(Duration(days: midnight.weekday - 1));
-    final start = monday.subtract(
-      const Duration(days: 7 * (_heatmapWeeks - 1)),
-    );
-    return List.generate(
-      _heatmapWeeks * 7,
-      (i) => start.add(Duration(days: i)),
-    );
+    final start = midnight
+        .startOfWeek(LocalStore.setting('weekStart', 1))
+        .addDays(-7 * (_heatmapWeeks - 1));
+    return List.generate(_heatmapWeeks * 7, start.addDays);
   }
 
   static List<int> _heatmapLevels(Iterable<Habit> habits, DateTime today) {

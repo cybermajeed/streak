@@ -193,7 +193,7 @@ class MinimalHeading extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: MinimalType.title(
                     17,
@@ -286,11 +286,13 @@ class MinimalTile extends StatelessWidget {
               Icon(icon, size: 14, color: muted),
               const SizedBox(width: 7),
               Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: MinimalType.label(color: muted),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    style: MinimalType.label(color: muted),
+                  ),
                 ),
               ),
             ],
@@ -316,7 +318,7 @@ class MinimalTile extends StatelessWidget {
               child: Text(
                 caption!,
                 key: ValueKey(caption),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: MinimalType.label(color: muted, size: 11.5),
               ),
@@ -528,14 +530,16 @@ class MinimalButton extends StatelessWidget {
                   const SizedBox(width: 10),
                 ],
                 Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: MinimalType.title(
-                      15.5,
-                      weight: 700,
-                      color: scheme.surface,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: MinimalType.title(
+                        15.5,
+                        weight: 700,
+                        color: scheme.surface,
+                      ),
                     ),
                   ),
                 ),

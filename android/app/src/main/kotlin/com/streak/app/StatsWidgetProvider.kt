@@ -2,9 +2,9 @@ package com.streak.app
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
-import HomeWidgetGlanceWidgetReceiver
+import androidx.glance.appwidget.GlanceAppWidgetReceiver
 
-class StatsWidgetProvider : HomeWidgetGlanceWidgetReceiver<StatsWidget>() {
+class StatsWidgetProvider : GlanceAppWidgetReceiver() {
     override val glanceAppWidget = StatsWidget()
 
     override fun onUpdate(
@@ -13,7 +13,7 @@ class StatsWidgetProvider : HomeWidgetGlanceWidgetReceiver<StatsWidget>() {
         appWidgetIds: IntArray,
     ) {
         WidgetRefreshReceiver.keepFresh(context)
-        super.onUpdate(context, appWidgetManager, appWidgetIds)
+        GlanceWidgets.refreshSoon(context, glanceAppWidget, appWidgetIds, goAsync())
     }
 
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {

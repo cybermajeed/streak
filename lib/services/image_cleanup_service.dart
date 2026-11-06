@@ -14,11 +14,11 @@ class ImageCleanupService {
     for (final note in LocalStore.readNotes()) {
       used.addAll(note.photos);
     }
-
     used.addAll(
       List<String>.from(LocalStore.setting('focusImages', const <String>[])),
     );
     used.add(LocalStore.setting('focusImage', ''));
+    used.add(LocalStore.setting('profilePhoto', ''));
     used.remove('');
     return used;
   }

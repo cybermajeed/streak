@@ -7,7 +7,7 @@ import 'package:streak/core/utils/app_dirs.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/habits/data/completion_ops.dart';
 import 'package:streak/features/habits/data/habit.dart';
-
+import 'package:streak/features/habits/data/habit_links.dart';
 import 'package:streak/services/home_widget_service.dart';
 import 'package:streak/services/notification_service.dart';
 
@@ -20,6 +20,7 @@ class WidgetActionService {
     await HomeWidgetService.prepare();
     final pending = await _read();
     if (pending.isEmpty) return false;
+    await _clear(pending.length);
 
     final today = AppClock.now();
     final quiet = {
@@ -31,6 +32,11 @@ class WidgetActionService {
     for (final raw in pending) {
       try {
         final uri = Uri.parse(raw);
+        if (HabitLinks.marksHabit(uri)) {
+          final id = _applyLink(habits, uri);
+          if (id != null) touched.add(id);
+          continue;
+        }
         final id = _apply(habits, uri);
         if (id != null) touched.add(id);
       } catch (e) {
@@ -43,14 +49,16 @@ class WidgetActionService {
       if (habit == null) continue;
       await LocalStore.writeHabit(habit);
       final before = quiet[id];
-      if (before == null || before == habit.silencesRemindersOn(today)) continue;
+      if (before == null ||
+          (!habit.fromLastDone && before == habit.silencesRemindersOn(today))) {
+        continue;
+      }
       try {
         await NotificationService().scheduleFor(habit);
       } catch (e) {
         debugPrint('Widget reminder refresh skipped ($id): $e');
       }
     }
-    await _clear(pending.length);
     return touched.isNotEmpty;
   }
 
@@ -91,6 +99,15 @@ class WidgetActionService {
     final index = int.tryParse(uri.queryParameters['dayIndex'] ?? '');
     if (index == null) return null;
     return AppClock.now().subtract(Duration(days: 6 - index)).atMidnight;
+  }
+
+  static String? _applyLink(Map<String, Habit> habits, Uri uri) {
+    final habit = habits[uri.queryParameters['habit']];
+    if (habit == null) return null;
+    final completions = HabitLinks.apply(habit, uri);
+    if (completions == null) return null;
+    habits[habit.id] = habit.copyWith(completions: completions);
+    return habit.id;
   }
 
   static String? _apply(Map<String, Habit> habits, Uri uri) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:streak/features/habits/widgets/avoid_stats.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
@@ -17,6 +18,7 @@ import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/widgets/quant_range_bars.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/widgets/express_stat_kit.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class ExpressQuantStatsPage extends StatefulWidget {
   const ExpressQuantStatsPage({super.key, required this.habitId});
@@ -67,7 +69,7 @@ class _ExpressQuantStatsPageState extends State<ExpressQuantStatsPage> {
             icon: LucideIcons.calendarCheck,
             label: context.l10n.quant_logged_days,
             value: '${totals.loggedDays}',
-            tint: habit.color,
+            tint: habit.color.shownIn(context),
             shape: ExpressShape.clover,
           ),
           ExpressStatRow(
@@ -83,7 +85,7 @@ class _ExpressQuantStatsPageState extends State<ExpressQuantStatsPage> {
       ExpressStatPanel(
         title: context.l10n.quant_per_day,
         icon: LucideIcons.chartColumn,
-        tint: habit.color,
+        tint: habit.color.shownIn(context),
         shape: ExpressShape.gem,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -124,6 +126,14 @@ class _ExpressQuantStatsPageState extends State<ExpressQuantStatsPage> {
                   children: [
                     ExpressHeadline(title: habit.name),
                     const SizedBox(height: 20),
+                    if (habit.tracksBook) ...[
+                      BookCard(habit: habit),
+                      const SizedBox(height: 20),
+                    ],
+                    if (habit.hasTotalGoal) ...[
+                      TotalGoalCard(habit: habit),
+                      const SizedBox(height: 20),
+                    ],
                     for (var i = 0; i < sections.length; i++)
                       ExpressReveal(index: i ~/ 2, child: sections[i]),
                   ],
@@ -157,9 +167,9 @@ class _TotalHero extends StatelessWidget {
             children: [
               ExpressBlob(
                 size: 52,
-                color: habit.color.withValues(alpha: 0.18),
+                color: habit.color.shownIn(context).withValues(alpha: 0.18),
                 shape: ExpressShape.flower,
-                child: Icon(LucideIcons.sigma, size: 23, color: habit.color),
+                child: Icon(LucideIcons.sigma, size: 23, color: habit.color.shownIn(context)),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -205,7 +215,7 @@ class _TotalHero extends StatelessWidget {
                 icon: LucideIcons.sun,
                 value: habit.amountText(stats.today),
                 label: context.l10n.today,
-                tint: habit.color,
+                tint: habit.color.shownIn(context),
               ),
               ExpressMiniStat(
                 icon: LucideIcons.calendarDays,

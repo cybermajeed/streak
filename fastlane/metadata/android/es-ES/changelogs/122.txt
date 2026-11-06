@@ -1,0 +1,10 @@
+Streak 2.1.0 🚀
+
+- Las tareas ahora son notas como Google Keep: listas, colores, fotos, fijadas
+- Plan muestra las notas y tareas de cada día
+- Desliza las tarjetas para completar o deshacer
+- Copias en un solo zip con fotos y música
+- Dos sonidos nuevos en Focus: ruido marrón y fuego
+- Decimales en cantidades y tiempo en h:mm
+- Duplicar hábitos y widgets rediseñados
+- Arreglados el Pomodoro congelado, la importación de Loop, las rachas semanales y la música en Windows

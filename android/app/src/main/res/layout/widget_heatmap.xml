@@ -18,15 +18,11 @@
         android:orientation="vertical"
         android:padding="12dp">
 
-        <TextView
+        <ImageView
             android:id="@+id/hm_title"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:textSize="15sp"
-            android:textStyle="bold"
+            android:layout_gravity="center_horizontal"
             android:visibility="gone" />
 
         <LinearLayout
@@ -58,22 +54,16 @@
                 android:layout_marginEnd="6dp"
                 android:orientation="vertical">
 
-                <TextView
+                <ImageView
                     android:id="@+id/hm_name"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
 
-                <TextView
+                <ImageView
                     android:id="@+id/hm_desc"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:textSize="13sp" />
+                    android:importantForAccessibility="no" />
             </LinearLayout>
 
             <FrameLayout
@@ -102,12 +92,11 @@
             android:importantForAccessibility="no" />
     </LinearLayout>
 
-    <TextView
+    <ImageView
         android:id="@+id/hm_empty"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:gravity="center"
         android:padding="12dp"
-        android:textSize="13sp"
+        android:scaleType="center"
         android:visibility="gone" />
 </FrameLayout>

@@ -211,4 +211,46 @@ void main() {
       expect(stats.allDone, 0);
     });
   });
+
+  group('HabitStats streak series', () {
+    final day0 = AppClock.today().addDays(-60);
+
+    Habit scheduled(HabitInterval interval, bool Function(int) doneOn) =>
+        Habit(
+          id: 'h',
+          name: 'Test',
+          color: const Color(0xFF00FF00),
+          order: 0,
+          interval: interval,
+          scheduleEvery: 5,
+          targetFrequency: 2,
+          createdAt: day0,
+          completions: {
+            for (var i = 0; i <= 60; i++)
+              if (doneOn(i))
+                day0.addDays(i).dayKey: Completion(
+                  date: day0.addDays(i).dayKey,
+                  hour: 9,
+                  count: 1,
+                ),
+          },
+        );
+
+    void expectSteady(Habit habit) {
+      final series = HabitStats.compute([habit], year).streakSeries;
+      final lived = series.sublist(HabitStats.window - 55);
+      for (var i = 1; i < lived.length; i++) {
+        expect(lived[i], greaterThanOrEqualTo(lived[i - 1]));
+      }
+      expect(series.last, habit.currentStreak);
+    }
+
+    test('a habit done every 5 days does not drop between completions', () {
+      expectSteady(scheduled(HabitInterval.everyXDays, (i) => i % 5 == 0));
+    });
+
+    test('a twice a week habit counts weeks, not days in a row', () {
+      expectSteady(scheduled(HabitInterval.weekly, (i) => i % 3 == 0));
+    });
+  });
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/core/database/local_store.dart';
 import 'package:streak/core/widgets/celebration_overlay.dart';
@@ -76,7 +75,7 @@ void main() {
 
     Future<void> check(WidgetTester tester, int index) async {
       await tester.runAsync(() async {
-        await tester.tap(find.byIcon(LucideIcons.check).at(index));
+        await tester.tap(find.bySemanticsLabel(RegExp(r'^Mark \w+ as')).at(index));
         await Future<void>.delayed(const Duration(milliseconds: 80));
       });
       await tester.pump();

@@ -15,17 +15,21 @@ import 'package:streak/core/extensions/inset_extensions.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/routing/app_navigator.dart';
 import 'package:streak/core/utils/app_dirs.dart';
+import 'package:streak/core/utils/responsive.dart';
 import 'package:streak/core/widgets/section_label.dart';
 import 'package:streak/core/widgets/number_keypad_dialog.dart';
-import 'package:streak/features/habits/widgets/category_editor_sheet.dart';
+import 'package:streak/features/settings/data_folder_actions.dart';
 import 'package:streak/features/settings/pages/about_page.dart';
 import 'package:streak/features/settings/pages/app_style_page.dart';
 import 'package:streak/features/settings/pages/archived_habits_page.dart';
 import 'package:streak/features/settings/pages/quotes_page.dart';
 import 'package:streak/features/settings/settings_actions.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/features/settings/widgets/import_apps_card.dart';
 import 'package:streak/features/settings/widgets/minimal_settings_widgets.dart';
+import 'package:streak/features/settings/widgets/color_theme_sheet.dart';
 import 'package:streak/features/settings/widgets/settings_sheets.dart';
+import 'package:streak/features/settings/widgets/widget_style_list.dart';
 
 class ExpressSettingsPage extends StatelessWidget {
   const ExpressSettingsPage({super.key});
@@ -33,6 +37,7 @@ class ExpressSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>();
+    final listed = stackedRows(context);
 
     final items = <Widget>[
       ExpressHeadline(title: context.l10n.settings),
@@ -54,7 +59,36 @@ class ExpressSettingsPage extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 22),
-      IntrinsicHeight(
+      if (listed)
+        ExpressGroup(
+          children: [
+            ExpressTile(
+              icon: LucideIcons.palette,
+              title: context.l10n.appearance,
+              subtitle: context.l10n.appearance_sub,
+              onTap: () => AppNavigator.push(const _AppearancePage()),
+            ),
+            ExpressTile(
+              icon: LucideIcons.slidersHorizontal,
+              title: context.l10n.preferences,
+              subtitle: context.l10n.preferences_sub,
+              onTap: () => AppNavigator.push(const _PreferencesPage()),
+            ),
+            ExpressTile(
+              icon: LucideIcons.database,
+              title: context.l10n.data,
+              subtitle: context.l10n.data_sub,
+              onTap: () => AppNavigator.push(const _DataPage()),
+            ),
+            ExpressTile(
+              icon: LucideIcons.heartHandshake,
+              title: context.l10n.support,
+              subtitle: context.l10n.support_sub,
+              onTap: () => AppNavigator.push(const _SupportPage()),
+            ),
+          ],
+        ),
+      if (!listed) IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -78,8 +112,8 @@ class ExpressSettingsPage extends StatelessWidget {
           ],
         ),
       ),
-      const SizedBox(height: Express.groupGap),
-      IntrinsicHeight(
+      if (!listed) const SizedBox(height: Express.groupGap),
+      if (!listed) IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -284,36 +318,47 @@ class _ProfileHero extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Semantics(
-              button: true,
-              label: context.l10n.edit_name,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => SettingsActions.editName(context),
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: ExpressType.display.at(
-                          26,
-                          height: 1.1,
-                          spacing: -0.4,
-                          color: context.colors.onSurface,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: ExpressType.display.at(
+                    26,
+                    height: 1.1,
+                    spacing: -0.4,
+                    color: context.colors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Semantics(
+                  button: true,
+                  child: Material(
+                    color: context.colors.primary.withValues(alpha: 0.12),
+                    shape: const StadiumBorder(),
+                    child: InkWell(
+                      customBorder: const StadiumBorder(),
+                      onTap: () => SettingsActions.editProfile(context),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 7,
+                        ),
+                        child: Text(
+                          context.l10n.edit_profile,
+                          style: ExpressType.body.at(
+                            13,
+                            weight: 700,
+                            color: context.colors.primary,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 9),
-                    Icon(
-                      LucideIcons.pencil,
-                      size: 15,
-                      color: context.tokens.muted,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ],
@@ -384,6 +429,14 @@ List<Widget> _appearanceTiles(BuildContext context) {
           ),
         ),
         ExpressTile(
+          icon: LucideIcons.swatchBook,
+          title: context.l10n.color_theme,
+          subtitle: context.l10n.color_theme_sub,
+          value: colorThemeLabel(context, settings.colorTheme),
+          onTap: () => showColorThemeSheet(context),
+        ),
+        if (settings.colorTheme == null)
+        ExpressTile(
           icon: LucideIcons.palette,
           title: context.l10n.accent_color,
           subtitle: context.l10n.accent_color_sub,
@@ -431,9 +484,60 @@ List<Widget> _appearanceTiles(BuildContext context) {
               onSelected: settings.setAppIcon,
             ),
           ),
+        ExpressTile(
+          icon: LucideIcons.gauge,
+          title: context.l10n.performance,
+          subtitle: context.l10n.performance_sub,
+          onTap: () => AppNavigator.push(const _PerformancePage()),
+        ),
+        if (Platform.isAndroid)
+          ExpressTile(
+            icon: LucideIcons.layoutDashboard,
+            title: context.l10n.widgets,
+            subtitle: context.l10n.widgets_sub,
+            onTap: () => AppNavigator.push(const _WidgetsPage()),
+          ),
       ],
     ),
   ];
+}
+
+class _PerformancePage extends StatelessWidget {
+  const _PerformancePage();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsController>();
+
+    return ExpressScaffold(
+      title: context.l10n.performance,
+      subtitle: context.l10n.performance_sub,
+      children: [
+        ExpressGroup(
+          children: [
+            _Toggle(
+              icon: LucideIcons.sparkles,
+              title: context.l10n.animations,
+              subtitle: context.l10n.animations_sub,
+              value: settings.animations,
+              onChanged: settings.setAnimations,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _WidgetsPage extends StatelessWidget {
+  const _WidgetsPage();
+
+  @override
+  Widget build(BuildContext context) => ExpressScaffold(
+    title: context.l10n.widgets,
+    subtitle: context.l10n.widgets_hint,
+    children: const [WidgetStyleList()],
+  );
 }
 
 List<Widget> _preferenceTiles(BuildContext context) {
@@ -466,7 +570,8 @@ List<Widget> _preferenceTiles(BuildContext context) {
             title: context.l10n.week_starts_on,
             options: weekDays,
             index: weekIndex,
-            onSelected: (i) => settings.setWeekStart(
+            onSelected: (i) => SettingsActions.setWeekStart(
+                context,
               switch (i) {
                 1 => 6,
                 2 => 7,
@@ -503,6 +608,13 @@ List<Widget> _preferenceTiles(BuildContext context) {
             onSelected: settings.setCelebration,
           ),
         ),
+        _Toggle(
+          icon: LucideIcons.volume2,
+          title: context.l10n.check_sound,
+          subtitle: context.l10n.check_sound_sub,
+          value: settings.checkSound,
+          onChanged: settings.setCheckSound,
+        ),
       ],
     ),
     const SizedBox(height: 24),
@@ -521,12 +633,6 @@ List<Widget> _preferenceTiles(BuildContext context) {
             index: settings.startView,
             onSelected: settings.setStartView,
           ),
-        ),
-        ExpressTile(
-          icon: LucideIcons.tags,
-          title: context.l10n.category_order,
-          subtitle: context.l10n.category_order_sub,
-          onTap: () => showCategoryOrderSheet(context),
         ),
         _Toggle(
           icon: LucideIcons.layoutGrid,
@@ -580,6 +686,20 @@ List<Widget> _preferenceTiles(BuildContext context) {
           value: settings.todayOnly,
           onChanged: settings.setTodayOnly,
         ),
+        _Toggle(
+          icon: LucideIcons.listChecks,
+          title: context.l10n.hide_done,
+          subtitle: context.l10n.hide_done_sub,
+          value: settings.hideDone,
+          onChanged: settings.setHideDone,
+        ),
+        _Toggle(
+          icon: LucideIcons.history,
+          title: context.l10n.past_first,
+          subtitle: context.l10n.past_first_sub,
+          value: settings.pastFirst,
+          onChanged: settings.setPastFirst,
+        ),
       ],
     ),
     const SizedBox(height: 24),
@@ -619,13 +739,19 @@ List<Widget> _preferenceTiles(BuildContext context) {
           value: settings.notesEnabled,
           onChanged: settings.setNotesEnabled,
         ),
-
         _Toggle(
           icon: LucideIcons.calendarClock,
           title: context.l10n.plan_day,
           subtitle: context.l10n.plan_day_sub,
-          value: settings.planningEnabled,
-          onChanged: settings.setPlanningEnabled,
+          value: SettingsActions.planOptions(context)[settings.planChoice],
+          onTap: () => SettingsActions.pickPlan(context),
+        ),
+        _Toggle(
+          icon: LucideIcons.moveHorizontal,
+          title: context.l10n.swipe_cards,
+          subtitle: context.l10n.swipe_cards_sub,
+          value: settings.swipeCards,
+          onChanged: settings.setSwipeCards,
         ),
         _Toggle(
           icon: LucideIcons.activity,
@@ -715,14 +841,10 @@ List<Widget> _preferenceTiles(BuildContext context) {
 
 List<Widget> _dataTiles(BuildContext context) {
   return [
+    ImportAppsCard(onTap: () => SettingsActions.importFromApp(context)),
+    const SizedBox(height: 12),
     ExpressGroup(
       children: [
-        ExpressTile(
-          icon: LucideIcons.import,
-          title: context.l10n.import_from_app,
-          subtitle: context.l10n.import_from_app_sub,
-          onTap: () => SettingsActions.importFromApp(context),
-        ),
         ExpressTile(
           icon: LucideIcons.upload,
           title: context.l10n.import_backup,
@@ -747,6 +869,13 @@ List<Widget> _dataTiles(BuildContext context) {
             title: context.l10n.refresh_now,
             subtitle: context.l10n.refresh_now_sub,
             onTap: () => SettingsActions.refreshFolder(context),
+          ),
+        if (DataFolderActions.available)
+          ExpressTile(
+            icon: LucideIcons.folderInput,
+            title: context.l10n.data_folder,
+            subtitle: dataPath,
+            onTap: () => DataFolderActions.pick(context),
           ),
         ExpressTile(
           icon: LucideIcons.archive,

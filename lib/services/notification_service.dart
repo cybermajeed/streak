@@ -1,14 +1,17 @@
 import 'dart:io';
+import 'dart:math';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:streak/core/constants/motivational_quotes.dart';
+import 'package:streak/core/i18n/app_locale.dart';
 import 'package:streak/core/database/local_store.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/utils/amount_format.dart';
+import 'package:streak/core/utils/app_dirs.dart';
 import 'package:streak/features/habits/data/completion.dart';
 import 'package:streak/features/habits/data/completion_ops.dart';
 import 'package:streak/features/habits/data/habit.dart';
@@ -18,9 +21,12 @@ import 'package:streak/services/reminder_schedule.dart';
 import 'package:streak/l10n/app_localizations.dart';
 import 'package:streak/l10n/app_localizations_en.dart';
 import 'package:streak/services/home_widget_service.dart';
-import 'package:streak/services/linux_notifications.dart';
+import 'package:streak/services/in_app_notifications.dart';
+import 'package:streak/services/reminder_sounds.dart';
+import 'package:streak/services/widget_icon_service.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:uuid/uuid.dart';
 
 class NotificationService {
   NotificationService._internal();
@@ -28,13 +34,17 @@ class NotificationService {
   factory NotificationService() => _instance;
 
   final _plugin = FlutterLocalNotificationsPlugin();
-  late final _linux = LinuxNotifications(_plugin);
+  late final _inApp = InAppNotifications(_plugin);
   static const _channelId = 'habit_reminders';
   static const _channelName = 'Habit Reminders';
+  static String get windowsAppId =>
+      isPortable ? 'com.streak.app.portable' : 'com.streak.app';
 
   static const actionDone = 'habit_done';
   static const actionSnooze = 'habit_snooze';
   static const actionAdd = 'habit_add';
+
+  static const _amountInput = 'amount';
 
   static bool takesAmount(Habit habit) =>
       habit.kind == HabitKind.quantitative || habit.effectiveTarget > 1;
@@ -77,25 +87,61 @@ class NotificationService {
   }
 
   static void Function(String habitId)? onOpenHabit;
+  static void Function()? onHabitsChanged;
 
   String? pendingHabitId;
 
   bool _ready = false;
+  bool _knownToWindows = false;
+
+  static (String?, String?, String?) _read(NotificationResponse response) {
+    final payload = response.payload;
+    if (!Platform.isWindows || payload == null) {
+      return (payload, response.actionId, response.input);
+    }
+    final split = payload.indexOf(':');
+    final action = split < 0 ? null : payload.substring(0, split);
+    if (!NotificationActions.handles(action)) return (payload, null, null);
+    final input = response.data[_amountInput];
+    return (payload.substring(split + 1), action, input is String ? input : null);
+  }
+
+  static String _windowsArguments(String action, Habit habit) =>
+      '$action:${habit.id}';
 
   void _handleResponse(NotificationResponse response) {
-    final id = response.payload;
+    final (id, actionId, input) = _read(response);
     if (id == null || id.isEmpty) return;
-
-    if (NotificationActions.handles(response.actionId)) {
-      NotificationActions.apply(
-        response.actionId!,
-        id,
-        response.input,
-        response.id,
-      );
+    if (NotificationActions.handles(actionId)) {
+      NotificationActions.apply(actionId!, id, input, response.id)
+          .then((_) => onHabitsChanged?.call());
       return;
     }
-    onOpenHabit?.call(id);
+    openFromPayload(id);
+  }
+
+  static void openFromPayload(String payload) {
+    onOpenHabit?.call(payload);
+  }
+
+  static tz.Location _localZone(String reported) {
+    final names = [if (Platform.isLinux) _linkedZone(), reported];
+    for (final name in names.whereType<String>()) {
+      try {
+        return tz.getLocation(name);
+      } catch (_) {}
+    }
+    return tz.UTC;
+  }
+
+  static String? _linkedZone() {
+    try {
+      final target = Link('/etc/localtime').targetSync();
+      final at = target.indexOf('zoneinfo/');
+      return at < 0 ? null : target.substring(at + 'zoneinfo/'.length);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> initialize() async {
@@ -103,7 +149,7 @@ class NotificationService {
 
     tz.initializeTimeZones();
     final zone = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(zone.identifier));
+    tz.setLocalLocation(_localZone(zone.identifier));
 
     const android = AndroidInitializationSettings('ic_stat_notify');
     final darwin = DarwinInitializationSettings(
@@ -112,14 +158,22 @@ class NotificationService {
       requestSoundPermission: false,
       notificationCategories: _categories(await localizations()),
     );
-    const windows = WindowsInitializationSettings(
+    final windows = WindowsInitializationSettings(
       appName: 'Streak',
-      appUserModelId: 'com.streak.app',
+      appUserModelId: windowsAppId,
       guid: 'cfb32a7d-9c06-495b-8afa-df8829d33edc',
+      iconPath: [
+        File(Platform.resolvedExecutable).parent.path,
+        'data',
+        'flutter_assets',
+        'assets',
+        'icon.png',
+      ].join(Platform.pathSeparator),
     );
     final linux = LinuxInitializationSettings(
       defaultActionName: 'Open',
       defaultIcon: AssetsLinuxIcon('assets/icon.png'),
+      defaultSound: ThemeLinuxSound('message-new-instant'),
     );
     await _plugin.initialize(
       InitializationSettings(
@@ -134,9 +188,13 @@ class NotificationService {
 
     final launch =
         Platform.isLinux ? null : await _plugin.getNotificationAppLaunchDetails();
-    if (launch?.didNotificationLaunchApp ?? false) {
-      pendingHabitId = launch!.notificationResponse?.payload;
-    }
+    final opened = launch?.didNotificationLaunchApp ?? false
+        ? launch!.notificationResponse
+        : null;
+    final (launchId, launchAction, launchInput) =
+        opened == null ? (null, null, null) : _read(opened);
+    final launchedByAction = NotificationActions.handles(launchAction);
+    if (!launchedByAction) pendingHabitId = launchId;
 
     if (Platform.isAndroid) {
       await _plugin
@@ -150,9 +208,15 @@ class NotificationService {
           ));
     }
 
+    if (isPortable) await _plugin.cancelAll();
+    if (_keepsPayloads) await _loadPayloads();
     await _repairStore();
 
     _ready = true;
+
+    if (launchedByAction && launchId != null) {
+      await NotificationActions.apply(launchAction!, launchId, launchInput);
+    }
   }
 
   Future<void> _repairStore() async {
@@ -165,7 +229,7 @@ class NotificationService {
   }
 
   Future<bool> requestNotifications() async {
-    if (Platform.isLinux) return true;
+    if (Platform.isLinux || Platform.isWindows) return true;
     try {
       if (await Permission.notification.isGranted) return true;
       return (await Permission.notification.request()).isGranted;
@@ -189,7 +253,7 @@ class NotificationService {
 
   Future<void> scheduleFor(Habit habit) async {
     if (!_ready) await initialize();
-    if (habit.isOnVacation) {
+    if (habit.isOnVacation || habit.isArchived) {
       await cancelFor(habit.id);
       return;
     }
@@ -209,6 +273,9 @@ class NotificationService {
   Future<Set<int>> _schedule(Habit habit, Reminder reminder) async {
     final strings = await localizations();
     final body = _bodyFor(habit, reminder, strings);
+    if (habit.interval == HabitInterval.everyXDays) {
+      return _scheduleOnHabitDays(habit, reminder, body, strings);
+    }
     if (reminder.isHourly) {
       return _scheduleHourly(habit, reminder, body, strings);
     }
@@ -219,12 +286,14 @@ class NotificationService {
 
   Future<AppLocalizations> localizations() async {
     final tag = LocalStore.setting('locale', '').trim();
-    for (final candidate in [if (tag.isNotEmpty) tag, 'en']) {
-      try {
-        return await AppLocalizations.delegate.load(_localeOf(candidate));
-      } catch (_) {}
+    final locale = pickLocale(
+      tag.isEmpty ? PlatformDispatcher.instance.locales : [_localeOf(tag)],
+    );
+    try {
+      return await AppLocalizations.delegate.load(locale);
+    } catch (_) {
+      return AppLocalizationsEn();
     }
-    return AppLocalizationsEn();
   }
 
   Locale _localeOf(String tag) {
@@ -233,15 +302,14 @@ class NotificationService {
   }
 
   String _bodyFor(Habit habit, Reminder? reminder, AppLocalizations strings) {
-    final lang = LocalStore.setting('locale', '') == 'es' ? 'es' : 'en';
     final message = reminder?.message.trim() ?? '';
     final quotesOff = LocalStore.setting('quoteSource', 0) == 3;
     var body = message.isNotEmpty
         ? message
-        : (quotesOff ? '' : MotivationalQuotes.random(lang));
+        : (quotesOff ? '' : _quoteOf(strings));
     final name = LocalStore.setting('profileName', '').trim();
     if (name.isNotEmpty && body.isNotEmpty) {
-      body = (lang == 'es' ? 'Hola $name, ' : 'Hi $name, ') + body;
+      body = strings.notif_greeting(name) + body;
     }
     final streak = habit.currentStreak;
     if (streak > 0) {
@@ -253,6 +321,29 @@ class NotificationService {
       body = '$body\n$line';
     }
     return body;
+  }
+
+  static final _random = Random();
+
+  String _quoteOf(AppLocalizations strings) {
+    final quotes = [
+      strings.notif_quote_1,
+      strings.notif_quote_2,
+      strings.notif_quote_3,
+      strings.notif_quote_4,
+      strings.notif_quote_5,
+      strings.notif_quote_6,
+      strings.notif_quote_7,
+      strings.notif_quote_8,
+      strings.notif_quote_9,
+      strings.notif_quote_10,
+      strings.notif_quote_11,
+      strings.notif_quote_12,
+      strings.notif_quote_13,
+      strings.notif_quote_14,
+      strings.notif_quote_15,
+    ];
+    return quotes[_random.nextInt(quotes.length)];
   }
 
   bool _quietToday(Habit habit) =>
@@ -308,17 +399,23 @@ class NotificationService {
   Future<Set<int>> _scheduleHourly(Habit habit, Reminder reminder, String body,
       AppLocalizations strings) async {
     final ids = <int>{};
+    final daily = reminder.days.length == 7 &&
+        Iterable<int>.generate(7, (i) => i + 1).every(habit.ringsOnWeekday);
+    final days = daily
+        ? const [1]
+        : [for (final day in reminder.days) if (habit.ringsOnWeekday(day)) day];
+    final cap = ReminderSchedule.hourlyCap(days.length);
     final slots = ReminderSchedule.hourlySlots(
       hour: reminder.hour,
       minute: reminder.minute,
-      everyHours: reminder.everyHours,
+      everyMinutes: reminder.everyMinutes,
+      until: reminder.untilMinute,
+      cap: cap,
     );
     final now = tz.TZDateTime.now(tz.local);
     final from = _firstMoment(habit);
-    final daily = _repeatsDaily(habit, reminder);
 
-    for (final day in daily ? const [1] : reminder.days) {
-      if (!habit.ringsOnWeekday(day)) continue;
+    for (final (index, day) in days.indexed) {
       for (var slot = 0; slot < slots.length; slot++) {
         final next = daily
             ? ReminderSchedule.nextDaily(
@@ -333,13 +430,14 @@ class NotificationService {
                 minute: slots[slot] % 60,
               );
         ids.addAll(await _scheduleRepeating(
-          ReminderSchedule.hourlyId(habit.id, reminder.id, day, slot),
+          _notificationId(habit.id, reminder.id, index * cap + slot),
           habit,
           body,
           strings,
           next,
           from,
           daily: daily,
+          reminder: reminder,
         ));
       }
     }
@@ -392,15 +490,42 @@ class NotificationService {
     DateTime next,
     tz.TZDateTime from, {
     bool daily = false,
+    Reminder? reminder,
   }) async {
     final when = tz.TZDateTime.from(next, tz.local);
+    if (Platform.isWindows && !isPortable && !when.isBefore(from)) {
+      final details = await _details(habit, body, strings, reminder: reminder);
+      final ids = <int>{};
+      for (var turn = 1; turn <= (daily ? 14 : 8); turn++) {
+        final turnId = ReminderSchedule.quietId(id, turn);
+        ids.add(turnId);
+        await _zonedSchedule(
+          turnId,
+          habit.name,
+          body,
+          tz.TZDateTime.from(
+            DateTime(
+              next.year,
+              next.month,
+              next.day + (daily ? 1 : 7) * (turn - 1),
+              next.hour,
+              next.minute,
+            ),
+            tz.local,
+          ),
+          details,
+          payload: habit.id,
+        );
+      }
+      return ids;
+    }
     if (!when.isBefore(from)) {
       await _zonedSchedule(
         id,
         habit.name,
         body,
         when,
-        _details(habit, body, strings),
+        await _details(habit, body, strings, reminder: reminder),
         payload: habit.id,
         matchDateTimeComponents: daily
             ? DateTimeComponents.time
@@ -426,7 +551,39 @@ class NotificationService {
           ),
           tz.local,
         ),
-        _details(habit, body, strings),
+        await _details(habit, body, strings, reminder: reminder),
+        payload: habit.id,
+      );
+    }
+    return ids;
+  }
+
+  Future<Set<int>> _scheduleOnHabitDays(Habit habit, Reminder reminder,
+      String body, AppLocalizations strings) async {
+    final slots = reminder.isHourly
+        ? ReminderSchedule.hourlySlots(
+            hour: reminder.hour,
+            minute: reminder.minute,
+            everyMinutes: reminder.everyMinutes,
+            until: reminder.untilMinute,
+          )
+        : [reminder.hour * 60 + reminder.minute];
+    final moments = ReminderSchedule.onHabitDays(
+      from: _firstMoment(habit),
+      due: (day) => !habit.isOffDay(day),
+      slots: slots,
+      limit: Platform.isIOS ? 8 : ReminderSchedule.slotsPerReminder,
+    );
+    final ids = <int>{};
+    for (final (index, at) in moments.indexed) {
+      final id = _notificationId(habit.id, reminder.id, index);
+      ids.add(id);
+      await _zonedSchedule(
+        id,
+        habit.name,
+        body,
+        tz.TZDateTime.from(at, tz.local),
+        await _details(habit, body, strings, reminder: reminder),
         payload: habit.id,
       );
     }
@@ -468,23 +625,109 @@ class NotificationService {
         habit.name,
         body,
         when,
-        _details(habit, body, strings),
+        await _details(habit, body, strings),
         payload: habit.id,
       );
     }
     return ids;
   }
 
-  NotificationDetails _details(
+  static final _windowsSound =
+      WindowsNotificationAudio.preset(sound: WindowsNotificationSound.reminder);
+
+  Future<List<WindowsImage>> _windowsLogo(Habit? habit) async {
+    if (habit == null) return const [];
+    final logo =
+        await WidgetIconService.badge(habit.icon, habit.color.toARGB32());
+    if (logo == null) return const [];
+    return [
+      WindowsImage(
+        Uri.file(logo, windows: true),
+        altText: habit.name,
+        placement: WindowsImagePlacement.appLogoOverride,
+        crop: WindowsImageCrop.circle,
+      ),
+    ];
+  }
+
+  Future<WindowsNotificationDetails?> _windowsDetails(
+    Habit habit,
+    AppLocalizations strings,
+  ) async {
+    if (!Platform.isWindows) return null;
+    final amount = takesAmount(habit);
+    return WindowsNotificationDetails(
+      audio: _windowsSound,
+      images: await _windowsLogo(habit),
+      inputs: [
+        if (amount)
+          WindowsTextInput(
+            id: _amountInput,
+            placeHolderContent: strings.notif_action_add_hint,
+          ),
+      ],
+      actions: [
+        if (habit.kind != HabitKind.negative)
+          WindowsAction(
+            content: strings.notif_action_done,
+            arguments: _windowsArguments(actionDone, habit),
+          ),
+        if (amount)
+          WindowsAction(
+            content: strings.notif_action_add,
+            arguments: _windowsArguments(actionAdd, habit),
+            inputId: _amountInput,
+          ),
+        WindowsAction(
+          content: strings.notif_action_snooze,
+          arguments: _windowsArguments(actionSnooze, habit),
+        ),
+      ],
+    );
+  }
+
+  static const _soundChannelPrefix = 'habit_sound_';
+
+  static String _soundChannelId(String uri) =>
+      '$_soundChannelPrefix${uri.replaceAll(RegExp('[^A-Za-z0-9]'), '_')}';
+
+  Future<String?> _soundOf(Habit habit) async {
+    if (!Platform.isAndroid || habit.soundUri.isEmpty) return null;
+    return ReminderSounds.resolve(habit.soundUri, habit.soundName);
+  }
+
+  Future<void> dropUnusedSoundChannels(Iterable<Habit> habits) async {
+    if (!Platform.isAndroid) return;
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return;
+    final used = {
+      for (final habit in habits)
+        if (habit.soundUri.isNotEmpty) _soundChannelId(habit.soundUri),
+    };
+    for (final channel in await android.getNotificationChannels() ?? const []) {
+      if (channel.id.startsWith(_soundChannelPrefix) &&
+          !used.contains(channel.id)) {
+        await android.deleteNotificationChannel(channel.id);
+      }
+    }
+  }
+
+  Future<NotificationDetails> _details(
     Habit habit,
     String body,
-    AppLocalizations strings,
-  ) =>
-      NotificationDetails(
+    AppLocalizations strings, {
+    Reminder? reminder,
+  }) async {
+    final sound = await _soundOf(habit);
+    final own = sound != null;
+    return NotificationDetails(
+        windows: await _windowsDetails(habit, strings),
         android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
+          own ? _soundChannelId(habit.soundUri) : _channelId,
+          own ? '$_channelName \u00b7 ${habit.soundName}' : _channelName,
           channelDescription: 'Reminders to keep your streaks alive',
+          sound: own ? UriAndroidNotificationSound(sound) : null,
           importance: Importance.high,
           priority: Priority.high,
           color: habit.color,
@@ -492,6 +735,9 @@ class NotificationService {
           icon: 'ic_stat_notify',
           styleInformation: BigTextStyleInformation(body),
           largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+          timeoutAfter: reminder != null && reminder.isHourly
+              ? reminder.everyMinutes * Duration.millisecondsPerMinute
+              : null,
           actions: [
             if (habit.kind != HabitKind.negative)
               AndroidNotificationAction(
@@ -525,6 +771,7 @@ class NotificationService {
           threadIdentifier: habit.id,
         ),
       );
+  }
 
   Future<void> snooze(Habit habit) async {
     if (!_ready) await initialize();
@@ -537,7 +784,7 @@ class NotificationService {
       habit.name,
       body,
       tz.TZDateTime.now(tz.local).add(Duration(minutes: minutes)),
-      _details(habit, body, strings),
+      await _details(habit, body, strings),
       payload: habit.id,
     );
   }
@@ -569,6 +816,27 @@ class NotificationService {
         ),
       );
     } catch (_) {}
+  }
+
+  Future<void> showFocusEnd({
+    required String title,
+    required String body,
+    String habitId = '',
+  }) async {
+    if (!_ready) await initialize();
+    try {
+      final details = Platform.isWindows
+          ? NotificationDetails(
+              windows: WindowsNotificationDetails(
+                audio: _windowsSound,
+                images: await _windowsLogo(LocalStore.habit(habitId)),
+              ),
+            )
+          : null;
+      await _plugin.show(_focusEndId, title, body, details);
+    } catch (e) {
+      debugPrint('Focus end notice failed: $e');
+    }
   }
 
   Future<void> cancelFocusEnd() async {
@@ -603,14 +871,29 @@ class NotificationService {
   }
 
 
+  Future<void> cancelTodo(String todoId) async {}
 
   Future<void> cancelFor(String habitId) async {
+    if (!_ready) await initialize();
     await _cancelExcept(habitId, const {});
   }
 
+  Future<void> cancelOrphans(Set<String> liveHabitIds) async {
+    if (!_ready) await initialize();
+    for (final n in await _pending()) {
+      final payload = n.payload;
+      if (payload == null || payload.isEmpty) continue;
+      if (!liveHabitIds.contains(payload)) await _cancel(n.id);
+    }
+  }
+
   Future<void> cancelAll() async {
-    if (Platform.isLinux) _linux.cancelAll();
+    if (_queuesInApp) _inApp.cancelAll();
     await _plugin.cancelAll();
+    if (_keepsPayloads) {
+      _payloads.clear();
+      await _savePayloads();
+    }
   }
 
   Future<void> _cancelExcept(String habitId, Set<int> keep) async {
@@ -631,18 +914,23 @@ class NotificationService {
     String? payload,
     DateTimeComponents? matchDateTimeComponents,
   }) async {
-    if (Platform.isLinux) {
-      _linux.schedule(
+    if (_queuesInApp) {
+      _inApp.schedule(
         id: id,
         title: title,
         body: body,
         when: when,
         details: details,
         payload: payload,
-        weekly: matchDateTimeComponents != null,
+        repeatDays: switch (matchDateTimeComponents) {
+          null => 0,
+          DateTimeComponents.time => 1,
+          _ => 7,
+        },
       );
       return;
     }
+    if (Platform.isWindows) await _introduceToWindows();
     await _plugin.zonedSchedule(
       id,
       title,
@@ -653,17 +941,77 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: matchDateTimeComponents,
     );
+    if (_keepsPayloads && payload != null) {
+      _payloads['$id'] = payload;
+      await _savePayloads();
+    }
   }
+
+  static const _payloadsKey = 'windowsReminderPayloads';
+
+  final _payloads = <String, String>{};
+
+  bool get _keepsPayloads => Platform.isWindows && !isPortable;
+
+  Future<void> _loadPayloads() async {
+    if (LocalStore.setting<Object?>(_payloadsKey, null) == null) {
+      await _plugin.cancelAll();
+      await _savePayloads();
+      await LocalStore.writeSetting('habitRemindersArmedOn', '');
+      await LocalStore.writeSetting('todoRemindersArmedOn', '');
+      return;
+    }
+    for (final MapEntry(:key, :value) in LocalStore.settingMap(_payloadsKey).entries) {
+      if (value is String) _payloads[key] = value;
+    }
+  }
+
+  Future<void> _savePayloads() =>
+      LocalStore.writeSetting(_payloadsKey, Map<String, String>.of(_payloads));
+
+  static const _windowsReadyId = -987653;
+
+  Future<void> _introduceToWindows() async {
+    if (_knownToWindows || LocalStore.setting('windowsToastsReady', false)) return;
+    _knownToWindows = true;
+    try {
+      final strings = await localizations();
+      await _plugin.show(
+        _windowsReadyId,
+        strings.reminders_ready_title,
+        strings.reminders_ready_body,
+        NotificationDetails(
+          windows: WindowsNotificationDetails(images: await _windowsLogo(null)),
+        ),
+      );
+      await LocalStore.writeSetting('windowsToastsReady', true);
+    } catch (e) {
+      _knownToWindows = false;
+      debugPrint('Could not introduce Streak to Windows: $e');
+    }
+  }
+
+  bool get _queuesInApp => Platform.isLinux || isPortable;
 
   Future<void> _cancel(int id) async {
-    if (Platform.isLinux) _linux.cancel(id);
+    if (_queuesInApp) _inApp.cancel(id);
     await _plugin.cancel(id);
+    if (_keepsPayloads && _payloads.remove('$id') != null) await _savePayloads();
   }
 
-  Future<List<PendingNotificationRequest>> _pending() =>
-      Platform.isLinux
-          ? Future.value(_linux.pending)
-          : _plugin.pendingNotificationRequests();
+  Future<List<PendingNotificationRequest>> _pending() async {
+    if (_queuesInApp) return _inApp.pending;
+    final pending = await _plugin.pendingNotificationRequests();
+    if (!_keepsPayloads) return pending;
+    final live = {for (final n in pending) '${n.id}'};
+    final before = _payloads.length;
+    _payloads.removeWhere((id, _) => !live.contains(id));
+    if (_payloads.length != before) await _savePayloads();
+    return [
+      for (final n in pending)
+        PendingNotificationRequest(n.id, n.title, n.body, n.payload ?? _payloads['${n.id}']),
+    ];
+  }
 
   int _notificationId(String habitId, String reminderId, int slot) =>
       ReminderSchedule.notificationId(habitId, reminderId, slot);
@@ -689,7 +1037,10 @@ class NotificationActions {
       await LocalStore.reloadHabits();
       final habits = LocalStore.readHabits();
       final habit = habits[habitId];
-      if (habit == null) return;
+      if (habit == null || habit.isArchived) {
+        await NotificationService().cancelFor(habitId);
+        return;
+      }
 
       if (actionId == NotificationService.actionSnooze) {
         await NotificationService().snooze(habit);
@@ -697,7 +1048,9 @@ class NotificationActions {
       }
 
       final today = AppClock.today();
-      final amount = double.tryParse(input?.trim() ?? '');
+      final text = input?.trim() ?? '';
+      final amount =
+          habit.isTimeAmount ? clockMinutes(text) : double.tryParse(text);
 
       final Map<String, Completion> completions;
       if (actionId == NotificationService.actionAdd) {
@@ -717,17 +1070,21 @@ class NotificationActions {
 
       if (actionId == NotificationService.actionAdd && notificationId != null) {
         final done = completions[today.dayKey]?.count ?? 0;
+        final goal = updated.effectiveTarget;
         await NotificationService().confirm(
           updated,
-          '${formatAmount(done)} / ${formatAmount(updated.effectiveTarget)}',
+          goal > 0
+              ? '${updated.amountText(done)} / ${updated.amountText(goal)}'
+              : updated.amountText(done),
           notificationId,
         );
       }
 
       await LocalStore.writeHabit(updated);
       habits[habitId] = updated;
-      if (habit.silencesRemindersOn(today) !=
-          updated.silencesRemindersOn(today)) {
+      if (habit.fromLastDone ||
+          habit.silencesRemindersOn(today) !=
+              updated.silencesRemindersOn(today)) {
         await NotificationService().scheduleFor(updated);
       }
       await HomeWidgetService.sync(habits, renderIcons: false);

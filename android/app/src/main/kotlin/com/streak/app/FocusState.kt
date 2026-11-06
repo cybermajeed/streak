@@ -1,6 +1,7 @@
 package com.streak.app
 
 import android.content.Context
+import org.json.JSONArray
 import org.json.JSONObject
 
 object FocusState {
@@ -41,11 +42,19 @@ object FocusState {
         state.put("skipLabel", arguments["skipLabel"] as? String ?: "")
         state.put("continueLabel", arguments["continueLabel"] as? String ?: "")
         state.put("minuteLabel", arguments["minuteLabel"] as? String ?: "")
+        state.put("endTitle", arguments["endTitle"] as? String ?: "")
+        state.put("endBody", arguments["endBody"] as? String ?: "")
         state.put("total", (arguments["total"] as? Number)?.toInt() ?: 0)
         state.put("phase", arguments["phase"] as? String ?: "")
         state.put("running", running)
         state.put("done", arguments["done"] as? Boolean ?: false)
         state.put("countDown", countDown)
+        state.put("hold", arguments["hold"] as? Boolean ?: false)
+        state.put("upcoming", JSONArray().apply {
+            (arguments["upcoming"] as? List<*>)?.forEach { phase ->
+                (phase as? Map<*, *>)?.let { put(JSONObject(it)) }
+            }
+        })
         state.put("frozen", seconds)
         val sent = (arguments["anchor"] as? Number)?.toLong() ?: 0L
         state.put("anchor", if (sent > 0L) sent else anchorFor(countDown, seconds))
@@ -82,6 +91,26 @@ object FocusState {
         } else {
             next.put("frozen", state.optInt("frozen") + 60)
         }
+    }
+
+    fun advanced(state: JSONObject): JSONObject? {
+        val upcoming = state.optJSONArray("upcoming") ?: return null
+        val next = upcoming.optJSONObject(0) ?: return null
+        val rest = JSONArray()
+        for (index in 1 until upcoming.length()) rest.put(upcoming.get(index))
+        val total = next.optInt("total")
+        return copyOf(state)
+            .put("total", total)
+            .put("state", next.optString("state"))
+            .put("phase", next.optString("phase"))
+            .put("hold", next.optBoolean("hold"))
+            .put("endTitle", next.optString("endTitle"))
+            .put("endBody", next.optString("endBody"))
+            .put("running", true)
+            .put("done", false)
+            .put("frozen", total)
+            .put("anchor", System.currentTimeMillis() + total * 1000L + 999L)
+            .put("upcoming", rest)
     }
 
     private fun anchorFor(countDown: Boolean, seconds: Int): Long {

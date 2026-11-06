@@ -8,6 +8,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_theme.dart';
 import 'package:streak/core/database/local_store.dart';
+import 'package:streak/core/utils/app_dirs.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/routing/app_navigator.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
@@ -33,6 +34,7 @@ void useEmptyStore() {
     _storeDir = await Directory.systemTemp.createTemp('streak_test');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_pathProvider, (call) async => _storeDir.path);
+    forgetAppDataDir();
     await LocalStore.init();
   });
 

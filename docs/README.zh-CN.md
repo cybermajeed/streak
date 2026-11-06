@@ -7,7 +7,7 @@
 ---
 
 <div align="right">
-  <sub><a href="../README.md">English</a> · <a href="README.es.md">Español</a> · <b>中文</b> · <a href="README.ru.md">Русский</a></sub>
+  <sub><a href="../README.md">English</a> · <a href="README.es.md">Español</a> · <b>中文</b> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a></sub>
 </div>
 
 <div align="center">
@@ -125,7 +125,7 @@ Streak 是一款尊重你的开源 Android 习惯追踪应用。你可以创建�
 - 为需要计时的习惯准备的计时器，可自由计时或绑定某个习惯及其目标
 - **番茄钟轮次**搭配短暂休息，也可以一口气专注到底
 - 三种时钟样式：**圆环**、**翻页**和**圆点**
-- 内置音效（雨声、棕噪音、暖音垫），也可加入你自己的音轨，顺序或随机播放
+- 内置音效（雨声、棕噪音、篝火），也可加入你自己的音轨，顺序或随机播放
 - 静谧的场景背景，或换成你自己的照片
 - 不离开计时器就能勾选子任务，还可让屏幕常亮
 - **每日专注目标**，以及每次完成时段的历史记录
@@ -168,7 +168,6 @@ Streak 是一款尊重你的开源 Android 习惯追踪应用。你可以创建�
 - **自动备份**，每日或每周，存到你选择的文件夹
 - **应用锁**：PIN 或指纹
 - **归档**习惯而不丢失历史记录
-- 一切都在本地：无需账号、没有服务器、不用同步
 - 支持七种语言，更多语言已在 Weblate 上开放
 
 </td>
@@ -252,17 +251,17 @@ Linux 版本刚刚发布，可能还有一些问题。提醒只在 Streak 打开
 ## 隐私
 
 > [!IMPORTANT]
->Streak **没有分析统计、没有广告 SDK、没有网络后端**。应用绝不会把你的数据
->发送到任何地方，它们只留在你的设备上。唯一的对外动作是你自己选择打开的链接。
+>Streak **从不连接互联网**，这是基本原则，而不是一个设置。在 Android 上它甚至
+>不申请网络权限。没有分析统计、没有广告、没有账号、没有服务器：你的数据永远不会
+>离开你的设备。如果你想在别处保存一份，比如云盘，就自己导出后上传。你点击的链接
+>会在浏览器中打开。
 
 ---
 
 ## 翻译
 
-Streak 已完整支持**英语、西班牙语、法语、葡萄牙语、俄语、乌克兰语和中文**，
-**德语、波兰语、希伯来语、印尼语和波斯语**也在路上，非常欢迎更多语言。翻译工作在
-[**Weblate**](https://hosted.weblate.org/engage/streak/) 上进行：无需编程，
-只是一些在浏览器里就能翻译的短句。
+翻译工作在 [**Weblate**](https://hosted.weblate.org/engage/streak/) 上进行：
+无需编程，只是一些在浏览器里就能翻译的短句。欢迎添加新的语言。
 
 [![各语言翻译状态](https://hosted.weblate.org/widget/streak/app-strings/multi-auto.svg)](https://hosted.weblate.org/engage/streak/)
 
@@ -349,6 +348,6 @@ Streak 免费、开源、没有广告，以后也一样。
 <br/>
 <br/>
 
-基于 <a href="../LICENSE"><b>GNU GPLv3 许可证</b></a>发布。
+基于 <a href="../LICENSE"><b>GNU GPLv3 许可证</b></a>发布，并附有其第 7(b) 条规定的<a href="../ADDITIONAL_TERMS.md">署名条款</a>。
 
 </div>

@@ -6,6 +6,7 @@ import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/widgets/express_line_chart.dart';
 import 'package:streak/features/statistics/widgets/stat_line_charts.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class QuantDailyBars extends StatelessWidget {
   const QuantDailyBars({super.key, required this.habit, this.days = 14});
@@ -33,10 +34,10 @@ class QuantDailyBars extends StatelessWidget {
       final month = DateFormat.MMM(Localizations.localeOf(context).toString());
       return ExpressLineChart(
         values: amounts,
-        color: habit.color,
+        color: habit.color.shownIn(context),
         window: 10,
         height: 176,
-        goal: habit.perDayTarget,
+        goal: habit.hasGoal ? habit.perDayTarget : null,
         format: label,
         axisFormat: axis,
         label: (index) => '${start.addDays(index).day}',
@@ -49,10 +50,10 @@ class QuantDailyBars extends StatelessWidget {
 
     return TrendChart(
       values: amounts,
-      color: habit.color,
+      color: habit.color.shownIn(context),
       startDate: start,
       height: 132,
-      goal: habit.perDayTarget,
+      goal: habit.hasGoal ? habit.perDayTarget : null,
       format: label,
       axisFormat: axis,
     );

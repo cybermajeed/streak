@@ -20,6 +20,8 @@ class ExpressFormHero extends StatelessWidget {
     required this.onShuffleIcon,
     this.cover = '',
     this.clarity = 100,
+    this.autofocus = false,
+    this.focusNode,
   });
 
   final String icon;
@@ -29,6 +31,8 @@ class ExpressFormHero extends StatelessWidget {
   final VoidCallback onShuffleIcon;
   final String cover;
   final int clarity;
+  final bool autofocus;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +103,8 @@ class ExpressFormHero extends StatelessWidget {
                 const SizedBox(height: 22),
                 TextField(
                   controller: controller,
+                  focusNode: focusNode,
+                  autofocus: autofocus,
                   onChanged: (_) => onChanged(),
                   textAlign: TextAlign.center,
                   textCapitalization: TextCapitalization.sentences,

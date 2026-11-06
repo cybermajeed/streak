@@ -12,6 +12,7 @@ import 'package:streak/features/habits/data/substep.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/widgets/unscheduled_day_dialog.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 Set<String> checkedStepsOf(Habit habit, [DateTime? date]) =>
     habit.completions[(date ?? AppClock.now()).dayKey]?.steps ??
@@ -82,7 +83,7 @@ class HabitChecklist extends StatelessWidget {
           ChecklistRow(
             title: step.title,
             checked: checked.contains(step.id),
-            color: habit.color,
+            color: habit.color.shownIn(context),
             dense: dense,
             onTap: () => unawaited(
               setHabitStep(
@@ -209,20 +210,20 @@ class _HabitStepsPanelState extends State<HabitStepsPanel> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(LucideIcons.listChecks, size: 13, color: habit.color),
+                  Icon(LucideIcons.listChecks, size: 13, color: habit.color.shownIn(context)),
                   const SizedBox(width: 5),
                   Text(
                     context.l10n.steps_done('$done', '${habit.substeps.length}'),
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: habit.color,
+                      color: habit.color.shownIn(context),
                     ),
                   ),
                   Icon(
                     _open ? LucideIcons.chevronUp : LucideIcons.chevronDown,
                     size: 15,
-                    color: habit.color,
+                    color: habit.color.shownIn(context),
                   ),
                 ],
               ),

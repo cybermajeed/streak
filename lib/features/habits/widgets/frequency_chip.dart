@@ -4,6 +4,7 @@ import 'package:streak/core/i18n/date_labels.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/widgets/habit_form_schedule.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 String habitFrequencyLabel(BuildContext context, Habit habit) {
   return switch (habit.interval) {
@@ -13,8 +14,10 @@ String habitFrequencyLabel(BuildContext context, Habit habit) {
     HabitInterval.monthly =>
       context.l10n.freq_per_month_short('${habit.targetFrequency}'),
     HabitInterval.weekdays => _weekdaysLabel(context, habit),
-    HabitInterval.everyXDays =>
-      scheduleEveryLabel(context, habit.scheduleEvery, habit.scheduleUnit),
+    HabitInterval.everyXDays => habit.monthWeekday
+        ? '${scheduleEveryLabel(context, habit.scheduleEvery, habit.scheduleUnit)}, '
+            '${monthWeekdayLabel(context, habit.scheduleStart ?? habit.createdAt)}'
+        : scheduleEveryLabel(context, habit.scheduleEvery, habit.scheduleUnit),
   };
 }
 
@@ -38,7 +41,7 @@ class FrequencyChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = habit.color;
+    final c = habit.color.shownIn(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(

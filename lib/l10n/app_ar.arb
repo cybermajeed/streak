@@ -1,0 +1,782 @@
+{
+  "share_friends_sub": "أرسل التطبيق إليهم",
+  "currency_hint": "رمز أو شفرة",
+  "island_t_lilac": "ليلكي",
+  "current": "الحالي",
+  "wipe_data_sub": "العادات، الملاحظات، جلسات التركيز والإعدادات",
+  "message_copied": "تم نسخ الرسالة",
+  "report_issue_sub": "أخبرني عن خلل أو اطلب ميزة جديدة",
+  "freq_per_month_short": "{n}×/الشهر",
+  "@freq_per_month_short": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "wipe_data_sure": "هل تريد حقاً مسح كل شيء؟",
+  "day_start_hour": "{hour}:00 صباحا",
+  "@day_start_hour": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "remove_photo": "احذف الصورة",
+  "clear_progress": "امسح التقدم",
+  "accent_color": "اللون المميز",
+  "clear_progress_done": "تم مسح التقدم",
+  "style_classic": "كلاسيكي",
+  "your_name": "اسمك",
+  "about_sub": "الإصدار، الكود المصدري والدعم",
+  "total_logs": "إجمالي التسجيلات",
+  "style_classic_desc": "قائمة العادات، الشريط السفلي وجميع الإعدادات في شاشة واحدة.",
+  "completion_time": "وقت الإنجاز",
+  "streak_unit_month": "{count}شهر",
+  "@streak_unit_month": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "active_habits": "عادات نشطة",
+  "day_start_midnight": "منتصف الليل",
+  "best": "الأفضل",
+  "clear_progress_warning": "سيؤدي هذا إلى مسح كل يوم مُسجّل، والملاحظات، وجلسات التركيز، ولكنه سيحافظ على عاداتك وجداولها وإعداداتك. لا يمكن التراجع عن هذا الإجراء إلا إذا كان لديك ملف نسخة احتياطية لاستيراده لاحقاً.",
+  "share_stats_short": "الإحصائيات",
+  "activity": "النشاط",
+  "app_style_sub": "اختر الشكل العام للتطبيق وأسلوبه.",
+  "freq_per_week_short": "{n}×/الأسبوع",
+  "@freq_per_week_short": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "app_lock_sub": "طلب بصمتك أو وجهك لفتح تطبيق Streak",
+  "preferences_sub": "اللغة، الأسبوع والترتيب",
+  "refresh_now_sub": "احضار ما تركته أجهزتك الأخرى في المجلد",
+  "share_photo": "صورة",
+  "default_user": "إنلكس",
+  "report_issue": "بلغ عن خلل",
+  "circle": "دائرة",
+  "wipe_data_confirm": "مسح كل شيء",
+  "share_blur": "تشويش",
+  "app_icon": "أيقونة التطبيق",
+  "icon_neutral": "أخضر",
+  "square": "مربع",
+  "icon_default": "الافتراضي",
+  "permission_required": "يُرجى منح إذن الإشعارات",
+  "clear_progress_sub": "السجل، الملاحظات وجلسات التركيز",
+  "island_t_clay": "طيني",
+  "delete_habit": "حذف عادة",
+  "github_star_sub": "امنح المشروع نجمة ليظهر لأشخاص أكثر",
+  "emoji_own": "اكتب او الصق أي رمز تعبيري",
+  "notif_greeting": "أهلا{name}، ",
+  "@notif_greeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "log_relapse_body": "سيؤدي هذا إلى كسر السلسلة لليوم لـ \"{name}\". يمكنك التراجع عن ذلك بالنقر مرة أخرى.",
+  "@log_relapse_body": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "wipe_data": "احذف كل البيانات",
+  "app_style": "مظهر التطبيق",
+  "wipe_data_done": "تم مسح جميع البيانات",
+  "delete_habit_body": "هل تريد حذف \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء.",
+  "@delete_habit_body": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "day_start": "اليوم يبدأ",
+  "current_streak": "السلسلة الحالية",
+  "share_friends_message": "حافظ على استمرارية سلسلتي باستخدام Streak - وهو تطبيق صغير ومجاني لتتبع العادات بدون إنترنت، بدون حسابات وبدون إعلانات. تعال وابدأ سلسلتك الخاصة: https://inlitx.github.io/streak/",
+  "undo": "تراجع",
+  "see_more": "عرض المزيد",
+  "support_sub": "بلغ عن خطأ أو اطلب ميزة جديدة",
+  "island_t_white": "أبيض",
+  "wipe_data_warning": "سيؤدي هذا إلى مسح كل عادة وملاحظة وجلسة تركيز وإعداد على هذا الهاتف. لا يمكن التراجع عن هذا الإجراء إلا إذا كان لديك ملف نسخة احتياطية لاستيراده لاحقاً.",
+  "auto_backup_where": "عندما تفتح التطبيق، ستريك يحفظ نسخة إحتياطية كاملة : بصيغة .zip تضم كل شيء الصور, والموسيقى وأيضا ملف .json. و أيضا يكتب نسخة مقروءة يمكنك فتحها في أي معدل نصوص. آخر بضع نسخة إحتياطية سوف تحفظ (لن تخذف).",
+  "streaks": "السلاسل",
+  "advanced_options": "الخيارات المتقدمة",
+  "reorder": "إعادة تنظيم",
+  "notes_hint": "افتح عادة واضغط مطولاً على أي يوم في التقويم الخاص بها لعرض الملاحظات أو إضافتها",
+  "island_t_coral": "مرجاني",
+  "yesterday": "البارحة",
+  "quant_logged_days": "الأيام المسجلة",
+  "import_from_app_done": "تم استيراد {habits} عادات ({days}أيام) من {source}",
+  "@import_from_app_done": {
+    "placeholders": {
+      "habits": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      },
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "app_lock_delay_seconds": "{value} ثواني",
+  "@app_lock_delay_seconds": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "see_less": "عرض أقل",
+  "log_relapse_confirm": "نعم، سجل ذلك",
+  "icons_tab": "الأيقونات",
+  "uncategorized": "غير مصنفة",
+  "github_star_row": "عرض المصدر ومنح نجمة",
+  "habit_archived": "تم أرشفة العادة",
+  "reorder_hint": "اسحب العادات لإعادة تنظيمها",
+  "edit_name": "تعديل الإسم",
+  "island_t_teal": "أخضر مزرق",
+  "share_friends": "مشاركة مع صديق",
+  "quant_best_day": "أفضل يوم",
+  "quant_stats_empty": "سجّل أي مقدار وسيتراكم هنا، حتى في الأيام التي تقصر فيها عن تحقيق الهدف.",
+  "quant_goal_days": "تم الوصول للهدف",
+  "icon_accent": "ثلاثي اللون",
+  "repeat_weekly": "أيام محددة",
+  "style_minimal": "مبسّط",
+  "more_icons": "أيقونات أكثر",
+  "day_start_sub": "الوقت المتأخر من الليل يُحسب لليوم السابق",
+  "archive_habit": "أرشفة عادة",
+  "check_style": "نمط خانة الاختيار",
+  "style_minimal_desc": "شبكة العادات والإعدادات مجموعة في أربعة أقسام.",
+  "clear_progress_confirm": "امسح التقدم",
+  "data_sub": "النسخ الاحتياطي والاستيراد",
+  "wipe_data_sure_body": "الفرصة الأخيرة. بدون نسخة احتياطية، ستضيع هذه البيانات إلى الأبد.",
+  "archive": "الأرشيف",
+  "completions": "الإنجازات",
+  "colors_tab": "ألوان",
+  "every_n_hours": "كل {n} ساعة",
+  "@every_n_hours": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "less_icons": "أيقونات أقل",
+  "app_lock_delay": "اقفل التطبيق بعد",
+  "copy_message": "انسخ الرسالة",
+  "every_n_days": "كل {n} أيام",
+  "@every_n_days": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "log_relapse_title": "تسجيل انتكاسة؟",
+  "custom": "مخصص",
+  "emojis_tab": "الرموز التعبيرية",
+  "change_photo": "تغيير الصورة",
+  "appearance_sub": "السمة، اللون المميز، والخلفية",
+  "done": "تم",
+  "about_app": "عن التطبيق",
+  "description_hint": "مُلاحظة إختيارية",
+  "money_saved": "المال المحفوظ",
+  "times_per_month": "{n} مرات في الشهر",
+  "@times_per_month": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "app_lock_delay_instant": "حالاً",
+  "onb2_body": "أهداف يومية، اسبوعية أو شهرية مع تنبيهات ذكية لكي لا يفوتك شيء.",
+  "month": "الشهر",
+  "auto_backup_run_now": "إنسخ الآن",
+  "your_habits": "عاداتك",
+  "completion_rate_short": "الإستمرارية",
+  "my_heatmap": "خريطتي",
+  "onb1_body": "سجل العادة بضغطة واحدة وشاهد عزيمتك تنمو يوماً بعد يوم.",
+  "kind_negative_hint": "يحسب كل يوم على أنه نظيف تلقائيا — تتبعك ينمو لوحده. إضغط على العلامة فقط إذا أفلتت؛ سيتحول اليوم إلى اللون الأحمر ويمكنك إلغاءه.",
+  "clean_days": "الأيام النظيفة",
+  "cost_per_day": "التكلفة اليومية",
+  "currency": "العملة",
+  "every_day": "كل يوم",
+  "onb2_title": "إستمر في الطريق",
+  "backup_saved": "تم حفظ النسخة الاحتياطية",
+  "last_30_days": "آخر ٣٠ يوم",
+  "stats_empty": "أضف عادات لترى إحصائياتك",
+  "new_reminder": "تذكير جديد",
+  "relapses": "الإنتكاسات",
+  "total": "الكلي",
+  "icon": "أيقونة",
+  "import_backup": "إستورد نسخة إحتياطية",
+  "days": "الأيام",
+  "refresh_brought": "عاداتك مُحدَّثة",
+  "auto_backup_no_permission": "إذن التخزين مرفوض",
+  "quant_unit_hint": "الوحدة (مثال: مل، صفحات، عدات)",
+  "year": "السنة",
+  "import_backup_sub": "إسترجع عادات من ملف",
+  "quant_average": "المتوسط اليومي",
+  "about_app_sub": "الإصدار،المساهمون و الكود المصدري",
+  "strength": "القوة",
+  "description": "الوصف",
+  "name": "الإسم",
+  "save_reminder": "حفظ التذكير",
+  "export_backup_sub": "حفظ كل العادات إلى ملف",
+  "import_failed": "فشل إستيراد هذا الملف",
+  "category_mindfulness": "الوعي",
+  "select_one_day": "إختر يوماً واحداٍ على الأقل",
+  "times_per_week": "{n} مرات في الأسبوع",
+  "@times_per_week": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "best_streak": "أفضل سلسلة إنجازات",
+  "edit_reminder": "تعديل التذكير",
+  "auto_backup_folder_failed": "هذا المجلد لا يمكن الكتابة إليه",
+  "app_lock_unlock": "إفتح",
+  "week_starts_on": "بداية الإسبوع",
+  "about": "حَول",
+  "last_7_days": "آخر ٧ أيام",
+  "habits_imported": "تم إستيراد العادات",
+  "mon": "الإثنين",
+  "quant_unit_ml": "مل",
+  "export_cancelled": "تم إلغاء التصدير",
+  "kind_locked_hint": "لا يمكن تغيير النوع بعد إنشاء العادة.",
+  "repeat_hours": "تكرار خلال اليوم",
+  "import_from_app": "إستورد من تطبيق آخر",
+  "name_hint": "مثال: جولة صباحية",
+  "app_lock_title": "البرنامج مقفل",
+  "quant_tap_amount": "كمية كل ضغطة",
+  "import_from_app_sub": "loop Habit Tracker, HabitKit…",
+  "onb3_title": "تابع تقدمك",
+  "currency_custom": "تخصيص",
+  "no_days": "لا أبام",
+  "auto_backup_off": "إلغِ",
+  "sat": "السبت",
+  "auto_backup_sub": "إلغِ",
+  "quant_per_day": "كمية كل يوم",
+  "app_lock_failed": "لم يتم التعرف على المستخدم",
+  "week": "الإسبوع",
+  "onb3_body": "إحصائيات هادفة و شبكة سنوية تُظهِر مدى تقدمك.",
+  "auto_backup": "نسخ إحتياطي تلقائي",
+  "app_lock_unavailable": "لم يتم إعداد بصمة أو قفل وجه على هذا الهاتف",
+  "auto_backup_folder_set": "تم حفظ المجلد",
+  "completion_rate": "معدل الإكتمال",
+  "category": "الفئة",
+  "deleted_forever": "تم حذف العادة",
+  "sun": "الأحد",
+  "time": "الزمن",
+  "color": "اللون",
+  "cost_note": "إختياري. إتركه فارغاً إذا كانت هذه العادة لا تكلف مالاً.",
+  "sched_interval": "الفترة",
+  "profile": "الملف الشخصي",
+  "refresh_nothing": "لاشئ جديد في المجلد",
+  "note_photos": "صور",
+  "quant_preset_reading": "القراءة",
+  "save": "حفظ",
+  "monthly": "شهريا",
+  "get_started": "هيا لنبدأ",
+  "good_evening": "مساء الخير",
+  "edit_habit": "تعديل العادة",
+  "good_afternoon": "نهارك سعيد",
+  "add_reminder": "أضف تذكير",
+  "refresh_now": "تحديث",
+  "next": "التالي",
+  "category_fitness": "اللياقة",
+  "quant_daily_goal": "الهدف اليومي",
+  "all": "الجميع",
+  "add_habit": "سجل عادة",
+  "auto_backup_daily": "يوميا",
+  "quant_preset_water": "الماء",
+  "theme": "السمة",
+  "appearance": "المظهر",
+  "empty_title": "ابدأ أول سلسلة ليك",
+  "sched_days": "ايام",
+  "light": "فاتح",
+  "kind_negative": "تجنب",
+  "habit_kind": "نوع العادة",
+  "category_health": "الصحة",
+  "category_learning": "التعلم",
+  "delete": "حذف",
+  "data": "البيانات",
+  "auto_backup_weekly": "إسبوعيا",
+  "onb1_title": "ابني همم حقيقية",
+  "frequency": "التكرار",
+  "no_habits_yet": "لا توجد عادات بعد",
+  "new_label": "جديد",
+  "empty_body": "أنشئ عادة واضغط على يوم لتسجلها. خطوات صغيرة، كل يوم.",
+  "new_habit": "عادة جديدة",
+  "note_take_photo": "كاميرا",
+  "skip": "تخطي",
+  "auto_backup_folder_default": "داخل التطبيق (سيحذف إذا حذف التطبيق)",
+  "kind_quantitative": "الكمية",
+  "journey": "رحلة",
+  "daily": "يوميا",
+  "app_tagline": "متتبع العادات",
+  "quant_edit_title": "كمية اليوم",
+  "stats": "إحصائيات",
+  "dark": "مظلم",
+  "cancel": "إلغاء",
+  "good_morning": "صباح الخير",
+  "export_backup": "تصدير نسخة إحتياطية",
+  "category_finance": "التمويل",
+  "statistics": "إحصائيات",
+  "language": "اللغة",
+  "auto_backup_folder": "المجلد",
+  "weekly": "اسبوعيا",
+  "all_done_today": "تم إنجاز كل شيء اليوم!",
+  "kind_positive": "عادي",
+  "note_pick_photo": "المعرض",
+  "settings": "الإعدادات",
+  "quant_preset_generic": "مخصص",
+  "x_of_y_completed": "أنجزت {done} من {total}",
+  "@x_of_y_completed": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "app_lock": "قفل التطبيق",
+  "category_productivity": "الإنتاجية",
+  "system": "النظام",
+  "quant_unit_pages": "صفحات",
+  "done_today": "تم إنجازه اليوم",
+  "today": "اليوم",
+  "reminders": "تذكيرات",
+  "onb_kicker": "مرحبا الى",
+  "onb_blurb": "متابعة يومية بسيطة تتحول الى عادات تستمر معك.",
+  "onb_free_title": "مجانا، للأبد",
+  "onb_free_body": "لا إعلانات، لا إشتراكات، لا مميزات مقفلة.",
+  "onb_private_title": "خاص بك وبلا انترنت",
+  "onb_private_body": "كل شيء يبقى في جهازك. لا تحتاج لعمل حساب.",
+  "onb_yours_title": "بياناتك هي ملك لك",
+  "onb_yours_body": "احتفظ بها أو خذها أينما تريد.",
+  "onb_step": "خطوة {step} من {total}",
+  "@onb_step": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "every_n_weeks": "{n, plural, =1{كل أسبوع} other{كل {n} أسابيع}}",
+  "@every_n_weeks": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "every_n_months": "{n, plural, =1{كل شهر} other{كل {n} أشهر}}",
+  "@every_n_months": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "sched_unit_days": "أيام",
+  "sched_unit_weeks": "أسابيع",
+  "sched_unit_months": "أشهر",
+  "todo_tags": "التصنيفات",
+  "todo_projects": "المشاريع",
+  "todo_project": "المشروع",
+  "todo_project_new": "مشروع جديد",
+  "todo_project_name": "اسم المشروع",
+  "todo_project_edit": "تعديل المشروع",
+  "todo_project_arrange": "إعادة ترتيب",
+  "todo_project_arrange_hint": "اسحب المجلدات إلى المكان الذي تريده.",
+  "todo_project_pick": "اختر مشروعاً",
+  "todo_project_none": "لا يوجد مشروع",
+  "todo_project_delete_body": "يذهب المشروع، وتبقى المهام.",
+  "todo_tag": "تصنيف",
+  "todo_tag_new": "تصنيف جديد",
+  "todo_tag_name": "اسم التصنيف",
+  "todo_tag_edit": "تعديل التصنيف",
+  "todo_tag_delete_body": "يذهب التصنيف. وتبقى المهام.",
+  "todo_tag_none": "بلا تصنيف",
+  "todo_tag_all": "الكل",
+  "todo_tag_manage": "إدارة التصنيفات",
+  "todo_tag_empty_title": "لا توجد تصنيفات بعد",
+  "todo_tag_empty_body": "اجمع المهام حسب المشروع، أو المكان، أو ما تحب.",
+  "todo_tag_folders": "المجلدات",
+  "todo_tag_list": "قائمة",
+  "todo_tag_count": "{n} مفتوح",
+  "@todo_tag_count": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "todo_tag_icon": "أيقونة",
+  "todo_tag_pick": "اختر تصنيفات",
+  "todo_tag_filtered": "فترة بـ {name}",
+  "@todo_tag_filtered": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "category_order_empty": "قم بتعيين فئة لعادة ما، وستظهر هنا",
+  "data_folder": "ملف البيانات",
+  "data_folder_documents": "المستندات",
+  "data_folder_app": "بجانب للتطبيق",
+  "data_folder_pick": "إختر مجلد",
+  "data_folder_inside": "إختر مجلد خارج المجلد الحالي.",
+  "data_folder_taken": "هذا المجلد يحتوي بالفعل على بيانات ستريك بداخله.",
+  "data_folder_denied": "ستريك لا يستطيع الكتابة على هذا المجلد.",
+  "data_folder_move_title": "نقل بياناتك",
+  "data_folder_move_body": "ستريك سيغلق وستنقل بياناتك إلى {path}. إفتحه مجددا عندما يغلق. تذكر إذا حدث أي مكروه سوف تبقى بياناتك مكانها.",
+  "@data_folder_move_body": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "data_folder_move_confirm": "نقل وإغلاق",
+  "count_days": "{count, plural, =1{1 day} other{{count} days}}",
+  "@count_days": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "count_weeks": "{count, plural, =1{1 week} other{{count} weeks}}",
+  "@count_weeks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "count_months": "{count, plural, =1{1 month} other{{count} months}}",
+  "@count_months": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streak_unit_week": "{count}س",
+  "@streak_unit_week": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "pick_one_day": "إختر يوم واحد كحد أدنى",
+  "reminder_habit_days": "في يوم العادة",
+  "reminder_habit_days_hint": "سيرن في الأيام التي بها العادة.",
+  "focus_label": "علامة",
+  "focus_label_none": "لا علامات",
+  "focus_label_new": "علامة جديدة",
+  "focus_label_hint": "رياضيات, قراءة, عمل...",
+  "focus_label_remove": "إزالة العلامة",
+  "focus_label_remove_body": "{label} غادرة القائمة. احتفظ بجلستك السابقة.",
+  "@focus_label_remove_body": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "focus_label_remove_confirm": "إزالة",
+  "by_label": "حسب العلامة",
+  "tracking_hide": "إخفاء التتتبع فقط",
+  "tracking_show": "إظهار التتتبع فقط({count})",
+  "@tracking_show": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "journey_sub": "{count, plural, =1{1 photo} other{{count} photos}}",
+  "@journey_sub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "journey_empty": "لا صور بعد",
+  "journey_empty_sub": "أضف صورة إلى الملاحظة وسوف تظهر هنا.",
+  "discard_changes": "تجاهل التغييرات؟",
+  "discard_changes_body": "ستُفقد التغييرات التي أجريتها على هذه العادة.",
+  "discard": "تجاهل",
+  "keep_editing": "متابعة التعديل",
+  "tracking_hide_sub": "العادة التي تتابعها فقط لا تظهر في هذه القائمة",
+  "reminders_ready_title": "التذكيرات مفعّلة",
+  "reminders_ready_body": "سيُذكّرك Streak هنا.",
+  "archive_habit_body": "نقل \"{name}\" إلى الأرشيف؟ سيُحتفظ بسجله ويمكنك استعادته من الإعدادات.",
+  "@archive_habit_body": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "archived_habits": "العادات المؤرشفة",
+  "archived_habits_sub": "استعدها أو احذفها نهائيًا",
+  "archived_empty": "لا يوجد شيء مؤرشف",
+  "archived_empty_sub": "العادات التي تحذفها تنتقل هنا مع سجلها الكامل.",
+  "restore": "استعادة",
+  "restored": "تمت استعادة العادة",
+  "delete_forever": "حذف نهائي",
+  "delete_forever_body": "حذف \"{name}\" وجميع تاريخة؟ هذا لا يمكن التراجع عنه",
+  "@delete_forever_body": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "duplicate_habit": "عادة مكررة",
+  "habit_duplicated": "أضيفت {name}",
+  "@habit_duplicated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "repeat_until": "حتى",
+  "end_of_day": "نهاية اليوم",
+  "repeat_interval": "كل N يوم",
+  "days_active": "أيام النشاط",
+  "completions_per_month": "مرات الإكمال شهريًا",
+  "overview": "نظرة عامة",
+  "preferences": "التفضيلات",
+  "support": "دعم",
+  "my_heatmap_sub": "إفتح شبكة الأنشطة السنوية",
+  "rate_github": "نجمة على جيتهاب",
+  "rate_github_sub": "إدعم المشروع بنجمة",
+  "buy_coffee": "إشتر لي قهوة",
+  "buy_coffee_sub": "ساعد في إبقاء هذا التطبيق مجاني",
+  "view_source": "إطلع على المصدر في جيتهاب",
+  "about_title": "صنع من أجلك. مجاني، للأبد.",
+  "about_footer": "صنع بـ☕ والكثير من وقت الفراغ.",
+  "about_body": "ستريك ولد من فكرة بسيطة: لماذا أدفع لتتبع عاداتك؟\n\nهذا التطبيق مفتوح المصدر بالكامل. أي أحد يمكنه رؤية كيف يعمل بالضبط، إقتراح تحسين، أو حتى بناء نسخته الخاصة، لا أسرار، لا مفاجآت.\n\nخصوصيتك تامة — كل شيء يبقى في هاتفك. لا حسابات، لا خوادم، لا إعلانات، ولا حتى بايت واحد يغادر جهازك.\n\nلا حدود. أنشأ العدد الذي تريده من العادات. لا إشتراكات، لا \"نسخة إحترافية\"، لا نوافذ منبثقة تسألك لكي تدفع. أبدًا.\n\nإذا أفادك التطبيق، تستطيع إن تدعمه بنجمة أو بشراء كوب قهوة لي. لكن هذا إختياري تمامًا — التطبيق ملكك في كل الأحوال.",
+  "close": "أغلق",
+  "no_data_yet": "لا توجد بيانات بعد",
+  "import_question_body": "إستبدل جميع عاداتك الحالية بالنسخة الإحتياطية، أو إدمجعا معًا؟",
+  "import_replace": "إستبدل الكل",
+  "import_merge": "دمج",
+  "go": "إذهب",
+  "quote_1": "خطوة صغيرة، كل يوم.",
+  "quote_2": "قليلٌ دائم خيرٌ من كثيرٍ منقطع.",
+  "quote_3": "إلتزم بما وعدت به نفسك.",
+  "quote_4": "يومًا بيوم.",
+  "quote_5": "التقم لا الكمال.",
+  "quote_6": "الإنجاز خيرٌ من الكمال.",
+  "quote_7": "لا تدع سلسلتك تنقطع.",
+  "quote_8": "عادات صغيرة، تغييرات كبيرة.",
+  "quote_9": "ثق في التقدم.",
+  "quote_10": "ابدأ يومك بإنتصار.",
+  "quote_11": "الإنضباط طريق الحرية.",
+  "quote_12": "اليوم يحسب.",
+  "just_tracking_option": "عرض التتبع فقط",
+  "just_tracking_option_sub": "يضيف مفتاح التبديل عند إنشاء عادة",
+  "just_tracking": "اتتبع فقط",
+  "todo_discard_body": "التغيرات التي سوف تطبقها لهذه مهمه سوف يفقد.",
+  "just_tracking_sub": "أبقي تخطها وأرقامها الخاصة، لكن لا تضمنها مع التقدم وعداد الأيام",
+  "no_goal": "لا أهداف يومية",
+  "no_goal_sub": "فقط سجل القيمة، مثل وزنك، أي علامة في يومك.",
+  "any_amount": "أي قيمة تحسب",
+  "any_amount_sub": "يعد تسجيل أي قيمة بمثابة إتمام اليوم، حتى وإن كانت أقل من الهدف.",
+  "any_step": "أنهي ببضع خطوات",
+  "any_step_sub": "إتمام خطوة واحدة تسجل اليوم بأكمل أنه إنتهى، بدون فعلهم جميعا.",
+  "steps_needed_sub": "اليوم يحسب بـ{needed} من {total} خطوة.",
+  "@steps_needed_sub": {
+    "placeholders": {
+      "needed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sched_start": "يبدأ في",
+  "from_last_done": "إبدء من المرة الأخيره",
+  "reminder_sound": "الصوت",
+  "reminder_sound_default": "التفاصيل",
+  "reminder_sound_hint": "إضغط على الصوت لسماعه. هذا التنبيه سوف يستعمله.",
+  "month_weekday": "نفس يوم الإسبوع كل شهر",
+  "nth_weekday": "{n, select, first{first} second{second} third{third} fourth{fourth} other{last}} {day}",
+  "@nth_weekday": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      },
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "from_last_done_sub": "كل مرة تفعلها، الإنتظار يبدء من جديد. لا يزال يكسر سلسلة الإنجازات.",
+  "quotes": "إقتبس",
+  "quotes_which": "أي إقتباس",
+  "quotes_app": "من التطبيق",
+  "quotes_mine": "لي",
+  "quotes_both": "الإثنين",
+  "quotes_off": "مطفئ",
+  "month_weekday_sub": "يقع في يوم {when} من الشهر، ليس تاريخ محدد.",
+  "@month_weekday_sub": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "quotes_my_list": "إقتباساتي",
+  "quotes_add": "أضف إقتباس",
+  "quotes_edit": "عدِّل إقتباس",
+  "quotes_hint": "إكتب إقتباسك",
+  "quotes_empty": "لا إقتباسات من إنشائك",
+  "quotes_empty_sub": "إكتب إقتباسك الخاص وسوف تظهر هنا اليوم.",
+  "motiv_start": "إبدأ اليوم أقوى 💪",
+  "motiv_progress": "﴿وَأَن لَّيْسَ لِلْإِنسَانِ إِلَّا مَا سَعَىٰ﴾ [النجم: ٣٩]",
+  "motiv_almost": "من سار على الدرب وصل",
+  "motiv_perfect": "يوم مثالي! 🔥",
+  "app_background": "الخلفية",
+  "widgets": "تطبيق مصغر",
+  "customize_widgets": "تخصيص التطبيق المصغر",
+  "customize_widgets_sub": "الخلفية، عتامة، الحد",
+  "widget_background": "لون الخلفية",
+  "widget_opacity": "العتامة",
+  "widget_border": "الحد",
+  "widget_preview": "معاينة",
+  "bg_solid": "صلب",
+  "bg_gradient": "تدرُّج",
+  "bg_dots": "نقاط",
+  "bg_oled": "OLED",
+  "weekdays": "أيام الإسبوع",
+  "weekends": "نهاية الإسبوع",
+  "reminder_message": "رسالة (إختياري)",
+  "reminder_message_hint": "إتركه فارغًا لإقتباس تحفيزي",
+  "new_category": "فئة جديدة",
+  "edit_category": "تعديل الفئة",
+  "add_category": "جديد",
+  "delete_category": "حذف الفئة",
+  "edit": "تعديل",
+  "cover_image": "صورة الغلاف",
+  "book_cover": "غلاف الكتاب",
+  "add_image": "أضف صورة",
+  "when_best": "متى تكون أكثر إلتزامًا؟",
+  "streak_evolution": "تطور سلسلة الإنجازات",
+  "consistency": "الإستمارية",
+  "consistency_trend": "منحنى الإستمرارية",
+  "by_habit": "بالعادة",
+  "ranking": "التقييم",
+  "active_days": "أيام النشاط",
+  "perfect_days": "أيام مثالية",
+  "per_week": "إسبوعيا",
+  "best_month": "أفضل شهر",
+  "streak_on": "🔥 {n} أيام متتالية. لا تكسرها!",
+  "@streak_on": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "streak_off": "💪 اليوم يمكنك بدأ سلسلة إنجازات جديدة",
+  "not_enough_data": "البيانات لا تكفي بعد",
+  "about_inline": "ستريك هو تطبيق مفتوح المصدر لِتَتبع عاداتك. لا حساب، لاحدود، لا دفع. كل شيء يبقى في هاتفك.\n\nأي شخص يمكنه رؤية الإطلاع على الشيفرة البرمجية، وتحسينها، أو إستخدامه بحرية.",
+  "about_subtitle": "للأيام اللتيأنت إخترت إظهارها.",
+  "about_story": "ذا التطبيق ولد بسبب الإحباط التي تسببه تطبيقات تتبع العادات هناك. فمعضمها تضع حد لعدد العادات التي يمكنك إنشاؤها، وإخفاء ميزات رئيسية وبسيطة خلف جدران الدفع، تتبعك ولا تعلم ماذا يفعل ببياناتك، أو تقصفك بإعلانات لا مفر منها، لذا قررت أن أبني ستريك: مجاني بالكامل، لا إعلانات، لا دفع، لاتتبع. كل شيء يعمل محليا — بياناتك ملكٌ لك. مفتوح المصدر، لا فخوخ أو شيء مخفي.",
+  "made_by": "صنع بكل ❤️ بواسطة @InlitX",
+  "share": "مشاركة",
+  "share_progress": "مشاركت تقدمك",
+  "share_failed": "لم يستطع إنشاء الصورة",
+  "share_swipe_hint": "إسحب البطاقة لتّنقل عبر الزمن",
+  "share_background": "خلفية",
+  "share_size": "حجم",
+  "share_size_large": "طول",
+  "share_size_small": "مربع",
+  "share_show_stats": "أظهر الإحصائيات",
+  "share_save": "حفظ",
+  "share_saved": "حُفِظ في المعرض",
+  "share_save_failed": "لم يستطع حفظ الصورة",
+  "about_developer": "المطور",
+  "about_legal": "© InlitX. تطبيق ستريك هو برنامج حر بموجب رخصة GNU GPLv3، مع الشروط الإضافية في قسمه 7، ويأتي بدون أي ضمان، إضغط لقراءة الرخصة.",
+  "about_credits": "الحقوق",
+  "about_credits_body": "طور بإستخدام Flutter. الأيقونات بواسطة Lucide. الرسوم البيانية بواسطة fl_chart. الخطوط المستخدمة هي Figtree وPlayfair.",
+  "dev_handle": "@InlitX",
+  "dev_role": "مطور مستقل · ستريك",
+  "notes": "ملحوظات",
+  "todo_style_sub": "قائمة بسيطة، أم مجلدات تضم أوراق مثل Google .Keep",
+  "todos_enable_sub": "قائمة سريعة بجانب عاداتك",
+  "todo_new": "مهمة جديدة",
+  "notes_enable_sub": "أرفق ملاحظة بأي يوم من أيام العادة",
+  "add_note": "أضف ملاحظة",
+  "edit_note": "تعديل ملاحظة",
+  "view_notes": "أظهر الملاحظات",
+  "edit_entry": "عدل مدخله",
+  "note_type": "إكتب",
+  "note_kind_note": "ملاحظة",
+  "note_kind_planned": "مخطط له",
+  "note_kind_completed": "إكتمل",
+  "note_hint": "إكتب ملاحظتك…",
+  "note_time_optional": "وقت (إختياري)",
+  "save_note": "إحفظ الملاحظة",
+  "notes_empty": "لا توجد ملاحظات لهذا اليوم بعد",
+  "delete_note": "إحذف ملاحظة",
+  "legend_note_added": "أضف ملاحظة",
+  "tomorrow": "غدًا",
+  "notes_count": "{count, plural, =1{1 note} other{{count} notes}}",
+  "@notes_count": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "todos": "مهمة",
+  "todo_view_list": "بسيط",
+  "todo_view_papers": "مجلدات",
+  "todo_delete_title": "{count, plural, =1{Delete this to-do?} other{Delete {count} to-dos?}}",
+  "@todo_delete_title": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "todo_delete_body": "لديك بضع ثواني لإلغائه.",
+  "month_fixed_day_hint": "للتكرار في التاريخ نفسه من كل شهر، اختر «الفاصل الزمني» واضبطه على «كل شهر واحد»",
+  "export_habit": "تصدير هذه العادة",
+  "habit_links": "روابط الأتمتة"
+}

@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/extensions/clock_extensions.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/i18n/date_labels.dart';
 import 'package:streak/features/habits/data/reminder.dart';
+
+String reminderEveryLabel(BuildContext context, int minutes) {
+  final hours = minutes ~/ 60;
+  final rest = minutes % 60;
+  if (rest == 0) return context.l10n.every_n_hours('$hours');
+  if (hours == 0) return context.l10n.every_n_minutes('$rest');
+  return context.l10n.every_hours_minutes('$hours', '$rest');
+}
+
+String reminderSpan(BuildContext context, Reminder reminder) {
+  final start = context.clockAt(reminder.hour * 60 + reminder.minute);
+  final until = reminder.untilMinute;
+  if (!reminder.isHourly || until == null) return start;
+  return '$start - ${context.clockAt(until)}';
+}
 
 class ReminderTile extends StatelessWidget {
   const ReminderTile({
@@ -11,13 +27,22 @@ class ReminderTile extends StatelessWidget {
     required this.reminder,
     required this.onEdit,
     required this.onDelete,
+    this.followsHabit = false,
   });
 
   final Reminder reminder;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final bool followsHabit;
 
   String _daysLabel(BuildContext context) {
+    final days = _dayNames(context);
+    if (!reminder.isHourly) return days;
+    return '$days · ${reminderEveryLabel(context, reminder.everyMinutes)}';
+  }
+
+  String _dayNames(BuildContext context) {
+    if (followsHabit) return context.l10n.reminder_habit_days;
     if (reminder.isInterval) return context.l10n.every_n_days(reminder.everyDays);
     if (reminder.days.length == 7) return context.l10n.every_day;
     if (reminder.days.isEmpty) return context.l10n.no_days;
@@ -53,7 +78,7 @@ class ReminderTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  reminder.timeLabel,
+                  reminderSpan(context, reminder),
                   style: TextStyle(
                     color: scheme.onSurface,
                     fontSize: 16,

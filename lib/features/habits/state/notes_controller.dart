@@ -11,60 +11,71 @@ class NotesController extends ChangeNotifier {
   }
 
   late List<HabitNote> _notes;
+  Map<String, List<HabitNote>>? _days;
+  Map<String, List<HabitNote>>? _habits;
 
   List<HabitNote> get all => List.unmodifiable(_notes);
 
-  void reload() {
-    _notes = LocalStore.readNotes();
+  Map<String, List<HabitNote>> get _byDay => _days ??= _group(
+        (note) => '${note.habitId}|${note.date}',
+      );
+
+  Map<String, List<HabitNote>> get _byHabit =>
+      _habits ??= _group((note) => note.habitId);
+
+  Map<String, List<HabitNote>> _group(String Function(HabitNote) key) {
+    final groups = <String, List<HabitNote>>{};
+    for (final note in _notes) {
+      groups.putIfAbsent(key(note), () => []).add(note);
+    }
+    return groups;
+  }
+
+  void _changed() {
+    _days = null;
+    _habits = null;
     notifyListeners();
   }
 
-  List<HabitNote> forDay(String habitId, String dayKey) {
-    final list = _notes
-        .where((n) => n.habitId == habitId && n.date == dayKey)
-        .toList()
-      ..sort((a, b) {
-        final am = a.minutes ?? 24 * 60;
-        final bm = b.minutes ?? 24 * 60;
-        return am != bm ? am.compareTo(bm) : a.createdAt.compareTo(b.createdAt);
-      });
-    return list;
+  void reload() {
+    _notes = LocalStore.readNotes();
+    _changed();
   }
 
+  static int _byTime(HabitNote a, HabitNote b) {
+    final am = a.minutes ?? 24 * 60;
+    final bm = b.minutes ?? 24 * 60;
+    return am != bm ? am.compareTo(bm) : a.createdAt.compareTo(b.createdAt);
+  }
+
+  List<HabitNote> forDay(String habitId, String dayKey) =>
+      [...?_byDay['$habitId|$dayKey']]..sort(_byTime);
+
   List<HabitNote> byDate({String? habitId}) {
-    final list = _notes
-        .where((n) => habitId == null || n.habitId == habitId)
-        .toList()
-      ..sort((a, b) {
-        final byDay = parseDayKey(b.date).compareTo(parseDayKey(a.date));
-        if (byDay != 0) return byDay;
-        final am = a.minutes ?? 24 * 60;
-        final bm = b.minutes ?? 24 * 60;
-        return am != bm ? am.compareTo(bm) : a.createdAt.compareTo(b.createdAt);
+    final list = habitId == null ? _notes : _byHabit[habitId] ?? const [];
+    final days = {for (final note in list) note.date: parseDayKey(note.date)};
+    return [...list]..sort((a, b) {
+        final byDay = days[b.date]!.compareTo(days[a.date]!);
+        return byDay != 0 ? byDay : _byTime(a, b);
       });
-    return list;
   }
 
   int countFor(String habitId, String dayKey) =>
-      _notes.where((n) => n.habitId == habitId && n.date == dayKey).length;
+      _byDay['$habitId|$dayKey']?.length ?? 0;
 
-  Set<NoteType> typesFor(String habitId, String dayKey) => _notes
-      .where((n) => n.habitId == habitId && n.date == dayKey)
-      .map((n) => n.type)
-      .toSet();
+  Set<NoteType> typesFor(String habitId, String dayKey) => {
+        for (final note in _byDay['$habitId|$dayKey'] ?? const <HabitNote>[])
+          note.type,
+      };
 
-  bool hasAny(String habitId) => _notes.any((n) => n.habitId == habitId);
+  bool hasAny(String habitId) => _byHabit.containsKey(habitId);
 
-  List<HabitNote> photoNotes(String habitId) {
-    final list = _notes
-        .where((n) => n.habitId == habitId && n.photos.isNotEmpty)
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return list;
-  }
+  List<HabitNote> photoNotes(String habitId) => [
+        for (final note in _byHabit[habitId] ?? const <HabitNote>[])
+          if (note.photos.isNotEmpty) note,
+      ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-  int photoCount(String habitId) => _notes
-      .where((n) => n.habitId == habitId)
+  int photoCount(String habitId) => (_byHabit[habitId] ?? const <HabitNote>[])
       .fold(0, (sum, n) => sum + n.photos.length);
 
   Future<HabitNote> create({
@@ -87,7 +98,7 @@ class NotesController extends ChangeNotifier {
     );
     _notes.add(note);
     await LocalStore.writeNote(note);
-    notifyListeners();
+    _changed();
     return note;
   }
 
@@ -98,7 +109,7 @@ class NotesController extends ChangeNotifier {
         _notes[index].photos.where((p) => !note.photos.contains(p)).toList();
     _notes[index] = note;
     await LocalStore.writeNote(note);
-    notifyListeners();
+    _changed();
     await CoverStorage.forgetAll(dropped);
   }
 
@@ -108,7 +119,7 @@ class NotesController extends ChangeNotifier {
     ];
     _notes.removeWhere((n) => n.id == id);
     await LocalStore.removeNote(id);
-    notifyListeners();
+    _changed();
     await CoverStorage.forgetAll(photos);
   }
 
@@ -119,7 +130,7 @@ class NotesController extends ChangeNotifier {
     ];
     _notes.removeWhere((n) => n.habitId == habitId);
     await LocalStore.removeNotesFor(habitId);
-    notifyListeners();
+    _changed();
     await CoverStorage.forgetAll(photos);
   }
 }

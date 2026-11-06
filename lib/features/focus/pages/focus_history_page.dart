@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/extensions/clock_extensions.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/express/express_button.dart';
 import 'package:streak/core/express/express_motion.dart';
@@ -18,6 +20,7 @@ import 'package:streak/core/utils/app_snackbar.dart';
 import 'package:streak/core/widgets/app_confirm_dialog.dart';
 import 'package:streak/core/widgets/app_empty_state.dart';
 import 'package:streak/core/widgets/entrance.dart';
+import 'package:streak/features/focus/widgets/focus_insights.dart';
 import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/focus/state/focus_actions.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
@@ -86,6 +89,12 @@ class _FocusHistoryPageState extends State<FocusHistoryPage> {
     if (id == null) return context.l10n.focus_history;
     return context.read<HabitsController>().byId(id)?.name ??
         context.l10n.focus_history;
+  }
+
+  Future<void> _edit(FocusSession session) async {
+    final saved = await showFocusLogSheet(context, editing: session);
+    if (saved != true || !mounted) return;
+    AppSnackbar.success(context, context.l10n.focus_session_updated);
   }
 
   Future<void> _log() async {
@@ -170,8 +179,7 @@ class _FocusHistoryPageState extends State<FocusHistoryPage> {
     final minimal = style.isMinimalStyle;
     final habitId = widget.habitId;
     final sessions = context
-        .watch<FocusController>()
-        .sessions
+        .select<FocusController, List<FocusSession>>((f) => f.sessions)
         .where((s) => habitId == null || s.habitId == habitId)
         .toList()
       ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
@@ -225,6 +233,7 @@ class _FocusHistoryPageState extends State<FocusHistoryPage> {
                               selected: _selected.contains(session.id),
                               selecting: _selecting,
                               onToggle: () => _toggle(session.id),
+                              onEdit: () => _edit(session),
                             ),
                           const SizedBox(height: 14),
                         ],
@@ -251,7 +260,7 @@ class _DayHeader extends StatelessWidget {
   String _label(BuildContext context) {
     final today = DateTime.now();
     if (day.isSameDay(today)) return context.l10n.today;
-    if (day.isSameDay(today.subtract(const Duration(days: 1)))) {
+    if (day.isSameDay(today.addDays(-1))) {
       return context.l10n.yesterday;
     }
     final locale = Localizations.localeOf(context).toString();
@@ -311,20 +320,21 @@ class _SessionTile extends StatelessWidget {
     required this.selected,
     required this.selecting,
     required this.onToggle,
+    required this.onEdit,
   });
 
   final FocusSession session;
   final bool selected;
   final bool selecting;
   final VoidCallback onToggle;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final habit = session.habitId.isEmpty
         ? null
         : context.watch<HabitsController>().byId(session.habitId);
-    final color = habit?.color ?? context.colors.primary;
-    final locale = Localizations.localeOf(context).toString();
+    final color = habit?.color.shownIn(context) ?? context.colors.primary;
     final scheme = context.colors;
     final express = context.watch<SettingsController>().isExpressStyle;
 
@@ -334,7 +344,7 @@ class _SessionTile extends StatelessWidget {
         button: true,
         selected: selected,
         child: GestureDetector(
-          onTap: selecting ? onToggle : null,
+          onTap: selecting ? onToggle : onEdit,
           onLongPress: onToggle,
           child: AnimatedContainer(
             duration: express
@@ -402,9 +412,11 @@ class _SessionTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        habit == null
-                            ? context.l10n.focus_free_session
-                            : habit.name,
+                        session.label.isEmpty
+                            ? (habit?.name ?? context.l10n.focus_free_session)
+                            : habit == null
+                            ? session.label
+                            : '${habit.name} · ${session.label}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: express
@@ -421,7 +433,7 @@ class _SessionTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${DateFormat.Hm(locale).format(session.startedAt)}'
+                        '${context.clockOf(session.startedAt)}'
                         '  ·  '
                         '${session.targetMinutes <= 0 ? context.l10n.focus_flowtime : context.l10n.minutes_short('${session.targetMinutes}')}',
                         style: express
@@ -435,6 +447,26 @@ class _SessionTile extends StatelessWidget {
                                 color: context.tokens.muted,
                               ),
                       ),
+                      if (session.measured) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          '${focusSessionLine(context, session)}'
+                          '  ·  '
+                          '${context.l10n.focus_pause_count(session.pauses)}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: express
+                              ? ExpressType.body.at(
+                                  11.5,
+                                  weight: 600,
+                                  color: context.tokens.muted,
+                                )
+                              : TextStyle(
+                                  fontSize: 12,
+                                  color: context.tokens.muted,
+                                ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/app/classic_nav_bar.dart';
 import 'package:streak/core/express/express_nav.dart';
 import 'package:streak/core/express/express_shapes.dart';
 import 'package:streak/core/express/express_surface.dart';
@@ -16,9 +17,11 @@ import 'package:streak/core/minimal/minimal_nav.dart';
 import 'package:streak/core/minimal/minimal_type.dart';
 import 'package:streak/core/routing/app_navigator.dart';
 import 'package:streak/core/database/local_store.dart';
+import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/routing/back_handlers.dart';
 import 'package:streak/core/utils/responsive.dart';
 import 'package:streak/core/widgets/page_motion.dart';
+import 'package:streak/core/widgets/glass.dart';
 import 'package:streak/features/focus/state/focus_actions.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/habits/pages/day_timeline_page.dart';
@@ -26,14 +29,22 @@ import 'package:streak/features/habits/pages/home_page.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/widgets/today_intro.dart';
 import 'package:streak/features/settings/pages/settings_page.dart';
+import 'package:streak/features/settings/settings_actions.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/pages/statistics_page.dart';
 import 'package:streak/features/sleep/pages/sleep_page.dart';
+import 'package:streak/services/auto_sync.dart';
+import 'package:streak/services/health_steps.dart';
 import 'package:streak/services/home_widget_service.dart';
 import 'package:streak/services/widget_action_service.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
+
+  static void showSettings() {
+    AppNavigator.key.currentState?.popUntil((route) => route.isFirst);
+    _toSettings.value++;
+  }
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -43,6 +54,8 @@ enum _Tab { today, sleep, plan, stats, settings }
 
 final _paneTab = ValueNotifier(_Tab.today);
 
+final _toSettings = ValueNotifier(0);
+
 class _HomeShellState extends State<HomeShell>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   _Tab _tab = _Tab.today;
@@ -50,6 +63,12 @@ class _HomeShellState extends State<HomeShell>
   final _visited = <_Tab>{_Tab.today};
 
   late final AnimationController _swap;
+  final _compact = ValueNotifier(false);
+  Timer? _nextDay;
+  DateTime? _leftAt;
+  bool _replayDue = false;
+
+  static const _awayForReplay = Duration(minutes: 5);
 
   @override
   void initState() {
@@ -61,29 +80,83 @@ class _HomeShellState extends State<HomeShell>
       value: 1,
     );
     WidgetsBinding.instance.addObserver(this);
+    _toSettings.addListener(_openSettings);
     final focus = context.read<FocusController>();
     final habits = context.read<HabitsController>();
     focus.onRoundSaved = (session) =>
-        unawaited(countFocusTime(habits, focus, session));
+        unawaited(creditFocusRound(habits, focus, session));
+    _waitForNextDay();
+    unawaited(HealthSteps.sync(habits));
+    final settings = context.read<SettingsController>();
+    AutoSync.start(
+      enabled: () => settings.syncsFolder,
+      reload: () async {
+        if (mounted) await SettingsActions.reloadAll(context);
+      },
+      save: () => settings.runAutoBackup(force: true, archive: false),
+    );
+  }
+
+  void _waitForNextDay() {
+    _nextDay?.cancel();
+    final end = AppClock.today()
+        .addDays(1)
+        .add(Duration(hours: AppClock.cutoffHour, seconds: 1));
+    _nextDay = Timer(end.difference(DateTime.now()), () {
+      if (!mounted) return;
+      context.read<HabitsController>().refresh();
+      _waitForNextDay();
+    });
   }
 
   @override
   void dispose() {
+    _nextDay?.cancel();
+    AutoSync.stop();
     _swap.dispose();
+    _compact.dispose();
+    _toSettings.removeListener(_openSettings);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   void _select(List<_Tab> tabs, _Tab tab) {
     if (tab == _tab) return;
-    if (tab == _Tab.today) TodayIntro.replay();
+    if (tab == _Tab.today && _replayDue) {
+      _replayDue = false;
+      TodayIntro.replay();
+    }
     setState(() {
       _visited.add(tab);
       _tab = tab;
     });
     _paneTab.value = tab;
     AppNavigator.clearPane();
+    _compact.value = false;
     _swap.forward(from: 0);
+  }
+
+  void _openSettings() {
+    setState(() {
+      _visited.add(_Tab.settings);
+      _tab = _Tab.settings;
+    });
+    _paneTab.value = _Tab.settings;
+  }
+
+  bool _onScroll(ScrollUpdateNotification note) {
+    final delta = note.scrollDelta ?? 0;
+    if (note.metrics.axis != Axis.vertical) return false;
+    if (note.metrics.pixels <= note.metrics.minScrollExtent + 8) {
+      _compact.value = false;
+    } else if (note.dragDetails == null) {
+      return false;
+    } else if (delta > 4) {
+      _compact.value = true;
+    } else if (delta < -4) {
+      _compact.value = false;
+    }
+    return false;
   }
 
   Widget _rail(
@@ -93,6 +166,7 @@ class _HomeShellState extends State<HomeShell>
     int style,
   ) {
     final index = tabs.indexOf(current);
+    final compact = isCompactRail(context);
     if (style == 2) {
       return ExpressNavRail(
         items: [
@@ -101,7 +175,8 @@ class _HomeShellState extends State<HomeShell>
         ],
         index: index,
         onSelect: (i) => _select(tabs, tabs[i]),
-        brand: const _RailBrand(),
+        brand: _RailBrand(compact: compact),
+        compact: compact,
       );
     }
     if (style == 1) {
@@ -112,12 +187,14 @@ class _HomeShellState extends State<HomeShell>
         ],
         index: index,
         onSelect: (i) => _select(tabs, tabs[i]),
-        brand: const _RailBrand(),
+        brand: _RailBrand(compact: compact),
+        compact: compact,
       );
     }
     return _NavRail(
       tabs: tabs,
       current: current,
+      compact: compact,
       onSelect: (tab) => _select(tabs, tab),
     );
   }
@@ -141,12 +218,28 @@ class _HomeShellState extends State<HomeShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _leftAt ??= DateTime.now();
+      unawaited(AutoSync.pause());
+    }
     if (state == AppLifecycleState.resumed) {
+      final left = _leftAt;
+      _leftAt = null;
+      if (left != null && DateTime.now().difference(left) >= _awayForReplay) {
+        _replayDue = _tab != _Tab.today;
+        if (!_replayDue) TodayIntro.replay();
+      }
       final habits = context.read<HabitsController>();
       if (Platform.isIOS) _applyWidgetActions(habits);
-      habits.reload().then((_) => HomeWidgetService.sync(habits.asMap));
+      habits.refresh().then((_) {
+        HomeWidgetService.sync(habits.asMap);
+        return HealthSteps.sync(habits);
+      });
       TodayIntro.replay();
       drainFocusActions();
+      context.read<SettingsController>().runAutoBackup();
+      AutoSync.resume();
+      _waitForNextDay();
     }
   }
 
@@ -160,18 +253,21 @@ class _HomeShellState extends State<HomeShell>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      _StableMedia(child: Builder(builder: _layout));
+
+  Widget _layout(BuildContext context) {
     final settings = context.watch<SettingsController>();
     final wide = isWideLayout(context);
+    final railed = hasSideRail(context);
     final minimal = settings.isMinimalStyle;
-    if (minimal && !wide) {
+    if (minimal && !railed) {
       return _guard(
         const [_Tab.today],
         _Tab.today,
-        const Scaffold(body: HomePage()),
+        const Scaffold(resizeToAvoidBottomInset: false, body: HomePage()),
       );
     }
-    final scheme = Theme.of(context).colorScheme;
     final express = settings.isExpressStyle;
     final tabs = [
       _Tab.today,
@@ -182,12 +278,13 @@ class _HomeShellState extends State<HomeShell>
     ];
     final current = tabs.contains(_tab) ? _tab : _Tab.today;
 
-    if (wide) {
+    if (railed) {
       return _guard(
         tabs,
         current,
         _SplitScaffold(
           full: current == _Tab.stats,
+          single: !wide,
           rail: _rail(context, tabs, current, settings.appStyle),
           page: FadeThrough(
             animation: _swap,
@@ -212,22 +309,27 @@ class _HomeShellState extends State<HomeShell>
       tabs,
       current,
       Scaffold(
+        resizeToAvoidBottomInset: false,
         body: Stack(
           children: [
-            FadeThrough(
-              animation: _swap,
-              child: IndexedStack(
-                index: tabs.indexOf(current),
-                children: [
-                  for (final tab in tabs)
-                    TickerMode(
-                      enabled: tab == current,
-                      child: _visited.contains(tab)
-                          ? _pageOf(tab)
-                          : const SizedBox.shrink(),
-                    ),
-                ],
+            NotificationListener<ScrollUpdateNotification>(
+              onNotification: _onScroll,
+              child: FadeThrough(
+                animation: _swap,
+                child: IndexedStack(
+                  index: tabs.indexOf(current),
+                  children: [
+                    for (final tab in tabs)
+                      TickerMode(
+                        enabled: tab == current,
+                        child: _visited.contains(tab)
+                            ? _pageOf(tab)
+                            : const SizedBox.shrink(),
+                      ),
+                  ],
+                ),
               ),
+            ),
             ),
             Positioned(
               left: 0,
@@ -318,6 +420,28 @@ String _labelOf(BuildContext context, _Tab tab) => switch (tab) {
   _Tab.settings => context.l10n.settings,
 };
 
+class _StableMedia extends StatefulWidget {
+  const _StableMedia({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_StableMedia> createState() => _StableMediaState();
+}
+
+class _StableMediaState extends State<_StableMedia> {
+  MediaQueryData? _kept;
+
+  @override
+  Widget build(BuildContext context) {
+    final live = MediaQuery.of(context);
+    final current = ModalRoute.isCurrentOf(context) ?? true;
+    final kept = _kept;
+    if (current || kept == null || kept.size != live.size) _kept = live;
+    return MediaQuery(data: _kept!, child: widget.child);
+  }
+}
+
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.icon,
@@ -403,11 +527,17 @@ class _NavItem extends StatelessWidget {
 }
 
 class _SplitScaffold extends StatefulWidget {
-  const _SplitScaffold({this.rail, required this.page, this.full = false});
+  const _SplitScaffold({
+    this.rail,
+    required this.page,
+    this.full = false,
+    this.single = false,
+  });
 
   final Widget? rail;
   final Widget page;
   final bool full;
+  final bool single;
 
   @override
   State<_SplitScaffold> createState() => _SplitScaffoldState();
@@ -455,10 +585,22 @@ class _SplitScaffoldState extends State<_SplitScaffold> {
                 : ColoredBox(color: tint, child: widget.rail!),
             const _Line(),
           ],
-          if (widget.full)
+          if (widget.single)
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: railPageWidth),
+                  child: widget.page,
+                ),
+              ),
+            )
+          else if (widget.full)
             Expanded(child: widget.page)
           else ...[
-            SizedBox(width: paneWidth, child: widget.page),
+            SizedBox(
+              width: isCompactRail(context) ? compactPaneWidth : paneWidth,
+              child: widget.page,
+            ),
             const _Line(),
             Expanded(
               child: Center(
@@ -592,6 +734,7 @@ class _NavRail extends StatelessWidget {
   const _NavRail({
     required this.tabs,
     required this.current,
+    required this.compact,
     required this.onSelect,
   });
 
@@ -599,20 +742,21 @@ class _NavRail extends StatelessWidget {
 
   final List<_Tab> tabs;
   final _Tab current;
+  final bool compact;
   final void Function(_Tab tab) onSelect;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _width,
+      width: compact ? 76 : _width,
       child: SafeArea(
         right: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 22, 14, 18),
+          padding: EdgeInsets.fromLTRB(compact ? 12 : 14, 22, compact ? 12 : 14, 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _RailBrand(),
+              _RailBrand(compact: compact),
               const SizedBox(height: 26),
               for (final tab in tabs)
                 Padding(
@@ -621,6 +765,7 @@ class _NavRail extends StatelessWidget {
                     icon: _iconOf(tab),
                     label: _labelOf(context, tab),
                     selected: tab == current,
+                    compact: compact,
                     onTap: () => onSelect(tab),
                   ),
                 ),
@@ -633,15 +778,19 @@ class _NavRail extends StatelessWidget {
 }
 
 class _RailBrand extends StatelessWidget {
-  const _RailBrand();
+  const _RailBrand({this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>();
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(left: 6),
+      padding: EdgeInsets.only(left: compact ? 0 : 6),
       child: Row(
+        mainAxisAlignment:
+            compact ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(9),
@@ -652,6 +801,7 @@ class _RailBrand extends StatelessWidget {
               filterQuality: FilterQuality.medium,
             ),
           ),
+          if (!compact) ...[
           const SizedBox(width: 10),
           Text(
             'Streak',
@@ -669,6 +819,7 @@ class _RailBrand extends StatelessWidget {
                     color: scheme.onSurface,
                   ),
           ),
+          ],
         ],
       ),
     );
@@ -680,12 +831,14 @@ class _RailItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.selected,
+    required this.compact,
     required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
+  final bool compact;
   final VoidCallback onTap;
 
   @override
@@ -712,7 +865,12 @@ class _RailItem extends StatelessWidget {
               color: scheme.primary.withValues(alpha: selected ? 0.14 : 0),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Row(
+            child: compact
+                ? Tooltip(
+                    message: label,
+                    child: Icon(icon, size: 19, color: tint),
+                  )
+                : Row(
               children: [
                 Icon(icon, size: 19, color: tint),
                 const SizedBox(width: 11),

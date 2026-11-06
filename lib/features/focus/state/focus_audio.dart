@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -18,6 +19,8 @@ class FocusTrack {
 
   Source get source =>
       asset ? AssetSource('sounds/$id') : DeviceFileSource(id);
+
+  bool get loops => asset && loopingTracks.contains(id);
 
   String encode() => '$id|$name';
 
@@ -58,10 +61,21 @@ class FocusTrack {
 }
 
 const builtInTracks = <String, String>{
-  'rain.ogg': 'Rain',
-  'one_love.ogg': 'One Love',
-  'i_can_find_you.ogg': 'I Can Find You',
+  'rain.mp3': 'Rain',
+  'brown_noise.mp3': 'Brown noise',
+  'fire.mp3': 'Fire',
+  'ticking.wav': 'Ticking clock',
+  'one_love.mp3': 'One Love',
+  'i_can_find_you.mp3': 'I Can Find You',
 };
+
+const loopingTracks = {'ticking.wav'};
+
+String builtInTrackId(String id) {
+  if (id == 'ticking.mp3') return 'ticking.wav';
+  final mp3 = id.replaceFirst(RegExp(r'\.ogg$'), '.mp3');
+  return builtInTracks.containsKey(mp3) ? mp3 : id;
+}
 
 class FocusAudio {
   const FocusAudio._();
@@ -72,21 +86,23 @@ class FocusAudio {
 
   static final ValueNotifier<String> current = ValueNotifier('');
   static final ValueNotifier<bool> playing = ValueNotifier(false);
+  static final ValueNotifier<Duration> position = ValueNotifier(Duration.zero);
+  static final ValueNotifier<Duration> length = ValueNotifier(Duration.zero);
+  static final ValueNotifier<double> volume = ValueNotifier(1);
 
   static List<FocusTrack> _queue = const [];
   static bool _shuffle = false;
   static bool _repeatOne = false;
   static bool _wired = false;
 
-  static const maxTracks = 10;
+  static const maxTracks = 30;
 
-  static const trackExtensions = [
+  static final trackExtensions = [
     'mp3',
     'm4a',
     'aac',
     'wav',
-    'ogg',
-    'opus',
+    if (!Platform.isWindows) ...['ogg', 'opus'],
     'flac',
     'mp4',
   ];
@@ -96,6 +112,8 @@ class FocusAudio {
     if (_wired) return;
     _wired = true;
     _player.onPlayerComplete.listen((_) => _advance());
+    _player.onPositionChanged.listen((at) => position.value = at);
+    _player.onDurationChanged.listen((total) => length.value = total);
   }
 
   static Future<void> _advance() async {
@@ -122,12 +140,25 @@ class FocusAudio {
 
   static Future<void> _start(FocusTrack track) async {
     _wire();
+    await _cancelDuck();
+    position.value = Duration.zero;
+    length.value = Duration.zero;
+    final mode = Platform.isAndroid && track.loops
+        ? PlayerMode.lowLatency
+        : PlayerMode.mediaPlayer;
+    if (_player.mode != mode) await _player.setPlayerMode(mode);
     await _player.setReleaseMode(
-      _repeatOne ? ReleaseMode.loop : ReleaseMode.stop,
+      _repeatOne || track.loops ? ReleaseMode.loop : ReleaseMode.stop,
     );
-    await _player.play(track.source);
     current.value = track.id;
-    playing.value = true;
+    try {
+      await _player.play(track.source, volume: volume.value);
+      playing.value = true;
+    } catch (e) {
+      debugPrint('Could not play the track: $e');
+      await _player.stop();
+      playing.value = false;
+    }
   }
 
   static Future<void> playQueue(
@@ -145,6 +176,24 @@ class FocusAudio {
     await _start(start);
   }
 
+  static Future<void> skip(int step) async {
+    if (_queue.isEmpty) return;
+    final index = _queue.indexWhere((t) => t.id == current.value);
+    if (step < 0 && position.value > const Duration(seconds: 3)) {
+      await seek(Duration.zero);
+      return;
+    }
+    final next = _shuffle && step > 0
+        ? _pickRandom(index)
+        : (index + step) % _queue.length;
+    await _start(_queue[next]);
+  }
+
+  static Future<void> seek(Duration at) async {
+    position.value = at;
+    await _player.seek(at);
+  }
+
   static Future<void> setMode({
     required bool shuffle,
     required bool repeatOne,
@@ -152,48 +201,141 @@ class FocusAudio {
     _shuffle = shuffle;
     _repeatOne = repeatOne;
     if (current.value.isEmpty) return;
+    final loops = _queue.any((t) => t.id == current.value && t.loops);
     await _player.setReleaseMode(
-      repeatOne ? ReleaseMode.loop : ReleaseMode.stop,
+      repeatOne || loops ? ReleaseMode.loop : ReleaseMode.stop,
     );
   }
 
+  static Future<void> setVolume(double value) async {
+    volume.value = value.clamp(0.0, 1.0);
+    await _player.setVolume(volume.value);
+  }
+
   static Future<void> pause() async {
+    await _cancelDuck();
     await _player.pause();
     playing.value = false;
   }
 
-  static Future<void> resume() async {
+  static Future<void> resume({bool fade = false}) async {
+    await _cancelDuck();
+    if (fade) await _player.setVolume(0);
     await _player.resume();
     playing.value = true;
+    if (fade) await _fade(0, volume.value, _duck);
   }
 
   static Future<void> stop() async {
+    await _cancelDuck();
     await _player.stop();
     playing.value = false;
     current.value = '';
+    position.value = Duration.zero;
+    length.value = Duration.zero;
   }
 
   static const silentAlert = 'none';
 
-  static Future<void> alert(String sound, {bool loop = false}) async {
+  static Timer? _alertCutoff;
+  static bool _effectsReady = false;
+  static bool _ducked = false;
+  static int _duck = 0;
+
+  static Future<void> _readyEffects() async {
+    if (_effectsReady) return;
+    _effectsReady = true;
+    _effects.onPlayerComplete.listen((_) {
+      if (_resumeAfter) _restore();
+    });
+    if (Platform.isAndroid) {
+      await _effects.setAudioContext(
+        AudioContext(
+          android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
+        ),
+      );
+    }
+  }
+
+  static const fadeSeconds = 3;
+  static bool _resumeAfter = true;
+
+  static Future<void> _fade(double from, double to, int token) async {
+    const steps = 40;
+    for (var i = 1; i <= steps; i++) {
+      await Future<void>.delayed(
+        const Duration(milliseconds: fadeSeconds * 1000 ~/ steps),
+      );
+      if (token != _duck) return;
+      final t = i / steps;
+      final eased = from < to ? t * t : 1 - (1 - t) * (1 - t);
+      await _player.setVolume(from + (to - from) * eased);
+    }
+  }
+
+  static Future<void> _duckMusic() async {
+    if (_ducked || !playing.value) return;
+    _ducked = true;
+    final token = _duck;
+    await _fade(volume.value, 0, token);
+    if (token == _duck) await _player.pause();
+  }
+
+  static Future<void> _restore() async {
+    if (!_ducked) return;
+    _ducked = false;
+    final token = ++_duck;
+    await _player.setVolume(0);
+    await _player.resume();
+    await _fade(0, volume.value, token);
+  }
+
+  static Future<void> _cancelDuck() async {
+    _duck++;
+    if (!_ducked) return;
+    _ducked = false;
+    await _player.setVolume(volume.value);
+  }
+
+  static Future<void> fadeOut(String sound) async {
     if (sound == silentAlert) return;
+    _resumeAfter = true;
+    await _duckMusic();
+  }
+
+  static Future<void> alert(
+    String sound, {
+    bool loop = false,
+    bool resume = true,
+  }) async {
+    if (sound == silentAlert) return;
+    _resumeAfter = resume;
+    _alertCutoff?.cancel();
+    if (loop) _alertCutoff = Timer(const Duration(minutes: 2), stopAlert);
     try {
+      await _readyEffects();
+      await _duckMusic();
       await _effects.stop();
       await _effects.setReleaseMode(loop ? ReleaseMode.loop : ReleaseMode.stop);
       await _effects.play(
         sound.isEmpty
-            ? AssetSource('sounds/chime.ogg')
+            ? AssetSource('sounds/chime.mp3')
             : DeviceFileSource(sound),
         volume: 0.9,
       );
-    } catch (_) {}
+    } catch (_) {
+      await _restore();
+    }
   }
 
-  static Future<void> stopAlert() async {
+  static Future<void> stopAlert({bool resume = true}) async {
+    _alertCutoff?.cancel();
+    _alertCutoff = null;
     try {
       await _effects.stop();
       await _effects.setReleaseMode(ReleaseMode.stop);
     } catch (_) {}
+    if (resume) await _restore();
   }
 
   static Future<int?> durationOf(String path) async {

@@ -36,6 +36,7 @@ class HabitNote {
       : TimeOfDay(hour: minutes! ~/ 60, minute: minutes! % 60);
 
   HabitNote copyWith({
+    String? habitId,
     NoteType? type,
     String? text,
     int? minutes,
@@ -44,7 +45,7 @@ class HabitNote {
   }) =>
       HabitNote(
         id: id,
-        habitId: habitId,
+        habitId: habitId ?? this.habitId,
         date: date,
         type: type ?? this.type,
         text: text ?? this.text,

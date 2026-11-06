@@ -8,6 +8,7 @@ import 'package:streak/core/widgets/sheet_type.dart';
 import 'package:streak/core/widgets/sheet_action.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/habits/data/habit.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 enum FocusHabitAction { defaults, clearToday }
 
@@ -50,7 +51,7 @@ Future<FocusHabitAction?> showFocusHabitSheet(
               icon: LucideIcons.timer,
               label: context.l10n.focus_defaults,
               badge: focusDefaultsLabel(context, habit),
-              accent: habit.color,
+              accent: habit.color.shownIn(context),
               highlighted: true,
               onTap: () => Navigator.of(sheet).pop(FocusHabitAction.defaults),
             ),

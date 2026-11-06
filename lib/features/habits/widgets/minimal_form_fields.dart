@@ -8,6 +8,7 @@ import 'package:streak/core/icons/habit_glyph.dart';
 import 'package:streak/core/widgets/hold_repeat_button.dart';
 import 'package:streak/core/widgets/number_keypad_dialog.dart';
 import 'package:streak/features/habits/data/reminder.dart';
+import 'package:streak/features/habits/widgets/reminder_tile.dart';
 
 Color minimalOutline(BuildContext context) =>
     context.tokens.muted.withValues(alpha: 0.28);
@@ -219,6 +220,7 @@ class CompactStepperRow extends StatelessWidget {
     this.unit = '',
     this.editable = false,
     this.decimals = false,
+    this.clock = false,
   });
 
   final String label;
@@ -229,6 +231,7 @@ class CompactStepperRow extends StatelessWidget {
   final String unit;
   final bool editable;
   final bool decimals;
+  final bool clock;
   final ValueChanged<double> onChanged;
 
   Future<void> _promptValue(BuildContext context) async {
@@ -239,6 +242,7 @@ class CompactStepperRow extends StatelessWidget {
       unit: unit,
       min: min,
       decimals: decimals,
+      clock: clock,
     );
     if (result != null) onChanged(result);
   }
@@ -246,9 +250,11 @@ class CompactStepperRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = context.colors;
-    final text = unit.isEmpty
-        ? formatAmount(value)
-        : '${formatAmount(value)} $unit';
+    final text = clock
+        ? formatMinutes(value)
+        : unit.isEmpty
+            ? formatAmount(value)
+            : '${formatAmount(value)} $unit';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
@@ -365,6 +371,10 @@ class CompactWeekdays extends StatelessWidget {
                   ),
                   child: Text(
                     labels[i],
+                    maxLines: 1,
+                    softWrap: false,
+                    textScaler: MediaQuery.textScalerOf(context)
+                        .clamp(maxScaleFactor: 1.3),
                     style: TextStyle(
                       color: active ? accent : context.tokens.muted,
                       fontWeight: FontWeight.w700,
@@ -387,13 +397,22 @@ class CompactReminderRow extends StatelessWidget {
     required this.reminder,
     required this.onEdit,
     required this.onDelete,
+    this.followsHabit = false,
   });
 
   final Reminder reminder;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final bool followsHabit;
 
   String _daysLabel(BuildContext context) {
+    final days = _dayNames(context);
+    if (!reminder.isHourly) return days;
+    return '$days · ${reminderEveryLabel(context, reminder.everyMinutes)}';
+  }
+
+  String _dayNames(BuildContext context) {
+    if (followsHabit) return context.l10n.reminder_habit_days;
     if (reminder.isInterval) {
       return context.l10n.every_n_days(reminder.everyDays);
     }
@@ -427,7 +446,7 @@ class CompactReminderRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      reminder.timeLabel,
+                      reminderSpan(context, reminder),
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,

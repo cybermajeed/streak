@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:streak/core/i18n/app_locale.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/i18n/l10n.dart';
+import 'package:streak/core/utils/responsive.dart';
 import 'package:streak/core/widgets/sheet_type.dart';
 import 'package:streak/features/habits/widgets/color_picker.dart';
 import 'package:streak/features/settings/settings_actions.dart';
@@ -15,6 +17,11 @@ Future<void> showSheet(BuildContext context, WidgetBuilder builder) {
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
+    useSafeArea: true,
+    constraints: BoxConstraints(
+      maxWidth: phoneWidth,
+      maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+    ),
     builder: builder,
   );
 }
@@ -93,7 +100,7 @@ Future<void> showBackgroundSheet(BuildContext context) {
 }
 
 Future<void> showLanguageSheet(BuildContext context) {
-  final locales = SettingsActions.shippedLocales;
+  final locales = shippedLocales;
   return showSheet(
     context,
     (sheet) => SafeArea(
@@ -194,6 +201,16 @@ class _BackgroundOption extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
+  BoxDecoration _themed(ColorScheme scheme) => index == 1
+      ? BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [scheme.surfaceContainerHigh, scheme.surface],
+          ),
+        )
+      : BoxDecoration(color: scheme.surface);
+
   BoxDecoration _preview(bool isDark) {
     if (isDark) {
       switch (index) {
@@ -231,7 +248,12 @@ class _BackgroundOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = context.colors.primary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final outline = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFD8D8E0);
+    final themed = context.watch<SettingsController>().colorTheme != null;
+    final outline = themed
+        ? context.colors.outlineVariant
+        : isDark
+            ? const Color(0xFF2C2C2E)
+            : const Color(0xFFD8D8E0);
     final dotColor = isDark
         ? Colors.white.withValues(alpha: 0.12)
         : Colors.black.withValues(alpha: 0.1);
@@ -244,7 +266,10 @@ class _BackgroundOption extends StatelessWidget {
             AspectRatio(
               aspectRatio: 1,
               child: Container(
-                decoration: _preview(isDark).copyWith(
+                decoration: (themed
+                        ? _themed(context.colors)
+                        : _preview(isDark))
+                    .copyWith(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: selected ? accent : outline,

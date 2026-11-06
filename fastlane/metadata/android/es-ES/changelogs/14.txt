@@ -1,0 +1,10 @@
+Streak 2.3.0 🚀
+
+- Todos los widgets rediseñados, con un editor más claro
+- Classic usa ahora una letra más suave y redonda
+- Tocar un día pasado lo abre primero, para no cambiar nada sin querer
+- Repite un hábito X días después de la última vez
+- El mismo día de la semana cada mes, como el primer lunes
+- Botón de hecho en el aviso de las tareas
+- Focus: contar solo rondas completas y un descanso largo
+- Arreglada la alarma de Focus con la pantalla apagada y los tirones durante Focus

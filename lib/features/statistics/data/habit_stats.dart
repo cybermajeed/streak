@@ -1,6 +1,21 @@
+import 'dart:isolate';
+
 import 'package:flutter/foundation.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/habits/data/habit.dart';
+
+enum ConsistencyPeriod {
+  week(7),
+  month(30),
+  quarter(90),
+  year(365);
+
+  const ConsistencyPeriod(this.days);
+
+  final int days;
+}
+
+typedef ConsistencyValue = ({int now, int? before});
 
 @immutable
 class HabitStats {
@@ -45,7 +60,9 @@ class HabitStats {
     currentStreak: 0,
     bestStreak: 0,
     monthRate: 0,
-    consistency: 0,
+    consistency: [
+      for (final _ in ConsistencyPeriod.values) (now: 0, before: null),
+    ],
     weekDone: 0,
     monthDone: 0,
     allDone: 0,
@@ -70,7 +87,10 @@ class HabitStats {
   final int weekDone;
   final int monthDone;
   final int allDone;
-  final int consistency;
+  final List<ConsistencyValue> consistency;
+
+  ConsistencyValue consistencyOver(ConsistencyPeriod period) =>
+      consistency[period.index];
 
   int get bestWeekday => _argMax(weekday);
   int get bestMonth => _argMax(monthly);
@@ -104,25 +124,65 @@ class HabitStats {
     final series = List<double>.filled(window, 0);
 
     for (final habit in habits) {
+      final negative = habit.kind == HabitKind.negative;
+      final periodic = !negative &&
+          (habit.interval == HabitInterval.weekly ||
+              habit.interval == HabitInterval.monthly);
+      final daySpecific = !negative && habit.interval.isDaySpecific;
       var run = 0;
-      var cursor = start.addDays(-1);
-      while (habit.isCompletedOn(cursor)) {
-        run++;
-        cursor = cursor.addDays(-1);
-      }
-      for (var i = 0; i < window; i++) {
-        final day = start.addDays(i);
-        run = habit.isCompletedOn(day) ? run + 1 : 0;
-        if (run > series[i]) series[i] = run.toDouble();
+      var closed = 0;
+      var inPeriod = 0;
+      DateTime? period;
+      for (var day = habit.startedAt;
+          !day.isAfter(today);
+          day = day.addDays(1)) {
+        if (periodic) {
+          final key = habit.interval == HabitInterval.weekly
+              ? day.startOfWeek(Habit.weekStart)
+              : DateTime(day.year, day.month);
+          if (key != period) {
+            if (period != null) {
+              closed = inPeriod >= habit.targetFrequency ? closed + 1 : 0;
+            }
+            period = key;
+            inPeriod = 0;
+          }
+          if (habit.isCompletedOn(day)) inPeriod++;
+          run = closed + (inPeriod >= habit.targetFrequency ? 1 : 0);
+        } else if (habit.isNeutralOn(day) ||
+            (daySpecific && !habit.isScheduledOn(day))) {
+        } else if (daySpecific
+            ? habit.isSatisfiedOn(day)
+            : habit.isCompletedOn(day)) {
+          run++;
+        } else if (negative || day != today) {
+          run = 0;
+        }
+        final i = day.epochDay - start.epochDay;
+        if (i >= 0 && run > series[i]) series[i] = run.toDouble();
       }
     }
     return series;
   }
 
-  static bool _isDue(Habit habit, DateTime day) =>
-      !day.isBefore(habit.startedAt) &&
-      habit.isScheduledOn(day) &&
-      !habit.isNeutralOn(day);
+  static int? _rate(List<Habit> habits, DateTime from, DateTime to) {
+    var done = 0.0;
+    var possible = 0;
+    for (final habit in habits) {
+      final tally = habit.tally(from, to);
+      done += tally.done * habit.difficultyWeight;
+      possible += tally.days * habit.difficultyWeight;
+    }
+    return possible == 0 ? null : (done / possible * 100).round();
+  }
+
+  static bool _isDue(Habit habit, DateTime day) {
+    if (day.isBefore(habit.startedAt)) return false;
+    if (!day.isAfter(habit.startedAt) && !habit.isCompletedOn(day)) {
+      return false;
+    }
+    return habit.isScheduledOn(day) && !habit.isNeutralOn(day);
+  }
 
   static ({int current, int best}) perfectStreakOf(
     List<Habit> habits,
@@ -164,6 +224,27 @@ class HabitStats {
     return best;
   }
 
+  static bool isLight(List<Habit> habits) {
+    final today = AppClock.today().epochDay;
+    final days = habits.fold(
+      0,
+      (sum, habit) => sum + today - habit.startedAt.epochDay,
+    );
+    return days < 4000;
+  }
+
+  static Future<HabitStats> inBackground(List<Habit> habits, int year) {
+    final cutoff = AppClock.cutoffHour;
+    final weigh = Habit.weighDifficulty;
+    final weekStart = Habit.weekStart;
+    return Isolate.run(() {
+      AppClock.cutoffHour = cutoff;
+      Habit.weighDifficulty = weigh;
+      Habit.weekStart = weekStart;
+      return compute(habits, year);
+    });
+  }
+
   static List<Habit> counted(List<Habit> habits) =>
       habits.where((h) => !h.tracking).toList();
 
@@ -178,7 +259,7 @@ class HabitStats {
     var weekDone = 0;
     var monthDone = 0;
     var allDone = 0;
-    final weekFloor = today.startOfWeek(DateTime.monday);
+    final weekFloor = today.startOfWeek(Habit.weekStart);
 
     for (final habit in habits) {
       if (habit.kind == HabitKind.negative) {
@@ -235,7 +316,7 @@ class HabitStats {
     var perfectDays = 0;
     for (final key in daily.keys) {
       final date = parseDayKey(key);
-      final due = habits.where((h) => h.isScheduledOn(date));
+      final due = habits.where((h) => _isDue(h, date));
       if (due.isNotEmpty && due.every((h) => h.isCompletedOn(date))) {
         perfectDays++;
       }
@@ -254,16 +335,17 @@ class HabitStats {
     }
     final monthRate = possible == 0 ? 0 : (done / possible * 100).round();
 
-    final weight = habits.fold<int>(0, (sum, h) => sum + h.difficultyWeight);
-    final consistency = weight == 0
-        ? 0
-        : (habits.fold<double>(
-                  0,
-                  (sum, h) => sum + h.strength * h.difficultyWeight,
-                ) /
-                weight *
-                100)
-            .round();
+    final consistency = [
+      for (final period in ConsistencyPeriod.values)
+        (
+          now: _rate(habits, today.addDays(1 - period.days), today) ?? 0,
+          before: _rate(
+            habits,
+            today.addDays(1 - 2 * period.days),
+            today.addDays(-period.days),
+          ),
+        ),
+    ];
 
     final perfect = perfectStreakOf(habits, today);
 

@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.Color as Ink
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -59,14 +60,14 @@ object HeatmapRenderer {
         manager: AppWidgetManager,
         appWidgetId: Int,
     ): RemoteViews? {
+        val style = CardStyle.loadFor(context, appWidgetId)
         val data = HabitCardData.load(
             context,
             HeatmapConfig.habitOf(context, appWidgetId),
             HeatmapConfig.colorOf(context, appWidgetId),
-        ) ?: return null
+        )?.tinted(style.dark) ?: return null
         if (data.levels.isEmpty()) return null
 
-        val style = CardStyle.loadFor(context, appWidgetId)
         val layout = HeatmapConfig.layoutOf(context, appWidgetId)
         val density = context.resources.displayMetrics.density
 
@@ -94,7 +95,7 @@ object HeatmapRenderer {
                     data.iconPath,
                     when {
                         !data.iconTintable -> null
-                        filled -> Color.WHITE
+                        filled -> CardBitmaps.inkOn(data.color)
                         tight -> data.color
                         else -> style.content
                     },
@@ -110,7 +111,7 @@ object HeatmapRenderer {
                         } else {
                             CardBitmaps.withAlpha(data.color, 0.20f)
                         },
-                        if (data.doneToday) Color.WHITE else data.color,
+                        if (data.doneToday) CardBitmaps.inkOn(data.color) else data.color,
                     ),
                 )
             }
@@ -161,16 +162,17 @@ object HeatmapRenderer {
             context,
             HeatmapConfig.habitOf(context, appWidgetId),
             HeatmapConfig.colorOf(context, appWidgetId),
-        )
+        )?.tinted(style.dark)
 
         if (data == null || data.levels.isEmpty()) {
             views.setViewVisibility(R.id.hm_content, View.GONE)
             views.setViewVisibility(R.id.hm_empty, View.VISIBLE)
-            views.setTextViewText(
+            val message = WidgetText.get(context, "open_to_sync", "Open Streak to sync")
+            views.setImageViewBitmap(
                 R.id.hm_empty,
-                WidgetText.get(context, "open_to_sync", "Open Streak to sync"),
+                WidgetDraw.text(context, message, 13f, Ink(style.muted), 600, widthDp - PAD_DP * 2),
             )
-            views.setTextColor(R.id.hm_empty, style.muted)
+            views.setContentDescription(R.id.hm_empty, message)
             views.setOnClickPendingIntent(R.id.root, openIntent(context, appWidgetId, null))
             return views
         }
@@ -185,14 +187,17 @@ object HeatmapRenderer {
         if (classic) {
             views.setViewVisibility(R.id.hm_header, View.GONE)
             views.setViewVisibility(R.id.hm_title, View.VISIBLE)
-            views.setTextViewText(R.id.hm_title, data.name)
-            views.setTextColor(R.id.hm_title, style.content)
+            views.setImageViewBitmap(
+                R.id.hm_title,
+                WidgetDraw.text(context, data.name, 15f, Ink(style.content), 800, widthDp - PAD_DP * 2),
+            )
+            views.setContentDescription(R.id.hm_title, data.name)
             gridHeightDp = innerHeight - CLASSIC_TITLE_DP - GAP_DP
         } else {
             views.setViewVisibility(R.id.hm_title, View.GONE)
             views.setViewVisibility(R.id.hm_header, View.VISIBLE)
             val tileDp = (innerHeight * 0.32f).coerceIn(TILE_MIN_DP, TILE_MAX_DP)
-            header(context, views, style, data, appWidgetId, tileDp, density, tight)
+            header(context, views, style, data, appWidgetId, tileDp, density, tight, widthDp)
             gridHeightDp = innerHeight - tileDp - GAP_DP
         }
 
@@ -218,6 +223,7 @@ object HeatmapRenderer {
         tileDp: Float,
         density: Float,
         tight: Boolean,
+        widthDp: Float,
     ) {
         val tilePx = (tileDp * density).toInt()
         val habitId = data.id
@@ -232,25 +238,26 @@ object HeatmapRenderer {
                 data.iconPath,
                 when {
                     !data.iconTintable -> null
-                    filled -> Color.WHITE
+                    filled -> CardBitmaps.inkOn(data.color)
                     tight -> data.color
                     else -> style.content
                 },
             ),
         )
 
-        views.setTextViewText(R.id.hm_name, data.name)
-        views.setTextColor(R.id.hm_name, style.content)
-        views.setTextViewTextSize(
+        val room = widthDp - PAD_DP * 2 - tileDp - 16f - if (!tight && habitId != null) tileDp + 8f else 0f
+        views.setImageViewBitmap(
             R.id.hm_name,
-            TypedValue.COMPLEX_UNIT_SP,
-            if (tileDp >= 38f) 17f else 15f,
+            WidgetDraw.text(context, data.name, if (tileDp >= 38f) 17f else 15f, Ink(style.content), 800, room),
         )
+        views.setContentDescription(R.id.hm_name, data.name)
 
         if (!tight && data.description.isNotEmpty() && tileDp >= 34f) {
             views.setViewVisibility(R.id.hm_desc, View.VISIBLE)
-            views.setTextViewText(R.id.hm_desc, data.description)
-            views.setTextColor(R.id.hm_desc, CardBitmaps.withAlpha(style.content, 0.72f))
+            views.setImageViewBitmap(
+                R.id.hm_desc,
+                WidgetDraw.text(context, data.description, 13f, Ink(style.content).copy(alpha = 0.72f), 600, room),
+            )
         } else {
             views.setViewVisibility(R.id.hm_desc, View.GONE)
         }
@@ -282,7 +289,7 @@ object HeatmapRenderer {
             CardBitmaps.check(
                 tilePx,
                 if (data.doneToday) data.color else CardBitmaps.withAlpha(data.color, 0.20f),
-                if (data.doneToday) Color.WHITE else data.color,
+                if (data.doneToday) CardBitmaps.inkOn(data.color) else data.color,
             ),
         )
         views.setOnClickPendingIntent(
@@ -336,7 +343,7 @@ object HeatmapRenderer {
     }
 }
 
-class HabitCardData(
+data class HabitCardData(
     val id: String?,
     val name: String,
     val description: String,
@@ -350,6 +357,8 @@ class HabitCardData(
     val completions: List<Boolean>,
     val levels: List<Int>,
 ) {
+
+    fun tinted(dark: Boolean): HabitCardData = copy(color = CardBitmaps.shown(color, dark))
 
     fun isDoneOn(dayIndex: Int): Boolean =
         dayIndex >= 0 && dayIndex < completions.size && completions[dayIndex]

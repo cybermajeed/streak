@@ -1,11 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:streak/features/focus/widgets/focus_video_scene.dart';
 
 class LinuxVideoScene extends StatefulWidget {
-  const LinuxVideoScene({super.key, required this.name});
+  const LinuxVideoScene({super.key, required this.file, required this.poster});
 
-  final String name;
+  final File file;
+  final Widget poster;
 
   @override
   State<LinuxVideoScene> createState() => _LinuxVideoSceneState();
@@ -26,13 +28,13 @@ class _LinuxVideoSceneState extends State<LinuxVideoScene> {
   @override
   void didUpdateWidget(LinuxVideoScene oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.name == widget.name) return;
+    if (oldWidget.file.path == widget.file.path) return;
     _close();
     _open();
   }
 
   Future<void> _open() async {
-    final file = focusVideoFile(widget.name);
+    final file = widget.file;
     if (!file.existsSync()) return;
     try {
       final scene = await _channel
@@ -71,7 +73,7 @@ class _LinuxVideoSceneState extends State<LinuxVideoScene> {
   @override
   Widget build(BuildContext context) {
     final id = _id;
-    if (id == null) return FocusVideoPoster(name: widget.name);
+    if (id == null) return widget.poster;
     return FittedBox(
       fit: BoxFit.cover,
       clipBehavior: Clip.hardEdge,

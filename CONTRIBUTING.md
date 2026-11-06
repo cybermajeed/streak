@@ -20,8 +20,10 @@ Bug fixes, features or a well-written issue — all of it helps.
 | **Feature or behavior change** | Open an issue first, so we agree on the direction before you spend an evening on it. |
 | **Bug** | The [issue templates](.github/ISSUE_TEMPLATE) ask for your app version and device — those two answers save all the guessing. |
 
-Streak is deliberately small, offline and free of trackers. Analytics, ads,
-accounts and network backends are out of scope.
+Streak is deliberately small and has **zero internet**: the app never connects
+to the network, and on Android it does not even request the internet
+permission. Anything that needs a connection, such as sync, cloud backups,
+accounts, analytics or ads, is out of scope, even as an option.
 
 ---
 

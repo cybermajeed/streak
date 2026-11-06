@@ -4,14 +4,19 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/express/express_surface.dart';
+import 'package:streak/core/extensions/clock_extensions.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/minimal/minimal_kit.dart';
+import 'package:streak/core/widgets/time_picker.dart';
 import 'package:streak/core/widgets/sheet_type.dart';
 import 'package:streak/features/habits/data/completion.dart';
 import 'package:streak/features/habits/data/habit.dart';
+import 'package:streak/features/habits/state/habits_controller.dart';
+import 'package:streak/features/habits/widgets/habit_heatmap.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 List<Completion> checkLog(Habit habit) {
   final out = habit.completions.values.where((e) => e.day != null).toList()
@@ -22,13 +27,38 @@ List<Completion> checkLog(Habit habit) {
 String _clock(BuildContext context, Completion entry) {
   final stamp = entry.stamp;
   if (stamp == null) return context.l10n.check_no_time;
-  return DateFormat.Hm(context.l10n.localeName).format(stamp);
+  return context.clockOf(stamp);
 }
 
-String lastCheckLabel(BuildContext context, Habit habit) {
-  final log = checkLog(habit);
-  if (log.isEmpty) return context.l10n.check_never;
-  final entry = log.first;
+(String, int) periodTotal(BuildContext context, Habit habit, HeatmapMode mode) {
+  final today = AppClock.today();
+  final (label, from) = switch (mode) {
+    HeatmapMode.week => (
+        context.l10n.period_this_week,
+        today.startOfWeek(context.read<SettingsController>().weekStart),
+      ),
+    HeatmapMode.year => (context.l10n.period_this_year, DateTime(today.year)),
+    _ => (context.l10n.period_this_month, DateTime(today.year, today.month)),
+  };
+  final count = habit.completions.values
+      .where((e) => e.day != null && !e.day!.isBefore(from))
+      .where(habit.isDoneEntry)
+      .length;
+  return (label, count);
+}
+
+String lastCheckLabel(
+  BuildContext context,
+  Habit habit, {
+  bool withTime = true,
+}) {
+  Completion? entry;
+  for (final candidate in habit.completions.values) {
+    final day = candidate.day;
+    if (day == null) continue;
+    if (entry == null || day.isAfter(entry.day!)) entry = candidate;
+  }
+  if (entry == null) return context.l10n.check_never;
   final day = entry.day!;
   final today = AppClock.today();
   final when = day.isAtSameMomentAs(today)
@@ -37,8 +67,8 @@ String lastCheckLabel(BuildContext context, Habit habit) {
           ? context.l10n.yesterday
           : DateFormat.MMMd(context.l10n.localeName).format(day);
   final time = entry.stamp;
-  if (time == null) return when;
-  return '$when · ${DateFormat.Hm(context.l10n.localeName).format(time)}';
+  if (time == null || !withTime) return when;
+  return '$when · ${context.clockOf(time)}';
 }
 
 class CheckHistoryTile extends StatelessWidget {
@@ -176,15 +206,33 @@ class _EntryState extends State<_Entry> {
 
   String _at(int minuteOfDay) {
     final day = widget.entry.day ?? AppClock.today();
-    return DateFormat.Hm(context.l10n.localeName).format(
+    return context.clockOf(
       DateTime(day.year, day.month, day.day, minuteOfDay ~/ 60,
           minuteOfDay % 60),
     );
   }
 
+  Future<void> _retime(int? from) async {
+    final start = from ?? AppClock.wallNow().hour * 60 + AppClock.wallNow().minute;
+    final picked = await pickTime(
+      context,
+      TimeOfDay(hour: start ~/ 60, minute: start % 60),
+    );
+    if (picked == null || !mounted) return;
+    final to = picked.hour * 60 + picked.minute;
+    if (to == from) return;
+    await context
+        .read<HabitsController>()
+        .retime(widget.habit.id, widget.entry.date, from, to);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final entry = widget.entry;
+    final entry = context
+            .watch<HabitsController>()
+            .byId(widget.habit.id)
+            ?.completions[widget.entry.date] ??
+        widget.entry;
     final day = entry.day;
     final label = day == null
         ? entry.date
@@ -206,7 +254,9 @@ class _EntryState extends State<_Entry> {
         children: [
           InkWell(
             borderRadius: BorderRadius.circular(10),
-            onTap: many ? () => setState(() => _open = !_open) : null,
+            onTap: many
+                ? () => setState(() => _open = !_open)
+                : () => _retime(times.isEmpty ? null : times.first),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
@@ -215,7 +265,7 @@ class _EntryState extends State<_Entry> {
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: widget.habit.color,
+                      color: widget.habit.color.shownIn(context),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -233,12 +283,14 @@ class _EntryState extends State<_Entry> {
                         : _clock(context, entry),
                     style: sheetHeadingStyle(context, size: 14),
                   ),
-                  if (many)
-                    Icon(
-                      _open ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-                      size: 16,
-                      color: context.tokens.muted,
-                    ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    many
+                        ? (_open ? LucideIcons.chevronUp : LucideIcons.chevronDown)
+                        : LucideIcons.pencil,
+                    size: many ? 16 : 13,
+                    color: context.tokens.muted,
+                  ),
                 ],
               ),
             ),
@@ -284,7 +336,9 @@ class _EntryState extends State<_Entry> {
                 runSpacing: 6,
                 children: [
                   for (final at in times)
-                    Container(
+                    GestureDetector(
+                      onTap: () => _retime(at),
+                      child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 9,
                         vertical: 4,
@@ -297,6 +351,7 @@ class _EntryState extends State<_Entry> {
                         _at(at),
                         style: sheetLabelStyle(context, size: 12),
                       ),
+                    ),
                     ),
                 ],
               ),

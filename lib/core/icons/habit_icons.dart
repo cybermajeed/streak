@@ -760,4 +760,9 @@ class HabitIcons {
     }
     return results.toList();
   }
+
+  static String categoryOf(String name) => categories.entries
+      .firstWhere((e) => e.value.contains(name),
+          orElse: () => categories.entries.first)
+      .key;
 }

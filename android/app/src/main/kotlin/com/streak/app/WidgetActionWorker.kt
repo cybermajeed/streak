@@ -24,7 +24,9 @@ class WidgetActionWorker(
 
     override suspend fun doWork(): Result {
         val forced = inputData.getBoolean(KEY_FORCED, false)
-        if (!forced && WidgetActionQueue.isEmpty(context)) return Result.success()
+        if (WidgetActionQueue.isEmpty(context) && (!forced || ranRecently(context))) {
+            return Result.success()
+        }
 
         var engine: FlutterEngine? = null
         return try {
@@ -45,6 +47,7 @@ class WidgetActionWorker(
                 }
             }
             if (withTimeoutOrNull(TIMEOUT_MS) { done.await() } != null) {
+                markRun(context)
                 HeatmapRenderer.refreshContent(context)
                 GlanceWidgets.updateAll(context)
                 Result.success()
@@ -67,6 +70,22 @@ class WidgetActionWorker(
         private const val TIMEOUT_MS = 20_000L
         private const val UNIQUE_NAME = "streak_widget_actions"
         private const val KEY_FORCED = "forced"
+        private const val PREFS = "StreakWidgetWorker"
+        private const val KEY_LAST_RUN = "lastRun"
+        private const val QUIET_MS = 60_000L
+
+        private fun ranRecently(context: Context): Boolean {
+            val last = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong(KEY_LAST_RUN, 0L)
+            val elapsed = System.currentTimeMillis() - last
+            return elapsed in 0 until QUIET_MS
+        }
+
+        private fun markRun(context: Context) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putLong(KEY_LAST_RUN, System.currentTimeMillis())
+                .apply()
+        }
 
         fun enqueue(context: Context, uri: String) {
             WidgetActionQueue.push(context, uri)

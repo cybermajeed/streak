@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:streak/app/app_lock_pin.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/app/theme/app_palette.dart';
+import 'package:streak/app/theme/color_themes.dart';
 import 'package:streak/core/database/local_store.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/utils/cover_storage.dart';
 import 'package:streak/core/utils/money_format.dart';
 import 'package:streak/core/widgets/celebration_overlay.dart';
 import 'package:streak/features/focus/state/focus_audio.dart';
+import 'package:streak/features/focus/widgets/focus_backgrounds.dart';
 import 'package:streak/services/app_icon_service.dart';
 import 'package:streak/services/backup_service.dart';
 import 'package:streak/services/home_widget_service.dart';
@@ -46,6 +49,7 @@ class SettingsController extends ChangeNotifier {
   void _load() {
     _themeMode = ThemeMode.values[LocalStore.setting('themeMode', 0)];
     _weekStart = LocalStore.setting('weekStart', 1);
+    Habit.weekStart = _weekStart;
     _onboardingDone = LocalStore.setting('onboardingDone', false);
     _localeCode = LocalStore.setting('locale', '');
     _appBackground = LocalStore.setting('appBackground', 2);
@@ -59,20 +63,35 @@ class SettingsController extends ChangeNotifier {
     );
     _profilePhoto = LocalStore.setting('profilePhoto', '');
     _appIcon = LocalStore.setting('appIcon', 0);
-    _accentColor = LocalStore.setting(
-      'accentColor',
-      AppPalette.brand.toARGB32(),
-    );
+    _accentColor = LocalStore.setting('accentColor', AppPalette.brand.toARGB32());
+    _colorTheme = LocalStore.setting('colorTheme', '');
+    _customTheme = ColorTheme.custom(LocalStore.settingMap('customTheme'));
     _heatmapMode = LocalStore.setting('heatmapMode', 0);
+    _todayCategory = LocalStore.setting('todayCategory', '');
+    _minimalShortcut = LocalStore.setting('minimalShortcut', '');
     _heatmapPath = LocalStore.setting('heatmapPath', false);
     _heatmapRolling = LocalStore.setting('heatmapRolling', false);
+    _consistencyPeriod = LocalStore.setting('consistencyPeriod', 2);
     _startView = LocalStore.setting('startView', 0);
     _planningEnabled = LocalStore.setting('planningEnabled', true);
+    _planContent = LocalStore.setting(
+      'planContent',
+      LocalStore.setting('planTodos', false) ? 1 : 0,
+    );
+    _planMonth = LocalStore.setting('planMonth', false);
+    _swipeCards = LocalStore.setting('swipeCards', false);
     _cardActivity = LocalStore.setting('cardActivity', true);
     _viewSwitcher = LocalStore.setting('viewSwitcher', true);
+    _checkSound = LocalStore.setting('checkSound', false);
     _compactCards = LocalStore.setting('compactCards', false);
+    _glassEffects = LocalStore.setting('glassEffects', true);
+    _animations = LocalStore.setting('animations', true);
     _sortCompletedLast = LocalStore.setting('sortCompletedLast', true);
     _todayOnly = LocalStore.setting('todayOnly', false);
+    _hideDone = LocalStore.setting('hideDone', false);
+    _pastFirst = LocalStore.setting('pastFirst', false);
+    _hideTracking = LocalStore.setting('hideTracking', false);
+    _hideClean = LocalStore.setting('hideClean', false);
     _notesEnabled = LocalStore.setting('notesEnabled', true);
     _trackingOption = LocalStore.setting('trackingOption', false);
     _showTodayProgress = LocalStore.setting('showTodayProgress', true);
@@ -86,30 +105,38 @@ class SettingsController extends ChangeNotifier {
     );
     _focusEnabled = LocalStore.setting('focusEnabled', true);
     _focusClockStyle = LocalStore.setting('focusClockStyle', 2);
-    _focusScene = LocalStore.setting('focusScene', 3);
+    _focusScene = LocalStore.setting('focusScene', defaultFocusScene);
     _focusImage = LocalStore.setting('focusImage', '');
     _focusTracks = List<String>.from(
       LocalStore.setting('focusTracks', const <String>[]),
     );
     _focusShuffle = LocalStore.setting('focusShuffle', false);
     _focusRepeatOne = LocalStore.setting('focusRepeatOne', false);
+    _focusVolume =
+        LocalStore.setting<num>('focusVolume', 1.0).toDouble().clamp(0.0, 1.0);
+    FocusAudio.volume.value = _focusVolume;
     _focusMinutes = LocalStore.setting('focusMinutes', 25);
     _focusBreakMinutes = LocalStore.setting('focusBreakMinutes', 0);
-    _focusTrack = LocalStore.setting('focusTrack', '');
+    _focusTrack = builtInTrackId(LocalStore.setting('focusTrack', ''));
     _focusDailyGoal = LocalStore.setting('focusDailyGoal', 0);
     _focusKeepAwake = LocalStore.setting('focusKeepAwake', true);
     _focusLeadIn = LocalStore.setting('focusLeadIn', true);
+    _focusFullscreen = LocalStore.setting('focusFullscreen', false);
+    _focusSimple = LocalStore.setting('focusSimple', false);
+    _habitLinks = LocalStore.setting('habitLinks', false);
     _focusAlert = LocalStore.setting('focusAlert', '');
     _focusHold = LocalStore.setting('focusHold', false);
-    _focusImages = List<String>.from(
-      LocalStore.setting('focusImages', const <String>[]),
-    );
-    _hiddenScenes = List<int>.from(
-      LocalStore.setting('hiddenScenes', const <int>[]),
-    );
-    _hiddenTracks = List<String>.from(
-      LocalStore.setting('hiddenTracks', const <String>[]),
-    );
+    _focusWholeRounds = LocalStore.setting('focusWholeRounds', false);
+    _focusAutoNext = LocalStore.setting('focusAutoNext', false);
+    _focusLongBreak = LocalStore.setting('focusLongBreak', 0);
+    _focusImages =
+        List<String>.from(LocalStore.setting('focusImages', const <String>[]));
+    _hiddenScenes =
+        List<int>.from(LocalStore.setting('hiddenScenes', const <int>[]));
+    _hiddenTracks =
+        List<String>.from(LocalStore.setting('hiddenTracks', const <String>[]))
+            .map(builtInTrackId)
+            .toList();
     _appStyle = LocalStore.setting(
       'appStyle',
       LocalStore.setting('homeLayout', 0),
@@ -127,6 +154,7 @@ class SettingsController extends ChangeNotifier {
     _autoBackupAt = LocalStore.setting('autoBackupAt', '');
     _autoBackupFolder = LocalStore.setting('autoBackupFolder', '');
     _readableCopy = LocalStore.setting('readableCopy', true);
+    _autoSync = LocalStore.setting('autoSync', false);
     _widgetBgColor = LocalStore.setting('widgetBgColor', defaultWidgetBg);
     _widgetOpacity = LocalStore.setting('widgetOpacity', 100);
     _widgetBorder = LocalStore.setting('widgetBorder', false);
@@ -147,17 +175,33 @@ class SettingsController extends ChangeNotifier {
   late String _profilePhoto;
   late int _appIcon;
   late int _accentColor;
+  late String _colorTheme;
+  ColorTheme? _customTheme;
   late int _heatmapMode;
+  late String _todayCategory;
+  late String _minimalShortcut;
   late bool _heatmapPath;
   late bool _heatmapRolling;
+  late int _consistencyPeriod;
   late int _startView;
   late bool _planningEnabled;
+  late int _planContent;
+  late bool _planMonth;
+  late bool _todoPapers;
+  late bool _swipeCards;
   late bool _cardActivity;
   late bool _viewSwitcher;
+  late bool _checkSound;
   late bool _compactCards;
+  late bool _glassEffects;
+  late bool _animations;
   late int _appStyle;
   late bool _sortCompletedLast;
   late bool _todayOnly;
+  late bool _hideDone;
+  late bool _pastFirst;
+  late bool _hideTracking;
+  late bool _hideClean;
   late bool _notesEnabled;
   late bool _trackingOption;
   late bool _showTodayProgress;
@@ -173,14 +217,21 @@ class SettingsController extends ChangeNotifier {
   late List<String> _focusTracks;
   late bool _focusShuffle;
   late bool _focusRepeatOne;
+  late double _focusVolume;
   late int _focusMinutes;
   late int _focusBreakMinutes;
   late String _focusTrack;
   late int _focusDailyGoal;
   late bool _focusKeepAwake;
   late bool _focusLeadIn;
+  late bool _focusFullscreen;
+  late bool _focusSimple;
+  late bool _habitLinks;
   late String _focusAlert;
   late bool _focusHold;
+  late bool _focusWholeRounds;
+  late bool _focusAutoNext;
+  late int _focusLongBreak;
   late List<String> _focusImages;
   late List<int> _hiddenScenes;
   late List<String> _hiddenTracks;
@@ -192,6 +243,7 @@ class SettingsController extends ChangeNotifier {
   late String _autoBackupAt;
   late String _autoBackupFolder;
   late bool _readableCopy;
+  late bool _autoSync;
   late int _widgetBgColor;
   late int _widgetOpacity;
   late bool _widgetBorder;
@@ -242,6 +294,27 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  ColorTheme? get colorTheme => _colorTheme == ColorTheme.customId
+      ? _customTheme
+      : ColorTheme.byId(_colorTheme);
+
+  ColorTheme? get customTheme => _customTheme;
+
+  Future<void> setCustomTheme(ThemeColors light, ThemeColors dark) async {
+    final saved = {'light': light.toMap(), 'dark': dark.toMap()};
+    _customTheme = ColorTheme.custom(saved);
+    _colorTheme = ColorTheme.customId;
+    await LocalStore.writeSetting('customTheme', saved);
+    await LocalStore.writeSetting('colorTheme', _colorTheme);
+    notifyListeners();
+  }
+
+  Future<void> setColorTheme(ColorTheme? theme) async {
+    _colorTheme = theme?.id ?? '';
+    await LocalStore.writeSetting('colorTheme', _colorTheme);
+    notifyListeners();
+  }
+
   int get heatmapMode => _heatmapMode;
 
   bool get heatmapPath => _heatmapPath;
@@ -260,10 +333,34 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  int get consistencyPeriod => _consistencyPeriod;
+
+  Future<void> setConsistencyPeriod(int value) async {
+    _consistencyPeriod = value;
+    await LocalStore.writeSetting('consistencyPeriod', value);
+    notifyListeners();
+  }
+
   Future<void> setHeatmapMode(int value) async {
     _heatmapMode = value;
     await LocalStore.writeSetting('heatmapMode', value);
     notifyListeners();
+  }
+
+  String get todayCategory => _todayCategory;
+
+  String get minimalShortcut => _minimalShortcut;
+
+  Future<void> setMinimalShortcut(String value) async {
+    if (value == _minimalShortcut) return;
+    _minimalShortcut = value;
+    await LocalStore.writeSetting('minimalShortcut', value);
+    notifyListeners();
+  }
+
+  Future<void> setTodayCategory(String value) async {
+    _todayCategory = value;
+    await LocalStore.writeSetting('todayCategory', value);
   }
 
   int get startView => _startView;
@@ -284,11 +381,57 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  int get planContent => _planContent;
+
+  bool get planTodos => todosEnabled && _planContent != 0;
+
+  bool get planHabits => !planTodos || _planContent != 2;
+
+  int get planChoice {
+    if (!_planningEnabled) return 0;
+    if (!todosEnabled) return 1;
+    return const [1, 3, 2][_planContent];
+  }
+
+  Future<void> setPlanChoice(int choice) async {
+    await setPlanningEnabled(choice > 0);
+    if (choice > 0) await setPlanContent(const [0, 2, 1][choice - 1]);
+  }
+
+  Future<void> setPlanContent(int value) async {
+    _planContent = value;
+    await LocalStore.writeSetting('planContent', value);
+    notifyListeners();
+  }
+
+  bool get planMonth => _planMonth;
+
+  Future<void> setPlanMonth(bool value) async {
+    _planMonth = value;
+    await LocalStore.writeSetting('planMonth', value);
+  }
+
+  bool get swipeCards => _swipeCards;
+
+  Future<void> setSwipeCards(bool value) async {
+    _swipeCards = value;
+    await LocalStore.writeSetting('swipeCards', value);
+    notifyListeners();
+  }
+
   bool get cardActivity => _cardActivity;
 
   Future<void> setCardActivity(bool value) async {
     _cardActivity = value;
     await LocalStore.writeSetting('cardActivity', value);
+    notifyListeners();
+  }
+
+  bool get checkSound => _checkSound;
+
+  Future<void> setCheckSound(bool value) async {
+    _checkSound = value;
+    await LocalStore.writeSetting('checkSound', value);
     notifyListeners();
   }
 
@@ -308,6 +451,26 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool get glassEffects => _glassEffects;
+
+  Future<void> setGlassEffects(bool value) async {
+    _glassEffects = value;
+    await LocalStore.writeSetting('glassEffects', value);
+    notifyListeners();
+  }
+
+  bool get animations => _animations;
+
+  Future<void> setAnimations(bool value) async {
+    _animations = value;
+    await LocalStore.writeSetting('animations', value);
+    notifyListeners();
+  }
+
+  bool get todoPapers => false;
+
+  Future<void> setTodoPapers(bool value) async {}
+
   bool get todosEnabled => false;
 
   Future<void> setTodosEnabled(bool value) async {
@@ -316,6 +479,10 @@ class SettingsController extends ChangeNotifier {
 
   bool get sortCompletedLast => _sortCompletedLast;
   bool get todayOnly => _todayOnly;
+  bool get hideDone => _hideDone;
+  bool get pastFirst => _pastFirst;
+  bool get hideTracking => _hideTracking;
+  bool get hideClean => _hideClean;
   bool get notesEnabled => _notesEnabled;
 
   bool get focusEnabled => _focusEnabled;
@@ -350,6 +517,12 @@ class SettingsController extends ChangeNotifier {
   List<String> get focusTracks => List.unmodifiable(_focusTracks);
   bool get focusShuffle => _focusShuffle;
   bool get focusRepeatOne => _focusRepeatOne;
+  double get focusVolume => _focusVolume;
+
+  Future<void> setFocusVolume(double value) async {
+    _focusVolume = value.clamp(0.0, 1.0);
+    await LocalStore.writeSetting('focusVolume', _focusVolume);
+  }
   int get focusMinutes => _focusMinutes;
   int get focusBreakMinutes => _focusBreakMinutes;
   String get focusTrack => _focusTrack;
@@ -372,8 +545,14 @@ class SettingsController extends ChangeNotifier {
   int get focusDailyGoal => _focusDailyGoal;
   bool get focusKeepAwake => _focusKeepAwake;
   bool get focusLeadIn => _focusLeadIn;
+  bool get focusFullscreen => _focusFullscreen;
+  bool get focusSimple => _focusSimple;
+  bool get habitLinks => _habitLinks;
   String get focusAlert => _focusAlert;
   bool get focusHold => _focusHold;
+  bool get focusWholeRounds => _focusWholeRounds;
+  bool get focusAutoNext => _focusAutoNext;
+  int get focusLongBreak => _focusLongBreak;
   List<String> get focusImages => List.unmodifiable(_focusImages);
 
   List<int> get hiddenScenes => List.unmodifiable(_hiddenScenes);
@@ -389,8 +568,8 @@ class SettingsController extends ChangeNotifier {
     _hiddenScenes = [..._hiddenScenes, scene];
     await LocalStore.writeSetting('hiddenScenes', _hiddenScenes);
     if (_focusScene == scene) {
-      _focusScene = 0;
-      await LocalStore.writeSetting('focusScene', 0);
+      _focusScene = defaultFocusScene;
+      await LocalStore.writeSetting('focusScene', _focusScene);
     }
     notifyListeners();
   }
@@ -448,6 +627,23 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setFocusFullscreen(bool value) async {
+    _focusFullscreen = value;
+    await LocalStore.writeSetting('focusFullscreen', value);
+  }
+
+  Future<void> setFocusSimple(bool value) async {
+    _focusSimple = value;
+    await LocalStore.writeSetting('focusSimple', value);
+  }
+
+  Future<void> setHabitLinks(bool value) async {
+    _habitLinks = value;
+    notifyListeners();
+    await LocalStore.writeSetting('habitLinks', value);
+    await HomeWidget.saveWidgetData<bool>('links_enabled', value);
+  }
+
   Future<void> setFocusAlert(String value) async {
     _focusAlert = value;
     await LocalStore.writeSetting('focusAlert', value);
@@ -457,6 +653,26 @@ class SettingsController extends ChangeNotifier {
   Future<void> setFocusHold(bool value) async {
     _focusHold = value;
     await LocalStore.writeSetting('focusHold', value);
+    if (value && _focusAutoNext) return setFocusAutoNext(false);
+    notifyListeners();
+  }
+
+  Future<void> setFocusAutoNext(bool value) async {
+    _focusAutoNext = value;
+    await LocalStore.writeSetting('focusAutoNext', value);
+    if (value && _focusHold) return setFocusHold(false);
+    notifyListeners();
+  }
+
+  Future<void> setFocusWholeRounds(bool value) async {
+    _focusWholeRounds = value;
+    await LocalStore.writeSetting('focusWholeRounds', value);
+    notifyListeners();
+  }
+
+  Future<void> setFocusLongBreak(int minutes) async {
+    _focusLongBreak = minutes;
+    await LocalStore.writeSetting('focusLongBreak', minutes);
     notifyListeners();
   }
 
@@ -473,8 +689,8 @@ class SettingsController extends ChangeNotifier {
     if (_focusImage == path) {
       _focusImage = '';
       await LocalStore.writeSetting('focusImage', '');
-      _focusScene = 0;
-      await LocalStore.writeSetting('focusScene', 0);
+      _focusScene = defaultFocusScene;
+      await LocalStore.writeSetting('focusScene', _focusScene);
     }
     notifyListeners();
     await CoverStorage.forget(path);
@@ -510,6 +726,17 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool get autoSync => _autoSync;
+
+  bool get syncsFolder =>
+      _autoSync && _autoBackup > 0 && _autoBackupFolder.isNotEmpty;
+
+  Future<void> setAutoSync(bool value) async {
+    _autoSync = value;
+    await LocalStore.writeSetting('autoSync', value);
+    notifyListeners();
+  }
+
   Future<void> setAutoBackup(int value) async {
     if (_autoBackup == value) return;
     _autoBackup = value;
@@ -524,8 +751,19 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> runAutoBackup({bool force = false}) async {
-    if (_autoBackup == 0) return false;
+  bool _backingUp = false;
+
+  Future<bool> runAutoBackup({bool force = false, bool archive = true}) async {
+    if (_autoBackup == 0 || _backingUp) return false;
+    _backingUp = true;
+    try {
+      return await _backUp(force, archive);
+    } finally {
+      _backingUp = false;
+    }
+  }
+
+  Future<bool> _backUp(bool force, bool archive) async {
     final last = autoBackupAt;
     if (!force && last != null) {
       final due = _autoBackup == 1
@@ -536,8 +774,10 @@ class SettingsController extends ChangeNotifier {
     final path = await BackupService.runAuto(
       folder: _autoBackupFolder,
       readable: _readableCopy,
+      archive: archive,
     );
     if (path == null) return false;
+    if (!archive) return true;
     _autoBackupAt = DateTime.now().toIso8601String();
     await LocalStore.writeSetting('autoBackupAt', _autoBackupAt);
     notifyListeners();
@@ -700,6 +940,30 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setHideDone(bool value) async {
+    _hideDone = value;
+    await LocalStore.writeSetting('hideDone', value);
+    notifyListeners();
+  }
+
+  Future<void> setPastFirst(bool value) async {
+    _pastFirst = value;
+    await LocalStore.writeSetting('pastFirst', value);
+    notifyListeners();
+  }
+
+  Future<void> setHideTracking(bool value) async {
+    _hideTracking = value;
+    await LocalStore.writeSetting('hideTracking', value);
+    notifyListeners();
+  }
+
+  Future<void> setHideClean(bool value) async {
+    _hideClean = value;
+    await LocalStore.writeSetting('hideClean', value);
+    notifyListeners();
+  }
+
   Future<void> setLanguage(String code) async {
     _localeCode = code;
     await LocalStore.writeSetting('locale', code);
@@ -714,6 +978,7 @@ class SettingsController extends ChangeNotifier {
 
   Future<void> setWeekStart(int weekday) async {
     _weekStart = weekday;
+    Habit.weekStart = weekday;
     await LocalStore.writeSetting('weekStart', weekday);
     notifyListeners();
   }

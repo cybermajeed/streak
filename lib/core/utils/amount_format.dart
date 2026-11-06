@@ -1,5 +1,10 @@
 double roundAmount(double value) => (value * 100).roundToDouble() / 100;
 
+double clockMinutes(String text) {
+  final digits = int.tryParse(text.replaceAll(RegExp(r'\D'), '')) ?? 0;
+  return (digits ~/ 100 * 60 + digits % 100).toDouble();
+}
+
 String formatMinutes(double value) {
   final total = value.round();
   final hours = total ~/ 60;

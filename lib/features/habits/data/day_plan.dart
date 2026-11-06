@@ -1,11 +1,14 @@
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/habits/data/habit.dart';
 
 @immutable
 class DaySlot {
-  const DaySlot({required this.start, required this.end, this.habit});
+  const DaySlot({
+    required this.start,
+    required this.end,
+    this.habit,
+  });
 
   final int start;
   final int end;
@@ -26,48 +29,46 @@ class DayPlan {
   bool get isEmpty => slots.isEmpty && anytime.isEmpty;
 
   Iterable<Habit> get planned =>
-      slots.where((s) => !s.isGap).map((s) => s.habit!);
+      slots.where((s) => s.habit != null).map((s) => s.habit!);
 
   static bool isDueOn(Habit habit, DateTime day) =>
       !habit.isArchived &&
       habit.kind != HabitKind.negative &&
       !day.atMidnight.isBefore(habit.startedAt) &&
       habit.isScheduledOn(day) &&
-      !habit.isPausedOn(day);
+      !habit.isPausedOn(day) &&
+      !habit.isDoneAheadOn(day);
 
-  static DayPlan of(List<Habit> habits, DateTime day) {
+  static DayPlan of(
+    List<Habit> habits,
+    DateTime day,
+  ) {
     final due = habits.where((h) => isDueOn(h, day)).toList();
 
-    final events = <DaySlot>[];
-
-    // 1. Add scheduled habits
-    for (final h in due.where((h) => h.isPlanned)) {
-      events.add(DaySlot(start: h.startMinute, end: h.endMinute, habit: h));
-    }
-
-
-
-    events.sort((a, b) {
-      final byStart = a.start.compareTo(b.start);
-      if (byStart != 0) return byStart;
-      final byEnd = a.end.compareTo(b.end);
-      return byEnd != 0
-          ? byEnd
-          : (a.habit?.order ?? 0).compareTo(b.habit?.order ?? 0);
-    });
+    final planned = [
+      for (final habit in due)
+        for (final (start, minutes) in habit.planTimes)
+          DaySlot(
+            start: start,
+            end: (start + minutes).clamp(start, Habit.dayMinutes),
+            habit: habit,
+          ),
+    ]..sort((a, b) {
+        final byStart = a.start.compareTo(b.start);
+        if (byStart != 0) return byStart;
+        final byEnd = a.end.compareTo(b.end);
+        if (byEnd != 0) return byEnd;
+        return (a.habit?.order ?? 0).compareTo(b.habit?.order ?? 0);
+      });
 
     final slots = <DaySlot>[];
-    var reached = events.isEmpty ? 0 : math.min(0, events.first.start);
-    for (final e in events) {
-      if (e.start > reached) {
-        slots.add(DaySlot(start: reached, end: e.start));
+    var reached = -1;
+    for (final slot in planned) {
+      if (reached >= 0 && slot.start > reached) {
+        slots.add(DaySlot(start: reached, end: slot.start));
       }
-      var s = e.start;
-      if (s < reached) s = reached;
-      if (e.end > s) {
-        slots.add(DaySlot(start: s, end: e.end, habit: e.habit));
-        if (e.end > reached) reached = e.end;
-      }
+      slots.add(slot);
+      if (slot.end > reached) reached = slot.end;
     }
 
     return DayPlan(

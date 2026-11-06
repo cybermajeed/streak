@@ -9,12 +9,16 @@ class Entrance extends StatefulWidget {
     this.index = 0,
     this.delay = Duration.zero,
     this.offset = 16,
+    this.play = true,
+    this.leaving = false,
     required this.child,
   });
 
   final int index;
   final Duration delay;
   final double offset;
+  final bool play;
+  final bool leaving;
   final Widget child;
 
   @override
@@ -26,6 +30,7 @@ class _EntranceState extends State<Entrance>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 300),
+    value: widget.play ? 0 : 1,
   );
   late final Animation<double> _fade = CurvedAnimation(
     parent: _controller,
@@ -36,12 +41,25 @@ class _EntranceState extends State<Entrance>
     curve: Curves.easeOutCubic,
   );
 
+  Duration get _stagger =>
+      Duration(milliseconds: 40 * widget.index.clamp(0, 5));
+
   @override
   void initState() {
     super.initState();
-    final stagger = Duration(milliseconds: 40 * widget.index.clamp(0, 5));
-    Future.delayed(widget.delay + stagger, () {
+    if (!widget.play) return;
+    Future.delayed(widget.delay + _stagger, () {
       if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void didUpdateWidget(Entrance oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.leaving == oldWidget.leaving) return;
+    Future.delayed(_stagger, () {
+      if (!mounted) return;
+      widget.leaving ? _controller.reverse() : _controller.forward();
     });
   }
 
@@ -53,6 +71,9 @@ class _EntranceState extends State<Entrance>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return Opacity(opacity: widget.leaving ? 0 : 1, child: widget.child);
+    }
     final express = context.select<SettingsController, bool>(
       (settings) => settings.isExpressStyle,
     );

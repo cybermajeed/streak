@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:intl/intl.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/i18n/date_labels.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/widgets/hold_repeat_button.dart';
@@ -19,6 +21,8 @@ class IntervalSelector extends StatelessWidget {
     required this.onWeekdaysChanged,
     required this.onEveryChanged,
     required this.onUnitChanged,
+    required this.start,
+    required this.onStartChanged,
   });
 
   final HabitInterval interval;
@@ -31,6 +35,8 @@ class IntervalSelector extends StatelessWidget {
   final ValueChanged<List<int>> onWeekdaysChanged;
   final ValueChanged<int> onEveryChanged;
   final ValueChanged<ScheduleUnit> onUnitChanged;
+  final DateTime start;
+  final ValueChanged<DateTime> onStartChanged;
 
   int get _max => interval == HabitInterval.weekly ? 6 : 25;
 
@@ -96,6 +102,7 @@ class IntervalSelector extends StatelessWidget {
             max: _max,
             onChanged: onFrequencyChanged,
           ),
+          if (interval == HabitInterval.monthly) const MonthFixedDayHint(),
         ] else if (interval == HabitInterval.everyXDays) ...[
           const SizedBox(height: 10),
           ScheduleUnitRow(selected: unit, onChanged: onUnitChanged),
@@ -104,10 +111,12 @@ class IntervalSelector extends StatelessWidget {
             context,
             label: scheduleEveryLabel(context, every, unit),
             value: every,
-            min: 2,
+            min: scheduleEveryMin(unit),
             max: scheduleEveryMax(unit),
             onChanged: onEveryChanged,
           ),
+          const SizedBox(height: 8),
+          ScheduleStartRow(start: start, onChanged: onStartChanged),
         ] else if (interval == HabitInterval.weekdays) ...[
           const SizedBox(height: 12),
           Row(
@@ -216,6 +225,72 @@ label: context.l10n.a11y_increase,
   }
 }
 
+class ScheduleStartRow extends StatelessWidget {
+  const ScheduleStartRow({
+    super.key,
+    required this.start,
+    required this.onChanged,
+  });
+
+  final DateTime start;
+  final ValueChanged<DateTime> onChanged;
+
+  Future<void> _pick(BuildContext context) async {
+    final today = AppClock.today();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: start,
+      firstDate: DateTime(today.year - 1),
+      lastDate: DateTime(today.year + 1, 12, 31),
+    );
+    if (picked != null) onChanged(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    final locale = Localizations.localeOf(context).toString();
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        onTap: () => _pick(context),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.l10n.sched_start,
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                DateFormat.MMMEd(locale).format(start),
+                style: TextStyle(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(LucideIcons.calendarDays, size: 18, color: scheme.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+int scheduleEveryMin(ScheduleUnit unit) =>
+    unit == ScheduleUnit.days ? 2 : 1;
+
 int scheduleEveryMax(ScheduleUnit unit) => switch (unit) {
       ScheduleUnit.days => 90,
       ScheduleUnit.weeks => 26,
@@ -228,6 +303,13 @@ String scheduleEveryLabel(BuildContext context, int every, ScheduleUnit unit) =>
       ScheduleUnit.weeks => context.l10n.every_n_weeks(every),
       ScheduleUnit.months => context.l10n.every_n_months(every),
     };
+
+String monthWeekdayLabel(BuildContext context, DateTime start) {
+  final locale = Localizations.localeOf(context).toString();
+  final day = DateFormat.EEEE(locale).format(start);
+  const slots = ['first', 'second', 'third', 'fourth', 'last'];
+  return context.l10n.nth_weekday(slots[(start.day - 1) ~/ 7], day);
+}
 
 String scheduleUnitLabel(BuildContext context, ScheduleUnit unit) =>
     switch (unit) {
@@ -335,6 +417,34 @@ class AddReminderButton extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class MonthFixedDayHint extends StatelessWidget {
+  const MonthFixedDayHint({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.tokens.muted;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, left: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(LucideIcons.info, size: 15, color: color),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              context.l10n.month_fixed_day_hint,
+              style: TextStyle(fontSize: 12.5, height: 1.3, color: color),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/express/express_motion.dart';
 import 'package:streak/core/express/express_type.dart';
+import 'package:streak/core/utils/responsive.dart';
 
 Color expressSurface(BuildContext context, {double level = 1}) {
   final scheme = context.colors;
@@ -67,6 +68,7 @@ class _ExpressSquishState extends State<ExpressSquish> {
       onTapCancel: enabled ? () => _set(false) : null,
       onTap: widget.onTap,
       onLongPress: widget.onLongPress,
+      onSecondaryTap: widget.onLongPress,
       child: AnimatedScale(
         scale: _down && enabled ? widget.scale : 1,
         duration: _down ? Express.fast : Express.quick,
@@ -185,6 +187,8 @@ class ExpressTile extends StatelessWidget {
     final scheme = context.colors;
     final accent = tint ?? scheme.primary;
     final radius = ExpressSlot.of(context, BorderRadius.circular(20));
+    final stacked = stackedValue(context, value);
+    final bare = bareRows(context);
 
     return ExpressSquish(
       onTap: onTap,
@@ -197,7 +201,7 @@ class ExpressTile extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(16, dense ? 14 : 18, 20, dense ? 14 : 18),
         child: Row(
           children: [
-            Container(
+            if (!bare) Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
@@ -206,7 +210,7 @@ class ExpressTile extends StatelessWidget {
               ),
               child: Icon(icon, size: 19, color: accent),
             ),
-            const SizedBox(width: 14),
+            if (!bare) const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,10 +237,22 @@ class ExpressTile extends StatelessWidget {
                         ),
                       ),
                     ),
+                  if (stacked)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        value!,
+                        style: ExpressType.headline.at(
+                          14.5,
+                          weight: 800,
+                          color: accent,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
-            if (value != null) ...[
+            if (value != null && !stacked) ...[
               const SizedBox(width: 10),
               Flexible(
                 flex: 0,

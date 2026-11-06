@@ -15,6 +15,7 @@ import 'package:streak/features/habits/state/notes_controller.dart';
 import 'package:streak/features/habits/widgets/habit_heatmap.dart';
 import 'package:streak/features/habits/widgets/note_widgets.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class ExpressMonthCalendar extends StatefulWidget {
   const ExpressMonthCalendar({
@@ -93,7 +94,7 @@ class _ExpressMonthCalendarState extends State<ExpressMonthCalendar>
 
     final atCurrent =
         _month.year == _today.year && _month.month == _today.month;
-    final ink = expressInk(context, widget.habit.color);
+    final ink = expressInk(context, widget.habit.color.shownIn(context));
 
     return ExpressCard(
       padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
@@ -218,7 +219,7 @@ class ExpressMonthStrip extends StatelessWidget {
       return ExpressDayState.empty;
     }
 
-    final ink = expressInk(context, habit.color);
+    final ink = expressInk(context, habit.color.shownIn(context));
 
     return Column(
       children: [
@@ -269,7 +270,7 @@ class _MonthCell extends StatelessWidget {
     final relapse = state == ExpressDayState.relapse;
     final future = state == ExpressDayState.future;
     final ink = done
-        ? (habit.color.computeLuminance() > 0.55 ? Colors.black : Colors.white)
+        ? (habit.color.shownIn(context).computeLuminance() > 0.55 ? Colors.black : Colors.white)
         : relapse
         ? Colors.white
         : future
@@ -302,6 +303,25 @@ class _MonthCell extends StatelessWidget {
                   tabular: true,
                 ),
               ),
+              if (habit.kind == HabitKind.quantitative &&
+                  !future &&
+                  (habit.completions[date.dayKey]?.count ?? 0) > 0)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      habit.amountText(habit.completions[date.dayKey]!.count),
+                      maxLines: 1,
+                      style: ExpressType.rounded.at(
+                        9.5,
+                        weight: 750,
+                        color: ink.withValues(alpha: 0.85),
+                        tabular: true,
+                      ),
+                    ),
+                  ),
+                ),
               if (showNotes)
                 Padding(
                   padding: const EdgeInsets.only(top: 3),

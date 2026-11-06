@@ -20,6 +20,7 @@ import 'package:streak/core/express/express_shapes.dart';
 import 'package:streak/core/express/express_surface.dart';
 import 'package:streak/core/express/express_type.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class ArchivedHabitsPage extends StatelessWidget {
   const ArchivedHabitsPage({super.key});
@@ -75,11 +76,11 @@ class ArchivedHabitsPage extends StatelessWidget {
                       if (express)
                         ExpressBlob(
                           size: 42,
-                          color: habit.color.withValues(alpha: 0.16),
+                          color: habit.color.shownIn(context).withValues(alpha: 0.16),
                           shape: ExpressShape.squircle,
                           child: HabitGlyph(
                             glyph: habit.icon,
-                            color: habit.color,
+                            color: habit.color.shownIn(context),
                             size: 19,
                           ),
                         )
@@ -88,12 +89,12 @@ class ArchivedHabitsPage extends StatelessWidget {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: habit.color.withValues(alpha: 0.16),
+                          color: habit.color.shownIn(context).withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: HabitGlyph(
                           glyph: habit.icon,
-                          color: habit.color,
+                          color: habit.color.shownIn(context),
                           size: 19,
                         ),
                       ),

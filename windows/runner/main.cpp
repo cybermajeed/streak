@@ -2,19 +2,44 @@
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
 
+#include <algorithm>
+
 #include "flutter_window.h"
 #include "utils.h"
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
-  // Attach to console when present (e.g., 'flutter run') or create a
-  // new console when running with a debugger.
+  ::CreateMutexW(nullptr, TRUE, L"StreakSingleInstance");
+  if (::GetLastError() == ERROR_ALREADY_EXISTS) {
+    HWND running = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"Streak");
+    if (running) {
+      if (::IsIconic(running)) ::ShowWindow(running, SW_RESTORE);
+      if (!::IsZoomed(running)) {
+        RECT frame;
+        MONITORINFO monitor = {sizeof(monitor)};
+        ::GetWindowRect(running, &frame);
+        ::GetMonitorInfo(
+            ::MonitorFromWindow(running, MONITOR_DEFAULTTONEAREST), &monitor);
+        const RECT& area = monitor.rcWork;
+        const LONG width = frame.right - frame.left;
+        const LONG height = frame.bottom - frame.top;
+        ::SetWindowPos(running, nullptr,
+                       (std::max)(area.left,
+                                  area.left + (area.right - area.left - width) / 2),
+                       (std::max)(area.top,
+                                  area.top + (area.bottom - area.top - height) / 2),
+                       0, 0,
+                       SWP_NOSIZE | SWP_NOZORDER);
+      }
+      ::SetForegroundWindow(running);
+    }
+    return EXIT_SUCCESS;
+  }
+
   if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
     CreateAndAttachConsole();
   }
 
-  // Initialize COM, so that it is available for use in the library and/or
-  // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
   flutter::DartProject project(L"data");

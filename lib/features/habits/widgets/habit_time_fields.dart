@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/extensions/clock_extensions.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/widgets/sheet_type.dart';
 import 'package:streak/core/widgets/number_keypad_dialog.dart';
+import 'package:streak/core/widgets/time_picker.dart';
 import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
 
@@ -204,6 +206,8 @@ class HabitTimeFields extends StatelessWidget {
     required this.color,
     required this.onChanged,
     this.compact = false,
+    this.more = const [],
+    this.onMore,
   });
 
   final int startMinute;
@@ -211,6 +215,8 @@ class HabitTimeFields extends StatelessWidget {
   final Color color;
   final void Function(int startMinute, int durationMinutes) onChanged;
   final bool compact;
+  final List<(int, int)> more;
+  final ValueChanged<List<(int, int)>>? onMore;
 
   bool get _planned => startMinute >= 0;
 
@@ -218,7 +224,7 @@ class HabitTimeFields extends StatelessWidget {
     final initial = _planned
         ? TimeOfDay(hour: startMinute ~/ 60, minute: startMinute % 60)
         : const TimeOfDay(hour: 9, minute: 0);
-    final picked = await showTimePicker(context: context, initialTime: initial);
+    final picked = await pickTime(context, initial);
     if (picked == null) return;
     onChanged(picked.hour * 60 + picked.minute, durationMinutes);
   }
@@ -229,12 +235,44 @@ class HabitTimeFields extends StatelessWidget {
     onChanged(startMinute, value.clamp(0, Habit.dayMinutes));
   }
 
+  void _setMore(int index, (int, int)? time) {
+    final next = List.of(more);
+    if (time == null) {
+      next.removeAt(index);
+    } else if (index >= next.length) {
+      next.add(time);
+    } else {
+      next[index] = time;
+    }
+    onMore?.call(next);
+  }
+
+  Future<void> _pickMore(BuildContext context, int index) async {
+    final last = index < more.length
+        ? more[index].$1
+        : (more.isEmpty ? startMinute : more.last.$1) + 180;
+    final at = last.clamp(0, Habit.dayMinutes - 1);
+    final picked = await pickTime(context, TimeOfDay(hour: at ~/ 60, minute: at % 60));
+    if (picked == null) return;
+    final minutes = index < more.length ? more[index].$2 : durationMinutes;
+    _setMore(index, (picked.hour * 60 + picked.minute, minutes));
+  }
+
+  Future<void> _pickMoreDuration(BuildContext context, int index) async {
+    final value = await showDurationSheet(context, minutes: more[index].$2);
+    if (value == null) return;
+    _setMore(index, (more[index].$1, value.clamp(0, Habit.dayMinutes)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = context.colors;
     final end = startMinute + durationMinutes;
 
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _planned ? null : () => _pickStart(context),
+      child: Container(
       padding: EdgeInsets.all(compact ? 12 : 14),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
@@ -247,11 +285,28 @@ class HabitTimeFields extends StatelessWidget {
             color: color,
             label: context.l10n.habit_time,
             value: _planned
-                ? minuteLabel(startMinute)
+                ? context.clockAt(startMinute)
                 : context.l10n.habit_time_none,
             compact: compact,
             onTap: () => _pickStart(context),
-            onClear: _planned ? () => onChanged(-1, 0) : null,
+            onClear: _planned
+                ? () {
+                    onChanged(-1, 0);
+                    if (more.isNotEmpty) onMore?.call(const []);
+                  }
+                : null,
+          ),
+          SizedBox(height: compact ? 8 : 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              context.l10n.habit_time_sub,
+              style: TextStyle(
+                fontSize: compact ? 11.5 : 12.5,
+                height: 1.35,
+                color: context.tokens.muted,
+              ),
+            ),
           ),
           if (_planned) ...[
             SizedBox(height: compact ? 10 : 12),
@@ -284,7 +339,7 @@ class HabitTimeFields extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '${minuteLabel(startMinute)} - ${minuteLabel(end)}',
+                  '${context.clockAt(startMinute)} - ${context.clockAt(end)}',
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -293,8 +348,45 @@ class HabitTimeFields extends StatelessWidget {
                 ),
               ),
             ],
+            if (onMore != null) ...[
+              for (var i = 0; i < more.length; i++) ...[
+                SizedBox(height: compact ? 10 : 12),
+                _MoreRow(
+                  color: color,
+                  compact: compact,
+                  time: context.clockAt(more[i].$1),
+                  span: more[i].$2 == 0
+                      ? context.l10n.habit_duration_none
+                      : spanLabel(more[i].$2),
+                  onTime: () => _pickMore(context, i),
+                  onSpan: () => _pickMoreDuration(context, i),
+                  onClear: () => _setMore(i, null),
+                ),
+              ],
+              SizedBox(height: compact ? 6 : 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _pickMore(context, more.length),
+                  style: TextButton.styleFrom(
+                    foregroundColor: color,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(LucideIcons.clockPlus, size: 17),
+                  label: Text(
+                    context.l10n.habit_time_more,
+                    style: TextStyle(
+                      fontSize: compact ? 13 : 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ],
+      ),
       ),
     );
   }
@@ -325,6 +417,7 @@ class _Row extends StatelessWidget {
       button: true,
       label: '$label $value',
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Row(
           children: [
@@ -343,12 +436,19 @@ class _Row extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: compact ? 13 : 14,
-                fontWeight: FontWeight.w700,
-                color: context.tokens.muted,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: compact ? 13 : 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
               ),
             ),
             if (onClear != null)
@@ -363,6 +463,78 @@ class _Row extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MoreRow extends StatelessWidget {
+  const _MoreRow({
+    required this.color,
+    required this.compact,
+    required this.time,
+    required this.span,
+    required this.onTime,
+    required this.onSpan,
+    required this.onClear,
+  });
+
+  final Color color;
+  final bool compact;
+  final String time;
+  final String span;
+  final VoidCallback onTime;
+  final VoidCallback onSpan;
+  final VoidCallback onClear;
+
+  Widget _pill(String value, VoidCallback onTap) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: compact ? 13 : 14,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(LucideIcons.repeat, size: 18, color: color),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            context.l10n.habit_time_again,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: compact ? 13 : 14,
+              fontWeight: FontWeight.w700,
+              color: context.colors.onSurface,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        _pill(time, onTime),
+        const SizedBox(width: 6),
+        _pill(span, onSpan),
+        IconButton(
+          icon: const Icon(LucideIcons.x, size: 16),
+          tooltip: context.l10n.clear,
+          visualDensity: VisualDensity.compact,
+          onPressed: onClear,
+        ),
+      ],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/habits/data/completion.dart';
+import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
 
 DateTime _today() => DateTime.now().atMidnight;
@@ -97,6 +98,20 @@ void main() {
       expect(h.isSatisfiedOn(_ago(6)), isFalse);
     });
 
+    test('a due day already done ahead is covered and left out of Plan', () {
+      final h = _habit(
+        interval: HabitInterval.everyXDays,
+        every: 2,
+        createdAt: _ago(4),
+        completions: _done([_ago(4), _ago(1)]),
+      );
+      expect(h.isScheduledOn(_today()), isTrue);
+      expect(h.isCoveredOn(_today()), isTrue);
+      expect(h.isDoneForNow, isTrue);
+      expect(DayPlan.isDueOn(h, _today()), isFalse);
+      expect(DayPlan.isDueOn(h, _ago(2)), isTrue);
+    });
+
     test('the days after a completion are covered until the next due day', () {
       final h = _habit(
         interval: HabitInterval.everyXDays,
@@ -128,6 +143,90 @@ void main() {
       );
       expect(h.isScheduledOn(_today()), isFalse);
       expect(h.isDoneForNow, isTrue);
+    });
+  });
+
+  group('everyXDays counted from the last time done', () {
+    Habit since(List<DateTime> done) => _habit(
+          interval: HabitInterval.everyXDays,
+          every: 3,
+          createdAt: _ago(10),
+          completions: _done(done),
+        ).copyWith(fromLastDone: true);
+
+    test('a late day moves the next due day', () {
+      final h = since([_ago(10), _ago(7), _ago(3)]);
+      expect(h.isScheduledOn(_ago(4)), isTrue);
+      expect(h.isScheduledOn(_ago(2)), isFalse);
+      expect(h.isScheduledOn(_ago(1)), isFalse);
+      expect(h.isScheduledOn(_today()), isTrue);
+      expect(h.isCoveredOn(_ago(1)), isTrue);
+      expect(DayPlan.isDueOn(h, _today()), isTrue);
+    });
+
+    test('the missed day still breaks the streak', () {
+      final h = since([_ago(10), _ago(7), _ago(3)]);
+      expect(h.currentStreak, 1);
+      expect(h.longestStreak, 2);
+    });
+
+    test('it stays due every day until it is done', () {
+      final h = since([_ago(10)]);
+      expect(h.isScheduledOn(_ago(8)), isFalse);
+      expect(h.isScheduledOn(_ago(7)), isTrue);
+      expect(h.isScheduledOn(_ago(6)), isTrue);
+      expect(h.isScheduledOn(_today().addDays(1)), isTrue);
+    });
+
+    test('doing it today pushes the next one out', () {
+      final h = since([_ago(10), _today()]);
+      expect(h.isScheduledOn(_today().addDays(1)), isFalse);
+      expect(h.isScheduledOn(_today().addDays(3)), isTrue);
+    });
+
+    test('the switch survives a round trip', () {
+      final h = since(const []);
+      expect(Habit.fromMap(h.toMap()).fromLastDone, isTrue);
+      expect(Habit.fromMap(h.copyWith(fromLastDone: false).toMap()).fromLastDone,
+          isFalse);
+    });
+  });
+
+  group('same weekday every month', () {
+    Habit monthly(DateTime start, {int every = 1}) => _habit(
+          interval: HabitInterval.everyXDays,
+          every: every,
+          createdAt: start,
+        ).copyWith(
+          scheduleUnit: ScheduleUnit.months,
+          scheduleStart: start,
+          monthWeekday: true,
+        );
+
+    test('keeps the first Monday instead of the date', () {
+      final h = monthly(DateTime(2026, 10, 5));
+      expect(h.isScheduledOn(DateTime(2026, 11, 2)), isTrue);
+      expect(h.isScheduledOn(DateTime(2026, 11, 5)), isFalse);
+      expect(h.isScheduledOn(DateTime(2026, 11, 9)), isFalse);
+      expect(h.isScheduledOn(DateTime(2026, 12, 7)), isTrue);
+    });
+
+    test('a fifth weekday means the last one', () {
+      final h = monthly(DateTime(2026, 10, 29));
+      expect(h.isScheduledOn(DateTime(2026, 11, 26)), isTrue);
+      expect(h.isScheduledOn(DateTime(2026, 11, 19)), isFalse);
+      expect(h.isScheduledOn(DateTime(2026, 12, 31)), isTrue);
+    });
+
+    test('it still skips the months in between', () {
+      final h = monthly(DateTime(2026, 10, 5), every: 2);
+      expect(h.isScheduledOn(DateTime(2026, 11, 2)), isFalse);
+      expect(h.isScheduledOn(DateTime(2026, 12, 7)), isTrue);
+    });
+
+    test('the switch survives a round trip', () {
+      final h = monthly(DateTime(2026, 10, 5));
+      expect(Habit.fromMap(h.toMap()).monthWeekday, isTrue);
     });
   });
 

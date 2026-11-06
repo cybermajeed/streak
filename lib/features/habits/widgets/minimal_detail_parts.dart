@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/extensions/clock_extensions.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/core/icons/habit_glyph.dart';
@@ -13,12 +14,15 @@ import 'package:streak/core/routing/app_navigator.dart';
 import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/focus/pages/focus_page.dart';
 import 'package:streak/features/focus/pages/focus_stats_page.dart';
+import 'package:streak/features/focus/widgets/focus_setup_parts.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
-import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
+import 'package:streak/features/habits/widgets/check_history.dart';
 import 'package:streak/features/habits/widgets/frequency_chip.dart';
+import 'package:streak/features/habits/widgets/habit_heatmap.dart';
 import 'package:streak/features/habits/widgets/saved_money.dart';
 import 'package:streak/features/habits/widgets/vacation_sheet.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class MinimalDetailHeader extends StatelessWidget {
   const MinimalDetailHeader({super.key, required this.habit});
@@ -29,7 +33,7 @@ class MinimalDetailHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final meta = [
       habitFrequencyLabel(context, habit),
-      if (habit.isPlanned) minuteLabel(habit.startMinute),
+      if (habit.isPlanned) context.clockAt(habit.startMinute),
       if (habit.category.isNotEmpty) context.categoryLabel(habit.category),
     ].join('  ·  ');
 
@@ -40,7 +44,7 @@ class MinimalDetailHeader extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: HabitGlyph(glyph: habit.icon, color: habit.color, size: 24),
+            child: HabitGlyph(glyph: habit.icon, color: habit.color.shownIn(context), size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -49,8 +53,6 @@ class MinimalDetailHeader extends StatelessWidget {
               children: [
                 Text(
                   habit.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: MinimalType.display(
                     28,
                     color: context.colors.onSurface,
@@ -73,9 +75,10 @@ class MinimalDetailHeader extends StatelessWidget {
 }
 
 class MinimalStreakTiles extends StatelessWidget {
-  const MinimalStreakTiles({super.key, required this.habit});
+  const MinimalStreakTiles({super.key, required this.habit, required this.mode});
 
   final Habit habit;
+  final HeatmapMode mode;
 
   String _format(BuildContext context, int value) => switch (habit.interval) {
     HabitInterval.weekly => context.l10n.count_weeks(value),
@@ -86,8 +89,16 @@ class MinimalStreakTiles extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final negative = habit.kind == HabitKind.negative;
+    final (period, count) = periodTotal(context, habit, mode);
     return MinimalGrid(
       children: [
+        if (habit.tracking)
+          MinimalTile(
+            icon: LucideIcons.history,
+            label: context.l10n.last_check,
+            value: lastCheckLabel(context, habit, withTime: false),
+          )
+        else ...[
         MinimalTile(
           icon: LucideIcons.flame,
           label: context.l10n.current_streak,
@@ -98,16 +109,18 @@ class MinimalStreakTiles extends StatelessWidget {
           label: context.l10n.best_streak,
           value: _format(context, habit.longestStreak),
         ),
+        ],
         MinimalTile(
           icon: negative ? LucideIcons.triangleAlert : LucideIcons.check,
-          label: negative ? context.l10n.relapses : context.l10n.total,
-          value: '${habit.totalCompletions}',
+          label: period,
+          value: '$count',
         ),
-        MinimalTile(
-          icon: LucideIcons.target,
-          label: context.l10n.completion_rate_short,
-          value: '${habit.consistency}%',
-        ),
+        if (!habit.tracking)
+          MinimalTile(
+            icon: LucideIcons.target,
+            label: context.l10n.completion_rate_short,
+            value: '${habit.consistency}%',
+          ),
       ],
     );
   }
@@ -144,7 +157,8 @@ class MinimalFocusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final focus = context.watch<FocusController>();
+    context.select<FocusController, int>((f) => f.revision);
+    final focus = context.read<FocusController>();
     final seconds = focus.secondsForHabit(habit.id);
     final today = focus.secondsForHabitOnDay(habit.id, AppClock.now());
 
@@ -156,7 +170,17 @@ class MinimalFocusRow extends StatelessWidget {
               ? null
               : '${context.l10n.today}  ${formatHoursShort(today)}',
           value: seconds == 0 ? null : formatHoursShort(seconds),
-          trailing: _PlayButton(habit: habit, active: focus.isActive),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 170),
+                child: FocusQuickTimers(habit: habit),
+              ),
+              const SizedBox(width: 8),
+              _PlayButton(habit: habit, active: focus.isActive),
+            ],
+          ),
           onTap: () =>
               AppNavigator.push(FocusStatsPage(habitId: habit.id)),
           last: true,
@@ -201,7 +225,7 @@ class _PlayButton extends StatelessWidget {
             color: minimalRaised(context),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(LucideIcons.play, size: 15, color: habit.color),
+          child: Icon(LucideIcons.play, size: 15, color: habit.color.shownIn(context)),
         ),
       ),
     );

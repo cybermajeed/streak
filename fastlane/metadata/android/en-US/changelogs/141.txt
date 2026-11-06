@@ -1,0 +1,10 @@
+Streak 2.3.0 🚀
+
+- Every widget redesigned, with a clearer editor
+- Classic now uses a softer, rounded font
+- Tapping a past day opens it first, so nothing changes by mistake
+- Repeat a habit X days after you last did it
+- The same weekday every month, like the first Monday
+- Done button on to-do notifications
+- Focus: count only full rounds, and a long break
+- Fixed the Focus alarm with the screen off and slowdowns during Focus

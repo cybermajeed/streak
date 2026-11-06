@@ -1,7 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/i18n/date_labels.dart';
+import 'package:streak/core/i18n/l10n.dart';
+import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/widgets/stat_axis.dart';
 import 'package:streak/features/statistics/widgets/stat_kit.dart';
 
@@ -11,23 +14,29 @@ class WeekdayBars extends StatelessWidget {
     required this.values,
     required this.color,
     this.height = 150,
+    this.format,
   });
 
   final List<int> values;
   final Color color;
   final double height;
+  final String Function(double value)? format;
 
   @override
   Widget build(BuildContext context) {
-    final labels = WeekdayLabels.narrowMonFirst(
+    final weekStart = context.watch<SettingsController>().weekStart;
+    final labels = WeekdayLabels.narrowFrom(
       Localizations.localeOf(context).languageCode,
+      weekStart,
     );
     return ValueBars(
-      values: [for (final value in values) value.toDouble()],
+      values: [
+        for (var i = 0; i < 7; i++) values[(weekStart - 1 + i) % 7].toDouble(),
+      ],
       color: color,
       height: height,
       label: (index) => labels[index % 7],
-      tooltip: (value) => '${value.round()}',
+      tooltip: format ?? (value) => '${value.round()}',
     );
   }
 }
@@ -43,9 +52,16 @@ class ValueBars extends StatelessWidget {
     this.height = 150,
     this.barWidth = 12,
     this.goal,
+    this.average,
+    this.stacks,
+    this.selected,
+    this.onSelect,
   });
 
   final List<double> values;
+  final List<List<(double, Color)>>? stacks;
+  final int? selected;
+  final ValueChanged<int>? onSelect;
   final Color color;
   final String Function(int index) label;
   final String Function(double value) tooltip;
@@ -53,6 +69,17 @@ class ValueBars extends StatelessWidget {
   final double height;
   final double barWidth;
   final double? goal;
+  final double? average;
+
+  List<BarChartRodStackItem> _stack(int index) {
+    final pieces = stacks;
+    if (pieces == null || index >= pieces.length) return const [];
+    var from = 0.0;
+    return [
+      for (final (value, tint) in pieces[index])
+        BarChartRodStackItem(from, from += value, tint),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,9 +113,32 @@ class ValueBars extends StatelessWidget {
                     labelResolver: (_) => tooltip(goal),
                   ),
                 ),
+              if (average case final mean? when mean > 0)
+                HorizontalLine(
+                  y: mean,
+                  color: context.tokens.muted.withValues(alpha: 0.55),
+                  strokeWidth: 1,
+                  dashArray: const [4, 4],
+                  label: HorizontalLineLabel(
+                    show: true,
+                    alignment: Alignment.topRight,
+                    padding: const EdgeInsets.only(bottom: 2, right: 2),
+                    style: statLabel(context),
+                    labelResolver: (_) =>
+                        '${context.l10n.average_short} ${tooltip(mean)}',
+                  ),
+                ),
             ],
           ),
           barTouchData: BarTouchData(
+            touchCallback: onSelect == null
+                ? null
+                : (event, response) {
+                    final spot = response?.spot;
+                    if (event is FlTapUpEvent && spot != null) {
+                      onSelect!(spot.touchedBarGroupIndex);
+                    }
+                  },
             touchTooltipData: BarTouchTooltipData(
               getTooltipColor: (_) => context.colors.surfaceContainerHighest,
               getTooltipItem: (group, _, rod, __) => BarTooltipItem(
@@ -119,6 +169,7 @@ class ValueBars extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     label(value.toInt()),
+                    textScaler: axisTextScaler(context),
                     style: TextStyle(
                       color: context.tokens.muted,
                       fontSize: 12,
@@ -136,7 +187,10 @@ class ValueBars extends StatelessWidget {
                 barRods: [
                   BarChartRodData(
                     toY: values[i],
-                    color: color,
+                    color: selected == null || selected == i
+                        ? color
+                        : color.withValues(alpha: 0.4),
+                    rodStackItems: _stack(i),
                     width: barWidth,
                     borderRadius: BorderRadius.vertical(
                       top: Radius.circular(barWidth / 2),

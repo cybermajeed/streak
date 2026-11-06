@@ -13,6 +13,7 @@ class ExpressCheck extends StatefulWidget {
     this.size = 48,
     this.icon = LucideIcons.check,
     this.circle = true,
+    this.restAlpha = 0.7,
   });
 
   final bool done;
@@ -22,6 +23,7 @@ class ExpressCheck extends StatefulWidget {
   final double size;
   final IconData icon;
   final bool circle;
+  final double restAlpha;
 
   @override
   State<ExpressCheck> createState() => _ExpressCheckState();
@@ -139,7 +141,7 @@ class _ExpressCheckState extends State<ExpressCheck>
                     ? (color.computeLuminance() > 0.55
                           ? Colors.black
                           : Colors.white)
-                    : color.withValues(alpha: 0.7),
+                    : color.withValues(alpha: widget.restAlpha),
               ),
             ),
           ),

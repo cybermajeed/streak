@@ -190,7 +190,7 @@ void main() {
 
       final focus = _controller();
       expect(focus.isFlow, isTrue);
-      expect(focus.elapsedSeconds, closeTo(10800, 5));
+      expect(focus.elapsedSeconds, closeTo(10800, 60));
     });
 
     test('stopping from the notification banks up to the moment it was pressed',

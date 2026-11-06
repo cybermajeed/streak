@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/i18n/date_labels.dart';
 import 'package:streak/core/i18n/l10n.dart';
@@ -14,10 +16,10 @@ import 'package:streak/core/widgets/scrolling_text.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/widgets/relapse_dialog.dart';
 import 'package:streak/features/habits/widgets/amount_actions.dart';
-import 'package:streak/features/habits/data/quant_progress.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/widgets/habit_heatmap.dart';
 import 'package:streak/features/habits/widgets/heatmap_path.dart';
+import 'package:streak/features/habits/widgets/focus_only_dialog.dart';
 import 'package:streak/features/habits/widgets/unscheduled_day_dialog.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 
@@ -33,12 +35,12 @@ class _GlyphTile extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: habit.color.withValues(alpha: 0.16),
+        color: habit.color.shownIn(context).withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(size * 0.28),
       ),
       child: HabitGlyph(
         glyph: habit.icon,
-        color: habit.color,
+        color: habit.color.shownIn(context),
         size: size * 0.46,
       ),
     );
@@ -68,7 +70,7 @@ class _CheckTile extends StatelessWidget {
     final negative = habit.kind == HabitKind.negative;
     final relapsed = negative && isRelapse(habit, AppClock.now());
     final marked = negative ? relapsed : done;
-    final tint = relapsed ? context.tokens.danger : habit.color;
+    final tint = relapsed ? context.tokens.danger : habit.color.shownIn(context);
 
     return Semantics(
       button: true,
@@ -97,7 +99,7 @@ class _CheckTile extends StatelessWidget {
           child: Icon(
             negative ? LucideIcons.ban : Icons.check_rounded,
             size: size * 0.5,
-            color: marked ? Colors.white : tint.withValues(alpha: 0.85),
+            color: marked ? tint.ink : tint.withValues(alpha: 0.85),
           ),
         ),
       ),
@@ -120,6 +122,8 @@ class _QuantTile extends StatelessWidget {
 
   Future<void> _add(BuildContext context, DateTime today) async {
     final controller = context.read<HabitsController>();
+    if (!await allowManualCheck(context, habit: habit, date: today)) return;
+    if (!context.mounted) return;
     final allowed =
         await confirmUnscheduledDay(context, habit: habit, date: today);
     if (!allowed) return;
@@ -130,9 +134,9 @@ class _QuantTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final today = AppClock.now();
     final count = habit.completions[today.dayKey]?.count ?? 0;
-    final progress = QuantProgress.of(count: count, target: habit.perDayTarget);
+    final progress = habit.progressFor(count);
     final reached = progress.reachedGoal;
-    final settled = reached ? progress.reachedColor(habit.color) : habit.color;
+    final settled = reached ? progress.reachedColor(habit.color.shownIn(context)) : habit.color.shownIn(context);
 
     return Semantics(
       button: true,
@@ -163,7 +167,7 @@ class _QuantTile extends StatelessWidget {
                       heightFactor: t.clamp(0.0, 1.0),
                       widthFactor: 1,
                       child: ColoredBox(
-                        color: progress.activeColor(habit.color),
+                        color: progress.activeColor(habit.color.shownIn(context)),
                       ),
                     ),
                   ),
@@ -176,7 +180,7 @@ class _QuantTile extends StatelessWidget {
                     builder: (context, t, _) => Icon(
                       Icons.check_rounded,
                       size: size * 0.5,
-                      color: reached || t >= 0.45 ? Colors.white : habit.color,
+                      color: reached || t >= 0.45 ? habit.color.shownIn(context).ink : habit.color.shownIn(context),
                     ),
                   ),
               ],
@@ -275,6 +279,7 @@ class GridWeekCard extends StatelessWidget {
       child: GestureDetector(
         onTap: onOpen,
         onLongPress: onLongPress,
+        onSecondaryTap: onLongPress,
         child: _shell(
           context,
           habit,
@@ -333,7 +338,7 @@ class _DayCell extends StatelessWidget {
     final relapsed = negative && isRelapse(habit, date);
     final done = relapsed || habit.isCompletedOn(date);
     final covered = !done && habit.isCoveredOn(date);
-    final tint = relapsed ? context.tokens.danger : habit.color;
+    final tint = relapsed ? context.tokens.danger : habit.color.shownIn(context);
     final quant = habit.kind == HabitKind.quantitative;
     final today = date.atMidnight == AppClock.today();
 
@@ -389,14 +394,12 @@ class _DayCell extends StatelessWidget {
                               Align(
                                 alignment: Alignment.bottomCenter,
                                 child: FractionallySizedBox(
-                                  heightFactor: QuantProgress.of(
-                                    count:
-                                        habit.completions[date.dayKey]?.count ??
-                                        0,
-                                    target: habit.perDayTarget,
+                                  heightFactor: habit.progressFor(
+                                    habit.completions[date.dayKey]?.count ?? 0,
+                                    goal: habit.pastGoalOn(date),
                                   ).fraction,
                                   widthFactor: 1,
-                                  child: ColoredBox(color: habit.color),
+                                  child: ColoredBox(color: habit.color.shownIn(context)),
                                 ),
                               ),
                           ],
@@ -437,6 +440,7 @@ class GridYearCard extends StatelessWidget {
       child: GestureDetector(
         onTap: onOpen,
         onLongPress: onLongPress,
+        onSecondaryTap: onLongPress,
         child: _shell(
           context,
           habit,
@@ -509,6 +513,7 @@ class GridMonthCard extends StatelessWidget {
       child: GestureDetector(
         onTap: onOpen,
         onLongPress: onLongPress,
+        onSecondaryTap: onLongPress,
         child: _shell(
           context,
           habit,
@@ -598,11 +603,17 @@ class _GridYearStripState extends State<_GridYearStrip> {
   @override
   Widget build(BuildContext context) {
     final today = AppClock.today();
-    final monday = today.addDays(-(today.weekday - 1));
-    final start = monday.subtract(const Duration(days: 7 * (_weeks - 1)));
+    final start = today
+        .startOfWeek(context.watch<SettingsController>().weekStart)
+        .addDays(-7 * (_weeks - 1));
     final months = DateFormat.MMM(Localizations.localeOf(context).languageCode);
     final path = heatmapPathOn(context);
     final gap = path ? heatmapPathGap : 3.0;
+    final pitch = _cell + gap;
+    final colors = [
+      for (var i = 0; i < _weeks * 7; i++)
+        heatmapCellColor(context, widget.habit, start.addDays(i)),
+    ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrolled && _scroll.hasClients) {
@@ -624,72 +635,100 @@ class _GridYearStripState extends State<_GridYearStrip> {
         inkFor: (column, row) {
           final date = start.addDays(column * 7 + row);
           return widget.habit.isCompletedOn(date)
-              ? heatmapPathColor(context, widget.habit.color)
+              ? heatmapPathColor(context, widget.habit.color.shownIn(context))
               : context.colors.surfaceContainerHighest;
         },
-        child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: List.generate(_weeks, (column) {
-          final first = start.addDays(column * 7);
-          final previous = start.add(Duration(days: (column - 1) * 7));
-          final newMonth = column == 0 || first.month != previous.month;
-
-          return Padding(
-            padding: EdgeInsets.only(right: gap),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapUp: (details) {
+            final column = (details.localPosition.dx / pitch).floor();
+            final row = ((details.localPosition.dy - 14) / pitch).floor();
+            if (column < 0 || column >= _weeks || row < 0 || row > 6) return;
+            final date = start.addDays(column * 7 + row);
+            if (date.isAfter(today)) return;
+            widget.onToggle(date);
+          },
+          child: SizedBox(
+            width: _weeks * pitch,
+            height: 14 + 7 * pitch,
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                SizedBox(
-                  height: 14,
-                  width: _cell,
-                  child: newMonth
-                      ? OverflowBox(
-                          maxWidth: 40,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            months.format(first),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: context.tokens.muted,
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
-                for (var row = 0; row < 7; row++)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: gap),
-                    child: _yearCell(context, first.addDays(row)),
+                Positioned.fill(
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: _YearCells(
+                        colors: colors,
+                        cell: _cell,
+                        gap: gap,
+                        radius: widget.circle ? _cell / 2 : 3,
+                      ),
+                    ),
                   ),
+                ),
+                for (var column = 0; column < _weeks; column++)
+                  if (column == 0 ||
+                      start.addDays(column * 7).month !=
+                          start.addDays((column - 1) * 7).month)
+                    Positioned(
+                      left: column * pitch,
+                      top: 0,
+                      height: 14,
+                      child: Text(
+                        months.format(start.addDays(column * 7)),
+                        textScaler: MediaQuery.textScalerOf(context)
+                            .clamp(maxScaleFactor: 1.2),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: context.tokens.muted,
+                        ),
+                      ),
+                    ),
               ],
-            ),
-          );
-        }),
-        ),
-      ),
-    );
-  }
-
-  Widget _yearCell(BuildContext context, DateTime date) {
-    return ExcludeSemantics(
-      child: GestureDetector(
-        onTap: date.isAfter(AppClock.today())
-            ? null
-            : () => widget.onToggle(date),
-        child: SizedBox(
-          width: _cell,
-          height: _cell,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: heatmapCellColor(context, widget.habit, date),
-              borderRadius: BorderRadius.circular(widget.circle ? _cell / 2 : 3),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class _YearCells extends CustomPainter {
+  const _YearCells({
+    required this.colors,
+    required this.cell,
+    required this.gap,
+    required this.radius,
+  });
+
+  final List<Color> colors;
+  final double cell;
+  final double gap;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..isAntiAlias = true;
+    final pitch = cell + gap;
+    final corner = Radius.circular(radius);
+    for (var i = 0; i < colors.length; i++) {
+      final left = (i ~/ 7) * pitch;
+      final top = 14 + (i % 7) * pitch;
+      paint.color = colors[i];
+      canvas.drawRRect(
+        RRect.fromLTRBR(left, top, left + cell, top + cell, corner),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_YearCells old) =>
+      old.cell != cell ||
+      old.gap != gap ||
+      old.radius != radius ||
+      !listEquals(old.colors, colors);
 }
 
 class _GridMonthCalendar extends StatelessWidget {

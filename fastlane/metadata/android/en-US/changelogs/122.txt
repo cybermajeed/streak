@@ -1,0 +1,10 @@
+Streak 2.1.0 🚀
+
+- To-dos are now notes like Google Keep: checklists, colours, photos, pins
+- Plan shows the notes and tasks of each day
+- Swipe habit cards to complete or undo
+- Backups as one zip with photos and music
+- Two new Focus sounds: brown noise and fire
+- Decimals in amounts and time as h:mm
+- Duplicate a habit, redesigned widgets
+- Fixed Pomodoro freezing, Loop import, weekly streaks and music on Windows

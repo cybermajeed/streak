@@ -1,0 +1,10 @@
+Streak 2.2.0 🚀
+
+- Classic rediseñado y Minimal más fluido
+- Elige qué hábitos enseña cada widget
+- Plan: el mes entero y las tareas con hora en la línea del día
+- Un día fijo del mes, y que cuente cualquier cantidad o paso
+- Avisos cada hora hasta la hora que elijas
+- Focus: etiquetas, volumen y hasta 30 canciones
+- Oculta en Hoy los hábitos de solo seguimiento
+- Arregladas las categorías repetidas al sincronizar

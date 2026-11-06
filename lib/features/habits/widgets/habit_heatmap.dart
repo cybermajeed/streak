@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/i18n/date_labels.dart';
 import 'package:streak/core/i18n/l10n.dart';
 import 'package:streak/features/habits/data/habit.dart';
-import 'package:streak/features/habits/data/quant_progress.dart';
 import 'package:streak/features/habits/widgets/day_stamp.dart';
 import 'package:streak/features/habits/widgets/heatmap_path.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
@@ -35,14 +35,14 @@ Color heatmapCellColor(
     if (beforeCreation) {
       return scheme.surfaceContainerHighest.withValues(alpha: 0.4);
     }
-    final clean = habit.color.withValues(alpha: 0.4);
+    final clean = habit.color.shownIn(context).withValues(alpha: 0.4);
     if (date.isAfter(today)) return clean.withValues(alpha: 0.18);
     if (habit.completions.containsKey(date.dayKey)) return context.tokens.danger;
     return clean;
   }
 
-  if (!beforeCreation && habit.isCoveredOn(date)) {
-    return habit.color.withValues(alpha: 0.22);
+  if (!beforeCreation && !habit.isCompletedOn(date) && habit.isCoveredOn(date)) {
+    return habit.color.shownIn(context).withValues(alpha: 0.22);
   }
 
   final logged = habit.completions[date.dayKey]?.count ?? 0;
@@ -52,11 +52,10 @@ Color heatmapCellColor(
     final untouched = date.isAfter(today) || habit.isOffDay(date);
     return untouched ? base.withValues(alpha: 0.4) : base;
   }
-  final target = habit.effectiveTarget <= 0 ? 1.0 : habit.effectiveTarget;
-  final ratio = (count / target).clamp(0.25, 1.0);
-  final full = QuantProgress.of(count: count, target: target)
-      .solidColor(habit.color);
-  return Color.lerp(habit.color.withValues(alpha: 0.4), full, ratio)!;
+  if (habit.capsAmount && !habit.isCompletedOn(date)) return context.tokens.danger;
+  final ratio = (count / habit.fillTargetOn(date)).clamp(0.25, 1.0);
+  final full = habit.progressOn(date, count).solidColor(habit.color.shownIn(context));
+  return Color.lerp(habit.color.shownIn(context).withValues(alpha: 0.4), full, ratio)!;
 }
 
 String heatmapDayLabel(BuildContext context, Habit habit, DateTime date) {
@@ -102,8 +101,8 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
 
   DateTime get _today => AppClock.today();
 
-  DateTime _mondayOf(DateTime d) =>
-      d.atMidnight.addDays(-(d.weekday - 1));
+  DateTime _weekOf(DateTime d) => d.atMidnight
+      .startOfWeek(context.watch<SettingsController>().weekStart);
 
   Color _cell(BuildContext context, DateTime date, {bool inScope = true}) =>
       heatmapCellColor(context, widget.habit, date, inScope: inScope);
@@ -114,7 +113,7 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
     final plain =
         fill.a < 0.55 || fill == context.colors.surfaceContainerHighest;
     final color = plain
-        ? widget.habit.color
+        ? widget.habit.color.shownIn(context)
         : (fill.computeLuminance() > 0.55 ? Colors.black : Colors.white);
     return Border.all(
       color: color.withValues(alpha: plain ? 1 : 0.6),
@@ -125,7 +124,7 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
   Color? _pathInk(BuildContext context, DateTime date, {bool inMonth = false}) {
     if (inMonth && date.month != _today.month) return null;
     return widget.habit.isCompletedOn(date)
-        ? heatmapPathColor(context, widget.habit.color)
+        ? heatmapPathColor(context, widget.habit.color.shownIn(context))
         : context.colors.surfaceContainerHighest;
   }
 
@@ -240,8 +239,8 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
   int _monthColumns() {
     final first = DateTime(_today.year, _today.month, 1);
     final last = DateTime(_today.year, _today.month + 1, 0);
-    final start = _mondayOf(first);
-    final end = _mondayOf(last).addDays(6);
+    final start = _weekOf(first);
+    final end = _weekOf(last).addDays(6);
     return ((end.epochDay - start.epochDay + 1) / 7).round();
   }
 
@@ -279,9 +278,9 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
     final bool monthScope = widget.mode == HeatmapMode.month;
     final DateTime start;
     if (monthScope) {
-      start = _mondayOf(DateTime(_today.year, _today.month, 1));
+      start = _weekOf(DateTime(_today.year, _today.month, 1));
     } else {
-      start = _mondayOf(_today).addDays(-7 * (columns - 1));
+      start = _weekOf(_today).addDays(-7 * (columns - 1));
     }
 
     final path = heatmapPathOn(context);
@@ -426,6 +425,9 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
                       ? _todayRing(context, fill, widget.compact ? 1.2 : 1.5)
                       : null,
                 );
+                final number = inMonth && side >= 20
+                    ? _dayNumber(context, date, fill, side, future: future)
+                    : null;
                 return SizedBox(
                   width: side,
                   height: side,
@@ -433,10 +435,11 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
                     date: date,
                     enabled: inMonth,
                     child: widget.compact
-                        ? DecoratedBox(decoration: decoration)
+                        ? DecoratedBox(decoration: decoration, child: number)
                         : AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             decoration: decoration,
+                            child: number,
                           ),
                   ),
                 );
@@ -449,6 +452,36 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
       ],
         );
       },
+    );
+  }
+
+  Widget _dayNumber(
+    BuildContext context,
+    DateTime date,
+    Color fill,
+    double side, {
+    required bool future,
+  }) {
+    final filled = fill.a >= 0.55;
+    final today = _isToday(date);
+    final color = filled
+        ? fill.ink
+        : future
+            ? context.tokens.muted.withValues(alpha: 0.5)
+            : today
+                ? context.colors.primary
+                : context.tokens.muted;
+    return Center(
+      child: Text(
+        '${date.day}',
+        style: TextStyle(
+          fontSize: (side * 0.36).clamp(9.0, 14.0),
+          fontWeight: filled || today ? FontWeight.w800 : FontWeight.w600,
+          height: 1,
+          color: color,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
     );
   }
 
@@ -480,7 +513,7 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
     final path = heatmapPathOn(context);
     final gap = path ? heatmapPathGap : 3.0;
     const cell = 13.0;
-    final start = _mondayOf(_today).addDays(-7 * (columns - 1));
+    final start = _weekOf(_today).addDays(-7 * (columns - 1));
     final months = DateFormat.MMM(Localizations.localeOf(context).languageCode);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -522,6 +555,8 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
                           alignment: Alignment.centerLeft,
                           child: Text(
                             months.format(colDate),
+                            textScaler: MediaQuery.textScalerOf(context)
+                                .clamp(maxScaleFactor: 1.2),
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:streak/core/extensions/date_extensions.dart';
+import 'package:streak/core/widgets/keep_built.dart';
 import 'package:streak/app/theme/app_tokens.dart';
 import 'package:streak/core/extensions/inset_extensions.dart';
 import 'package:streak/core/widgets/pane_mark.dart';
@@ -11,6 +13,8 @@ import 'package:streak/features/habits/widgets/habit_card.dart';
 import 'package:streak/features/habits/widgets/habit_heatmap.dart';
 import 'package:streak/features/habits/widgets/habit_entrance.dart';
 import 'package:streak/features/habits/widgets/slot_transition.dart';
+import 'package:streak/features/habits/widgets/swipe_check.dart';
+import 'package:streak/core/extensions/color_extensions.dart';
 
 class ClassicHabitList extends StatelessWidget {
   const ClassicHabitList({
@@ -24,7 +28,10 @@ class ClassicHabitList extends StatelessWidget {
     required this.onToggleToday,
     required this.onToggleDay,
     required this.onLongPress,
+    this.onSwipe,
     this.leaving = const {},
+    this.fold,
+    this.more = const [],
   });
 
   final List<Habit> habits;
@@ -32,18 +39,27 @@ class ClassicHabitList extends StatelessWidget {
   final bool reordering;
   final Set<String> leaving;
   final Widget header;
+  final Widget? fold;
+  final List<Habit> more;
   final void Function(int oldIndex, int newIndex) onReorder;
   final ValueChanged<Habit> onOpen;
   final ValueChanged<Habit> onToggleToday;
   final void Function(Habit habit, DateTime date) onToggleDay;
   final ValueChanged<Habit> onLongPress;
+  final ValueChanged<Habit>? onSwipe;
 
   @override
   Widget build(BuildContext context) {
     return ReorderableListView.builder(
-      padding: context.pagePadding(16, 8, 16, 104),
-      itemCount: habits.length,
-      onReorderItem: (oldIndex, newIndex) {
+      padding: context.pagePadding(
+        16,
+        8 + MediaQuery.paddingOf(context).top,
+        16,
+        104,
+      ),
+      itemCount: habits.length + (fold == null ? 0 : 1 + more.length),
+      buildDefaultDragHandles: false,
+      onReorder: (oldIndex, newIndex) {
         onReorder(oldIndex, newIndex);
       },
       proxyDecorator: (child, index, animation) => Material(
@@ -52,7 +68,13 @@ class ClassicHabitList extends StatelessWidget {
       ),
       header: header,
       itemBuilder: (context, index) {
-        final habit = habits[index];
+        if (index == habits.length) {
+          return KeyedSubtree(key: const ValueKey('fold'), child: fold!);
+        }
+        final extra = index > habits.length;
+        final group = extra ? more : habits;
+        final slot = extra ? index - habits.length - 1 : index;
+        final habit = group[slot];
         if (reordering) {
           return ReorderableDelayedDragStartListener(
             key: ValueKey(habit.id),
@@ -85,29 +107,43 @@ class ClassicHabitList extends StatelessWidget {
         return HabitEntrance(
           key: ValueKey(habit.id),
           index: index,
-          child: SlotTransition(
+          child: Opacity(
+            opacity: extra ? 0.6 : 1,
+            child: SlotTransition(
             leaving: leaving.contains(habit.id),
             child: Padding(
               padding: EdgeInsets.only(bottom: compact ? 3 : 12),
               child: PaneMark(
                 id: habit.id,
-                tint: habit.color,
+                tint: habit.color.shownIn(context),
                 corners: compact
-                    ? stackedCorners(index, habits.length)
+                    ? stackedCorners(slot, group.length)
                     : BorderRadius.circular(24),
-                child: HabitCard(
-                  habit: habit,
-                  mode: mode,
+                child: SwipeCheck(
+                  done: habit.isCompletedOn(AppClock.today()),
+                  tint: habit.color.shownIn(context),
                   corners: compact
-                      ? stackedCorners(index, habits.length)
-                      : null,
-                  onOpen: () => onOpen(habit),
-                  onToggleToday: () => onToggleToday(habit),
-                  onToggleDay: (date) => onToggleDay(habit, date),
-                  onLongPress: () => onLongPress(habit),
+                      ? stackedCorners(slot, group.length)
+                      : BorderRadius.circular(24),
+                  onSwipe: onSwipe == null ? null : () => onSwipe!(habit),
+                  child: KeepBuilt(
+                  keys: [habit, mode, compact, slot, group.length, AppClock.today()],
+                  build: () => HabitCard(
+                    habit: habit,
+                    mode: mode,
+                    corners: compact
+                        ? stackedCorners(slot, group.length)
+                        : null,
+                    onOpen: () => onOpen(habit),
+                    onToggleToday: () => onToggleToday(habit),
+                    onToggleDay: (date) => onToggleDay(habit, date),
+                    onLongPress: () => onLongPress(habit),
+                  ),
+                  ),
                 ),
               ),
             ),
+          ),
           ),
         );
       },

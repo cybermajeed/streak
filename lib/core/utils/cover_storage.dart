@@ -19,8 +19,9 @@ class CoverStorage {
   static Future<String?> store({
     required String folder,
     bool fromCamera = false,
+    List<String> extensions = imageExtensions,
   }) async {
-    final source = fromCamera ? await _shoot() : await _browse();
+    final source = fromCamera ? await _shoot() : await _browse(extensions);
     if (source == null) return null;
 
     final dir = await appDataDir();
@@ -28,7 +29,7 @@ class CoverStorage {
     if (!target.existsSync()) target.createSync(recursive: true);
 
     final extension = source.split('.').last.toLowerCase();
-    final name = imageExtensions.contains(extension) ? extension : 'jpg';
+    final name = extensions.contains(extension) ? extension : 'jpg';
     final dest = '${target.path}/${DateTime.now().millisecondsSinceEpoch}.$name';
     await File(source).copy(dest);
     await _dropTemporary(source);
@@ -46,6 +47,24 @@ class CoverStorage {
       CoverImage.forget(clean);
     } catch (e) {
       debugPrint('Could not delete $clean: $e');
+    }
+  }
+
+  static Future<String> clone(String path) async {
+    if (path.isEmpty) return path;
+    final clean = path.split('?').first;
+    try {
+      final dir = await appDataDir();
+      final source = File(clean);
+      if (!_isOurs(clean, dir.path) || !source.existsSync()) return path;
+      final dot = clean.lastIndexOf('.');
+      final dest =
+          '${clean.substring(0, dot)}_${DateTime.now().millisecondsSinceEpoch}${clean.substring(dot)}';
+      await source.copy(dest);
+      return dest;
+    } catch (e) {
+      debugPrint('Could not copy $clean: $e');
+      return path;
     }
   }
 
@@ -114,10 +133,10 @@ class CoverStorage {
     return picked?.path;
   }
 
-  static Future<String?> _browse() async {
+  static Future<String?> _browse(List<String> extensions) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: imageExtensions,
+      allowedExtensions: extensions,
     );
     return result?.files.single.path;
   }

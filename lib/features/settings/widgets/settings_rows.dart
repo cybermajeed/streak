@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:streak/app/theme/app_tokens.dart';
+import 'package:streak/core/utils/responsive.dart';
+import 'package:streak/features/settings/widgets/minimal_settings_widgets.dart';
 
 Widget settingsDivider(BuildContext context) => Divider(
       height: 1,
-      indent: 60,
+      indent: bareRows(context) ? 16 : 60,
       endIndent: 16,
       color: context.colors.surfaceContainerHighest,
     );
@@ -49,13 +51,36 @@ class SettingRow extends StatelessWidget {
   final bool enabled;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      LayoutBuilder(builder: (context, box) => _row(context, box.maxWidth));
+
+  Widget _row(BuildContext context, double width) {
+    final stacked = stackedRows(context);
+    final inner = width - 32;
+    final segmented = trailing is Segmented ? trailing as Segmented : null;
+    final longest = _longestWord(context);
+    final heading = textWidth(context, title, _titleStyle);
+    final compact = segmented != null &&
+        (stacked
+            ? segmented.naturalWidth(context) > inner - 44
+            : inner - 56 - segmented.naturalWidth(context) <
+                (heading > 100 ? heading : 100));
+    final shown = compact
+        ? SegmentedSelect(segmented: segmented, title: title)
+        : trailing;
+    final side = stacked
+        ? 0.0
+        : compact
+            ? SegmentedSelect.width
+            : segmented?.naturalWidth(context) ?? 64;
+    final bare = bareRows(context) ||
+        longest > inner - 44 - (stacked ? 0 : side + 12);
     final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          IconBadge(icon: icon),
-          const SizedBox(width: 14),
+          if (!bare) IconBadge(icon: icon),
+          if (!bare) const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,17 +99,42 @@ class SettingRow extends StatelessWidget {
                     style: TextStyle(fontSize: 13, color: context.tokens.muted),
                   ),
                 ],
+                if (stacked) ...[
+                  const SizedBox(height: 10),
+                  shown,
+                ],
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          trailing,
+          if (!stacked) const SizedBox(width: 12),
+          if (!stacked) shown,
         ],
       ),
     );
     if (enabled) return row;
     return IgnorePointer(child: Opacity(opacity: 0.45, child: row));
   }
+
+  static const _titleStyle = TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
+
+  double _longestWord(BuildContext context) {
+    var longest = 0.0;
+    for (final word in title.split(' ')) {
+      final width = textWidth(context, word, _titleStyle);
+      if (width > longest) longest = width;
+    }
+    return longest;
+  }
+}
+
+double textWidth(BuildContext context, String text, TextStyle style) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: DefaultTextStyle.of(context).style.merge(style)),
+    textScaler: MediaQuery.textScalerOf(context),
+    textDirection: Directionality.of(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width;
 }
 
 class NavRow extends StatelessWidget {
@@ -109,9 +159,20 @@ class NavRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stacked = stackedValue(context, value);
+    final shown = value == null
+        ? null
+        : Text(
+            value!,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: context.tokens.muted,
+            ),
+          );
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: IconBadge(icon: icon, tint: tint),
+      leading: bareRows(context) ? null : IconBadge(icon: icon, tint: tint),
       title: Row(
         children: [
           Flexible(
@@ -126,21 +187,23 @@ class NavRow extends StatelessWidget {
           ],
         ],
       ),
-      subtitle: subtitle == null
+      subtitle: stacked
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (subtitle != null)
+                  Text(subtitle!, style: TextStyle(color: context.tokens.muted)),
+                const SizedBox(height: 4),
+                shown!,
+              ],
+            )
+          : subtitle == null
           ? null
           : Text(subtitle!, style: TextStyle(color: context.tokens.muted)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (value != null)
-            Text(
-              value!,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: context.tokens.muted,
-              ),
-            ),
+          if (!stacked && shown != null) shown,
           const SizedBox(width: 6),
           Icon(LucideIcons.chevronRight,
               size: 18, color: context.tokens.muted),
@@ -196,7 +259,7 @@ class LinkRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      leading: IconBadge(icon: icon),
+      leading: bareRows(context) ? null : IconBadge(icon: icon),
       horizontalTitleGap: 14,
       title: Text(
         title,
@@ -232,6 +295,18 @@ class PickerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stacked = stackedRows(context);
+    final bare = bareRows(context);
+    final shown = value == null
+        ? null
+        : Text(
+            value!,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: context.tokens.muted,
+            ),
+          );
     return Semantics(
       button: true,
       child: InkWell(
@@ -240,8 +315,8 @@ class PickerRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              IconBadge(icon: icon),
-              const SizedBox(width: 14),
+              if (!bare) IconBadge(icon: icon),
+              if (!bare) const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,18 +338,17 @@ class PickerRow extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (stacked && shown != null) ...[
+                      const SizedBox(height: 4),
+                      shown,
+                    ],
                   ],
                 ),
               ),
-              if (value != null)
-                Text(
-                  value!,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: context.tokens.muted,
-                  ),
-                ),
+              if (!stacked && shown != null) ...[
+                const SizedBox(width: 12),
+                shown,
+              ],
               if (trailing != null) trailing!,
               const SizedBox(width: 6),
               Icon(LucideIcons.chevronRight,
@@ -298,6 +372,16 @@ class Segmented extends StatelessWidget {
   final List<String> options;
   final int index;
   final ValueChanged<int> onChanged;
+
+  static const _label = TextStyle(fontSize: 12, fontWeight: FontWeight.w700);
+
+  double naturalWidth(BuildContext context) {
+    var total = 5.0;
+    for (final option in options) {
+      total += textWidth(context, option, _label) + 18;
+    }
+    return total;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -340,6 +424,63 @@ class Segmented extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class SegmentedSelect extends StatelessWidget {
+  const SegmentedSelect({
+    super.key,
+    required this.segmented,
+    required this.title,
+  });
+
+  static const width = 140.0;
+
+  final Segmented segmented;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colors;
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        onTap: () => showOptionSheet(
+          context,
+          title: title,
+          options: segmented.options,
+          index: segmented.index,
+          onSelected: segmented.onChanged,
+        ),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: width),
+          padding: const EdgeInsets.fromLTRB(12, 7, 9, 7),
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  segmented.options[segmented.index.clamp(0, segmented.options.length - 1)],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(LucideIcons.chevronsUpDown, size: 15, color: scheme.primary),
+            ],
+          ),
+        ),
       ),
     );
   }
