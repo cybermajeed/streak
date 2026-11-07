@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart' as cp;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -114,8 +115,7 @@ class _CompactIconPickerState extends State<CompactIconPicker> {
             SizedBox(
               height: 24,
               child: ListView(
-                controller: _cats,
-                cacheExtent: 2000,
+                scrollCacheExtent: ScrollCacheExtent.pixels(2000), controller: _cats,
                 scrollDirection: Axis.horizontal,
                 children: [
                   for (final cat in cats)

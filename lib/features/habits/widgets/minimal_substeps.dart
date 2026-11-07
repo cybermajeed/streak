@@ -63,7 +63,7 @@ class _CompactSubstepsEditorState extends State<CompactSubstepsEditor> {
   }
 
   void _move(int from, int to) {
-    setState(() => _steps.insert(to > from ? to - 1 : to, _steps.removeAt(from)));
+    setState(() => _steps.insert(to, _steps.removeAt(from)));
     _emit();
   }
 
@@ -78,7 +78,7 @@ class _CompactSubstepsEditorState extends State<CompactSubstepsEditor> {
           physics: const NeverScrollableScrollPhysics(),
           buildDefaultDragHandles: false,
           padding: EdgeInsets.zero,
-          onReorder: _move,
+          onReorderItem: _move,
           proxyDecorator: (child, _, __) =>
               Material(type: MaterialType.transparency, child: child),
           children: [

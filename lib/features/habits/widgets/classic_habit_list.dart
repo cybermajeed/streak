@@ -59,8 +59,8 @@ class ClassicHabitList extends StatelessWidget {
       ),
       itemCount: habits.length + (fold == null ? 0 : 1 + more.length),
       buildDefaultDragHandles: false,
-      onReorder: (oldIndex, newIndex) {
-        onReorder(oldIndex, newIndex);
+      onReorderItem: (oldIndex, newIndex) {
+        onReorder(oldIndex, newIndex > oldIndex ? newIndex + 1 : newIndex);
       },
       proxyDecorator: (child, index, animation) => Material(
         color: Colors.transparent,
@@ -110,40 +110,47 @@ class ClassicHabitList extends StatelessWidget {
           child: Opacity(
             opacity: extra ? 0.6 : 1,
             child: SlotTransition(
-            leaving: leaving.contains(habit.id),
-            child: Padding(
-              padding: EdgeInsets.only(bottom: compact ? 3 : 12),
-              child: PaneMark(
-                id: habit.id,
-                tint: habit.color.shownIn(context),
-                corners: compact
-                    ? stackedCorners(slot, group.length)
-                    : BorderRadius.circular(24),
-                child: SwipeCheck(
-                  done: habit.isCompletedOn(AppClock.today()),
+              leaving: leaving.contains(habit.id),
+              child: Padding(
+                padding: EdgeInsets.only(bottom: compact ? 3 : 12),
+                child: PaneMark(
+                  id: habit.id,
                   tint: habit.color.shownIn(context),
                   corners: compact
                       ? stackedCorners(slot, group.length)
                       : BorderRadius.circular(24),
-                  onSwipe: onSwipe == null ? null : () => onSwipe!(habit),
-                  child: KeepBuilt(
-                  keys: [habit, mode, compact, slot, group.length, AppClock.today()],
-                  build: () => HabitCard(
-                    habit: habit,
-                    mode: mode,
+                  child: SwipeCheck(
+                    done: habit.isCompletedOn(AppClock.today()),
+                    tint: habit.color.shownIn(context),
                     corners: compact
                         ? stackedCorners(slot, group.length)
-                        : null,
-                    onOpen: () => onOpen(habit),
-                    onToggleToday: () => onToggleToday(habit),
-                    onToggleDay: (date) => onToggleDay(habit, date),
-                    onLongPress: () => onLongPress(habit),
-                  ),
+                        : BorderRadius.circular(24),
+                    onSwipe: onSwipe == null ? null : () => onSwipe!(habit),
+                    child: KeepBuilt(
+                      keys: [
+                        habit,
+                        mode,
+                        compact,
+                        slot,
+                        group.length,
+                        AppClock.today(),
+                      ],
+                      build: () => HabitCard(
+                        habit: habit,
+                        mode: mode,
+                        corners: compact
+                            ? stackedCorners(slot, group.length)
+                            : null,
+                        onOpen: () => onOpen(habit),
+                        onToggleToday: () => onToggleToday(habit),
+                        onToggleDay: (date) => onToggleDay(habit, date),
+                        onLongPress: () => onLongPress(habit),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
           ),
         );
       },

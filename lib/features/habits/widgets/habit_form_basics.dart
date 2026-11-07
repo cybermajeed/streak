@@ -332,8 +332,7 @@ class _IconPickerState extends State<IconPicker> {
               SizedBox(
                 height: 32,
                 child: ListView(
-                  controller: _cats,
-                  cacheExtent: 2000,
+                  scrollCacheExtent: ScrollCacheExtent.pixels(2000), controller: _cats,
                   scrollDirection: Axis.horizontal,
                   children: [
                     for (final cat in cats)
