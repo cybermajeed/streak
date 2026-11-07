@@ -377,7 +377,6 @@ Prefer the raw APK? You can download the latest builds right from the `/releases
 | [**`Streak-arm64-v8a.apk`**](releases/per-cpu-type/Streak-arm64-v8a.apk)     | 37 MB | Modern 64-bit phones, **pick this one** |
 | [**`Streak-armeabi-v7a.apk`**](releases/per-cpu-type/Streak-armeabi-v7a.apk) | 35 MB | Older 32-bit devices                    |
 | [**`Streak-x86_64.apk`**](releases/per-cpu-type/Streak-x86_64.apk)           | 39 MB | Emulators and x86 tablets               |
-| [**`Streak.apk`**](releases/fat-apk/Streak.apk)                              | 80 MB | Universal (All devices)                 |
 
 Runs on **Android 9 (Pie) and newer**.
 
