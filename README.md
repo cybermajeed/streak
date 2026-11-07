@@ -16,9 +16,9 @@
 
 <img src="assets/icon.svg" width="72" alt="Streak logo" />
 
-### A minimal, private, ad-free habit tracker
+### A minimal, private, ad-free habit & sleep tracker
 
-Log a habit in a single tap, keep your momentum, and watch your streaks grow.
+Log a habit in a single tap, track your sleep, keep your momentum, and watch your streaks grow.
 
 <br/>
 
@@ -79,9 +79,9 @@ Log a habit in a single tap, keep your momentum, and watch your streaks grow.
 
 ## Overview
 
-Streak is an open source habit tracker for Android, Windows and Linux. Make as
-many habits as you want, log them with one tap, and watch the grid, the streak
-counters and the statistics fill up.
+Streak is an open source habit and sleep tracker for Android, Windows and Linux. Make as
+many habits as you want, track your daily rest, log them with one tap, and watch the grid,
+the streak counters and the statistics fill up.
 
 Everything stays on your device. No account, no ads, nothing to sync.
 
@@ -178,7 +178,31 @@ Everything stays on your device. No account, no ads, nothing to sync.
 - **App lock** with a PIN or your fingerprint, for phones without one
 - **Archive** habits without losing a day of their history
 - Everything is offline: no account, no server, nothing to sync
-- Seven languages, with more open on Weblate
+- Over 30 languages, with more open on Weblate
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Sleep tracking
+
+- Dedicated **24-hour timeline** with interactive pinch-to-zoom from 12am to 12am
+- Log multiple sleep sessions per day, including night sleep and daytime naps
+- Full support for **cross-midnight sessions** with automatic overlap checks
+- Set custom **daily sleep goals** with progress rings and duration tracking
+- In-depth **sleep analytics**: average rest, bedtime and wake-up consistency, and historical trends
+- Complete privacy: sleep logs stay offline and back up with your habits
+
+</td>
+<td width="50%" valign="top">
+
+### Sync and desktop
+
+- **Folder sync**: multi-device synchronization via shared local/cloud folders with automatic conflict resolution
+- **Portable mode**: run directly from a USB or external drive on Windows and Linux without system traces
+- **Right-click context menus** on desktop for fast checking, editing, and duplicating
+- Native Windows and Linux support with custom DPI handling and keyboard shortcuts
 
 </td>
 </tr>
