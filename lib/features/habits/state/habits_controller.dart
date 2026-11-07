@@ -615,10 +615,11 @@ class HabitsController extends ChangeNotifier {
       );
     }
     if (outcome == null) return null;
+    final imported = outcome;
     await LocalStore.guardWrites(() async {
       var order = habits.length;
       final into = <String, String>{};
-      for (final habit in outcome.habits) {
+      for (final habit in imported.habits) {
         final same = _namedLike(habit);
         final placed = same == null
             ? habit.copyWith(order: order++)
@@ -642,7 +643,7 @@ class HabitsController extends ChangeNotifier {
         for (final note in LocalStore.readNotes())
           (note.habitId, note.date, note.text),
       };
-      for (final note in outcome.notes) {
+      for (final note in imported.notes) {
         final moved = note.copyWith(habitId: into[note.habitId]);
         if (known.contains((moved.habitId, moved.date, moved.text))) continue;
         await LocalStore.writeNote(moved);

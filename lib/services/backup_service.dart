@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
@@ -18,7 +17,6 @@ import 'package:streak/features/habits/data/category.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
 import 'package:streak/features/sleep/data/sleep_entry.dart';
-
 import 'package:streak/services/vault_writer.dart';
 
 const _kBackupVersion = 2;
@@ -32,9 +30,8 @@ class BackupData {
     required this.notes,
     required this.focus,
     required this.categories,
-    required this.settings,
     required this.skipped,
-    required this.sleep,
+    this.sleep = const [],
     this.profilePhotoBase64,
     this.exportedAt,
     this.settings = const {},
@@ -48,10 +45,10 @@ class BackupData {
   final List<Habit> habits;
   final List<HabitNote> notes;
   final List<FocusSession> focus;
-  final List<Category> categories;
-  final int skipped;
   final List<SleepEntry> sleep;
   final String? profilePhotoBase64;
+  final List<Category> categories;
+  final int skipped;
   final DateTime? exportedAt;
   final Map<String, Object?> settings;
   final String device;
@@ -99,7 +96,11 @@ class BackupService {
           LocalStore.readFocusSessions().map((f) => f.toMap()).toList(),
       'sleep':
           LocalStore.readSleepEntries().map((s) => s.toMap()).toList(),
-      'settings': settings,
+      'settings': {
+        for (final key in backupSettingKeys)
+          if (LocalStore.setting<Object?>(key, null) case final value?)
+            key: value,
+      },
       if (profilePhotoBase64 != null) 'profilePhotoBase64': profilePhotoBase64,
     };
   }
@@ -126,8 +127,8 @@ class BackupService {
   static bool _hasContent(List<Habit> habits) =>
       habits.isNotEmpty ||
       LocalStore.readNotes().isNotEmpty ||
-      LocalStore.readSleepEntries().isNotEmpty ||
-      LocalStore.readFocusSessions().isNotEmpty;
+      LocalStore.readFocusSessions().isNotEmpty ||
+      LocalStore.readSleepEntries().isNotEmpty;
 
   static Future<void> safetyCopy() async {
     try {
@@ -145,7 +146,6 @@ class BackupService {
     } catch (e) {
       debugPrint('Safety copy failed: $e');
     }
-  }
   }
 
   static Future<Directory?> defaultBackupDir() async {
@@ -184,62 +184,69 @@ class BackupService {
     bool readable = true,
     bool archive = true,
   }) async {
+    final habits = LocalStore.readHabits().values.toList();
+    if (!_hasContent(habits)) return null;
+
+    final dir = folder.isEmpty ? await defaultBackupDir() : Directory(folder);
+    if (dir == null) return null;
     try {
-      final habits = LocalStore.readHabits().values.toList();
-      if (!_hasContent(habits)) return null;
-      final dir = folder.isEmpty ? await defaultBackupDir() : Directory(folder);
-      if (dir == null) return null;
       if (!dir.existsSync()) await dir.create(recursive: true);
-
-      final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
-      final base = '${dir.path}/streak_backup_${stamp}_${LocalStore.deviceId}';
-      final payload = _payload(habits);
-      final json = await Isolate.run(
-        () => const JsonEncoder.withIndent('  ').convert(payload),
-      );
-      await _settle(File('$base.json.part'), '$base.json', (part) async {
-        await part.writeAsString(json, flush: true);
-      });
-      if (archive) {
-        await _settle(File('$base.zip.part'), '$base.zip', (part) async {
-          await BackupArchive.pack(payload, part.path);
-        });
-      }
-
-      if (readable) {
-        try {
-          await VaultWriter.write(
-            Directory('${dir.path}/$vaultFolder'),
-            habits: habits,
-            categories: LocalStore.readCategories(),
-            notes: LocalStore.readNotes(),
-            sleep: LocalStore.readSleepEntries(),
-            focus: LocalStore.readFocusSessions(),
-          );
-        } catch (e) {
-          debugPrint('Could not write the readable copy: $e');
-        }
-      }
-
-      _prune(dir, 'streak_backup_', '.json', _kAutoBackupKeep);
-      _prune(dir, 'streak_backup_', '.zip', _kAutoArchiveKeep);
-      return '$base.json';
-    } catch (e) {
-      debugPrint('Automatic backup failed: $e');
+    } catch (_) {
       return null;
     }
+
+    final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
+    final base = '${dir.path}/streak_backup_${stamp}_${LocalStore.deviceId}';
+    final jsonTarget = '$base.json';
+    final zipTarget = '$base.zip';
+    final payload = _payload(habits);
+
+    await _settle(File('$jsonTarget.part'), jsonTarget, (part) async {
+      await part.writeAsString(json.encode(payload));
+    });
+    if (archive) {
+      await _settle(File('$zipTarget.part'), zipTarget, (part) async {
+        await BackupArchive.pack(payload, part.path);
+      });
+    }
+
+    try {
+      if (readable) {
+        await VaultWriter.write(
+          Directory('${dir.path}/$vaultFolder'),
+          habits: habits,
+          categories: LocalStore.readCategories(),
+          notes: LocalStore.readNotes(),
+          focus: LocalStore.readFocusSessions(),
+          sleep: LocalStore.readSleepEntries(),
+        );
+      }
+    } catch (e) {
+      debugPrint('Could not write the readable copy: $e');
+    }
+
+    _prune(dir, 'streak_backup_', '.json', _kAutoBackupKeep);
+    _prune(dir, 'streak_backup_', '.zip', _kAutoArchiveKeep);
+    return jsonTarget;
   }
 
   static Future<void> _settle(
     File part,
     String target,
-    Future<void> Function(File part) write,
+    Future<void> Function(File) write,
   ) async {
     try {
       await write(part);
+      if (Platform.isWindows) {
+        final destination = File(target);
+        if (destination.existsSync()) destination.deleteSync();
+      }
       await part.rename(target);
-    } finally {
-      if (part.existsSync()) part.deleteSync();
+    } catch (_) {
+      try {
+        if (part.existsSync()) part.deleteSync();
+      } catch (_) {}
+      rethrow;
     }
   }
 
@@ -258,8 +265,10 @@ class BackupService {
         })
         .toList()
       ..sort((a, b) => b.path.compareTo(a.path));
+
     final days = <String>{};
-    for (final (index, file) in files.indexed) {
+    for (var index = 0; index < files.length; index++) {
+      final file = files[index];
       final name = file.uri.pathSegments.last;
       final day = name.substring(prefix.length, prefix.length + 10);
       final daily = days.length < keep && days.add(day);
@@ -275,7 +284,6 @@ class BackupService {
     Rect? origin,
     Habit? only,
   }) async {
-
     final stamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
     final name = only == null
         ? 'streak_backup_$stamp.zip'
@@ -396,11 +404,8 @@ class BackupService {
       habits: habits,
       notes: collect(root['notes'], HabitNote.fromMap),
       focus: collect(root['focus'], FocusSession.fromMap),
-      categories: collect(root['categories'], Category.fromMap),
       sleep: collect(root['sleep'], SleepEntry.fromMap),
-      settings: root['settings'] is Map
-          ? Map<String, dynamic>.from(root['settings'] as Map)
-          : const {},
+      categories: collect(root['categories'], Category.fromMap),
       skipped: skipped,
       profilePhotoBase64: root['profilePhotoBase64'] as String?,
       exportedAt: DateTime.tryParse((root['exportedAt'] ?? '') as String),

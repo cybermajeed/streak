@@ -374,12 +374,6 @@ class _HomePageState extends State<HomePage> {
           label: context.l10n.notes_all,
           onTap: () => AppNavigator.push(const AllNotesPage()),
         ),
-      if (settings.todosEnabled)
-        'todos': (
-          icon: LucideIcons.listChecks,
-          label: context.l10n.todos,
-          onTap: () => AppNavigator.push(const TodosPage()),
-        ),
       'stats': (
         icon: LucideIcons.chartColumn,
         label: context.l10n.stats,

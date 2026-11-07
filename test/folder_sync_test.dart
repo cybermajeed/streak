@@ -6,8 +6,6 @@ import 'package:streak/core/database/local_store.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/habits/data/completion.dart';
 import 'package:streak/features/habits/data/habit.dart';
-import 'package:streak/features/island/data/island_piece.dart';
-import 'package:streak/features/todos/data/todo.dart';
 import 'package:streak/services/folder_sync.dart';
 
 import 'support/app_harness.dart';
@@ -34,7 +32,6 @@ Future<void> _drop(
   List<Habit> habits, {
   required DateTime at,
   String stamp = '2026-03-03_10-00-00',
-  List<Todo> todos = const [],
   Map<String, int>? changes,
   Map<String, int>? deleted,
   Map<String, int>? cleared,
@@ -52,7 +49,6 @@ Future<void> _drop(
     'cleared': ?cleared,
     'days': ?days,
     'habits': habits.map((h) => h.toMap()).toList(),
-    'todos': todos.map((t) => t.toMap()).toList(),
     'settings': ?settings,
   };
   final suffix = device.isEmpty ? '' : '_$device';
@@ -258,25 +254,6 @@ void main() {
       expect(LocalStore.readHabits()['run']!.name, 'Morning run');
     });
 
-    test('a to-do finished here is not reopened by an older copy', () async {
-      final dir = await _folder();
-      final made = DateTime(2026, 3, 1);
-      await LocalStore.writeTodo(
-        testTodo(id: 'milk', text: 'Buy milk', done: true, createdAt: made),
-      );
-      await _drop(
-        dir,
-        const [],
-        todos: [testTodo(id: 'milk', text: 'Buy milk', createdAt: made)],
-        at: DateTime(2026, 3, 3, 10),
-        changes: {'milk': _ago(const Duration(hours: 1))},
-        device: 'phone',
-      );
-
-      await FolderSync.pull();
-
-      expect(LocalStore.todo('milk')!.done, isTrue);
-    });
   });
 
   group('several copies', () {
@@ -316,27 +293,6 @@ void main() {
     });
   });
 
-  group('island', () {
-    test('pieces bought on the other device arrive and are paid once', () async {
-      final dir = await _folder();
-      final ours = islandPieces[0];
-      final theirs = islandPieces[1];
-      await LocalStore.writeSetting('islandOwned', [ours.id]);
-      await LocalStore.writeSetting('islandSpent', ours.price);
-      await _drop(dir, [_run()], at: DateTime(2026, 3, 3, 10), settings: {
-        'islandOwned': [ours.id, theirs.id],
-        'islandSpent': ours.price + theirs.price,
-      });
-
-      expect(await FolderSync.pull(), 2);
-      expect(
-        LocalStore.setting<List<dynamic>>('islandOwned', const []),
-        unorderedEquals([ours.id, theirs.id]),
-      );
-      expect(LocalStore.setting('islandSpent', 0), ours.price + theirs.price);
-      expect(await FolderSync.pull(), 0);
-    });
-  });
 
   group('deleting', () {
     test('a habit deleted on the other device is deleted here', () async {
@@ -461,21 +417,6 @@ void main() {
       expect(LocalStore.deletedAt('run'), isNull);
     });
 
-    test('a to-do deleted on the other device is deleted here', () async {
-      final dir = await _syncing();
-      await LocalStore.quietly(() => LocalStore.writeTodo(testTodo(id: 'milk', text: 'Buy milk')));
-      await _drop(
-        dir,
-        [testHabit(id: 'walk', name: 'Walk')],
-        at: DateTime(2026, 3, 3, 10),
-        deleted: {'milk': _ago(Duration.zero)},
-        device: 'phone',
-      );
-
-      await FolderSync.pull();
-
-      expect(LocalStore.todo('milk'), isNull);
-    });
 
     test('a copy where everything was deleted still deletes it here', () async {
       final dir = await _syncing();

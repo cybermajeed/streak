@@ -187,7 +187,6 @@ class SettingsController extends ChangeNotifier {
   late bool _planningEnabled;
   late int _planContent;
   late bool _planMonth;
-  late bool _todoPapers;
   late bool _swipeCards;
   late bool _cardActivity;
   late bool _viewSwitcher;

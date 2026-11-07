@@ -739,7 +739,7 @@ List<Widget> _preferenceTiles(BuildContext context) {
           value: settings.notesEnabled,
           onChanged: settings.setNotesEnabled,
         ),
-        _Toggle(
+        ExpressTile(
           icon: LucideIcons.calendarClock,
           title: context.l10n.plan_day,
           subtitle: context.l10n.plan_day_sub,

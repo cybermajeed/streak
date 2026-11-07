@@ -274,8 +274,6 @@ class _RailPillState extends State<_RailPill> {
               ),
             ),
           ),
-          ),
-          ),
         ),
       ),
     );

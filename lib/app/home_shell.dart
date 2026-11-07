@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:streak/app/theme/app_tokens.dart';
-import 'package:streak/app/classic_nav_bar.dart';
 import 'package:streak/core/express/express_nav.dart';
 import 'package:streak/core/express/express_shapes.dart';
 import 'package:streak/core/express/express_surface.dart';
@@ -21,7 +20,6 @@ import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/core/routing/back_handlers.dart';
 import 'package:streak/core/utils/responsive.dart';
 import 'package:streak/core/widgets/page_motion.dart';
-import 'package:streak/core/widgets/glass.dart';
 import 'package:streak/features/focus/state/focus_actions.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
 import 'package:streak/features/habits/pages/day_timeline_page.dart';
@@ -257,6 +255,7 @@ class _HomeShellState extends State<HomeShell>
       _StableMedia(child: Builder(builder: _layout));
 
   Widget _layout(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final settings = context.watch<SettingsController>();
     final wide = isWideLayout(context);
     final railed = hasSideRail(context);
@@ -329,7 +328,6 @@ class _HomeShellState extends State<HomeShell>
                   ],
                 ),
               ),
-            ),
             ),
             Positioned(
               left: 0,

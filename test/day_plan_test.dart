@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
-import 'package:streak/features/todos/data/todo.dart';
 
 final _day = DateTime(2026, 8, 12);
 
@@ -31,51 +30,7 @@ Habit _habit({
       createdAt: createdAt ?? DateTime(2026, 1, 1),
     );
 
-Todo _todo(String id, {int? minutes, int? estimate}) => Todo(
-      id: id,
-      text: id,
-      createdAt: DateTime(2026, 8, 1),
-      date: '12-08-2026',
-      minutes: minutes,
-      estimate: estimate,
-    );
-
 void main() {
-  test('timed to-dos sit in the timeline between the habits', () {
-    final plan = DayPlan.of(
-      [
-        _habit(id: 'gym', start: 9 * 60, duration: 60),
-        _habit(id: 'read', start: 14 * 60, duration: 30),
-      ],
-      _day,
-      todos: [
-        _todo('call', minutes: 11 * 60, estimate: 45),
-        _todo('someday'),
-      ],
-    );
-
-    expect(plan.slots.map((s) => s.habit?.id ?? s.todo?.id ?? 'gap'), [
-      'gym',
-      'gap',
-      'call',
-      'gap',
-      'read',
-    ]);
-    expect(plan.slots[1].minutes, 60);
-    expect(plan.slots[3].minutes, 14 * 60 - (11 * 60 + 45));
-    expect(plan.planned.map((h) => h.id), ['gym', 'read']);
-  });
-
-  test('a to-do at the same time as a habit goes after it', () {
-    final plan = DayPlan.of(
-      [_habit(id: 'gym', start: 9 * 60)],
-      _day,
-      todos: [_todo('call', minutes: 9 * 60)],
-    );
-    expect(plan.slots.first.habit?.id, 'gym');
-    expect(plan.slots.last.todo?.id, 'call');
-  });
-
   test('planned habits come out sorted with the gaps between them', () {
     final plan = DayPlan.of([
       _habit(id: 'late', start: 13 * 60, duration: 30),
@@ -149,43 +104,14 @@ void main() {
     final habit = _habit(id: 'late', start: 23 * 60 + 30, duration: 120);
 
     expect(habit.endMinute, Habit.dayMinutes);
+    expect(minuteLabel(habit.endMinute), '00:00');
   });
 
-  test('spans read the way a clock does', () {
+  test('labels read the way a clock does', () {
+    expect(minuteLabel(0), '00:00');
+    expect(minuteLabel(9 * 60 + 5), '09:05');
     expect(spanLabel(45), '45m');
     expect(spanLabel(60), '1h');
     expect(spanLabel(95), '1h 35m');
-  });
-
-  test('a habit can sit in the timeline more than once a day', () {
-    final study = _habit(id: 'study', start: 7 * 60, duration: 30)
-        .copyWith(moreTimes: [(18 * 60, 20), (12 * 60, 45)]);
-    final plan = DayPlan.of([study], _day);
-
-    final blocks = plan.slots.where((s) => s.habit != null).toList();
-    expect(blocks.map((s) => (s.start, s.minutes)), [
-      (7 * 60, 30),
-      (12 * 60, 45),
-      (18 * 60, 20),
-    ]);
-    expect(plan.anytime, isEmpty);
-
-    final back = Habit.fromMap(study.toMap());
-    expect(back.moreTimes, [(18 * 60, 20), (12 * 60, 45)]);
-    expect(Habit.fromMap(_habit(id: 'one', start: 60).toMap()).moreTimes, isEmpty);
-  });
-
-  test('free time starts when a to-do was finished early', () {
-    final read = _habit(id: 'read', start: 14 * 60, duration: 30);
-    final early = _todo('report', minutes: 9 * 60, estimate: 120)
-        .copyWith(doneAt: DateTime(2026, 8, 12, 10));
-    final late = _todo('late', minutes: 9 * 60, estimate: 90)
-        .copyWith(doneAt: DateTime(2026, 8, 12, 12));
-    final otherDay = _todo('old', minutes: 9 * 60, estimate: 120)
-        .copyWith(doneAt: DateTime(2026, 8, 11, 9, 30));
-
-    expect(DayPlan.of([read], _day, todos: [early]).slots[1].minutes, 4 * 60);
-    expect(DayPlan.of([read], _day, todos: [late]).slots[1].minutes, 210);
-    expect(DayPlan.of([read], _day, todos: [otherDay]).slots[1].minutes, 3 * 60);
   });
 }

@@ -146,8 +146,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     maxCount: scoped.length,
                     color: accent,
                     habit: _habitId == null ? null : scoped.first,
-
                   ),
+                ),
                 ),
               ),
               const SpanEnd(),

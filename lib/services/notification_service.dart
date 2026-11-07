@@ -26,7 +26,6 @@ import 'package:streak/services/reminder_sounds.dart';
 import 'package:streak/services/widget_icon_service.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import 'package:uuid/uuid.dart';
 
 class NotificationService {
   NotificationService._internal();

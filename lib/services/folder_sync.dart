@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:streak/core/database/local_store.dart';
 import 'package:streak/features/habits/data/completion.dart';
-import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/services/backup_service.dart';
 import 'package:streak/services/notification_service.dart';
 
