@@ -370,13 +370,13 @@ them as they come.
 
 ### Install the APK yourself
 
-Prefer the raw APK? You can download the latest builds right from the `/releases` folder:
+Prefer the raw APK? You can download the latest builds right from the repository:
 
-| APK                                                                          | Size  | For                                     |
-| ---------------------------------------------------------------------------- | ----- | --------------------------------------- |
-| [**`Streak-arm64-v8a.apk`**](releases/per-cpu-type/Streak-arm64-v8a.apk)     | 37 MB | Modern 64-bit phones, **pick this one** |
-| [**`Streak-armeabi-v7a.apk`**](releases/per-cpu-type/Streak-armeabi-v7a.apk) | 35 MB | Older 32-bit devices                    |
-| [**`Streak-x86_64.apk`**](releases/per-cpu-type/Streak-x86_64.apk)           | 39 MB | Emulators and x86 tablets               |
+| APK                                                                                   | Size  | For                                     |
+| ------------------------------------------------------------------------------------- | ----- | --------------------------------------- |
+| [**`Streak-arm64-v8a.apk`**](build/app/outputs/apk/release/Streak-arm64-v8a.apk)     | 42 MB | Modern 64-bit phones, **pick this one** |
+| [**`Streak-armeabi-v7a.apk`**](build/app/outputs/apk/release/Streak-armeabi-v7a.apk) | 40 MB | Older 32-bit devices                    |
+| [**`Streak-x86_64.apk`**](build/app/outputs/apk/release/Streak-x86_64.apk)           | 43 MB | Emulators and x86 tablets               |
 
 Runs on **Android 9 (Pie) and newer**.
 
