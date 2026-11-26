@@ -24,6 +24,9 @@ import 'package:streak/features/habits/state/notes_controller.dart';
 import 'package:streak/features/habits/widgets/day_actions_sheet.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/pages/statistics_page.dart';
+import 'package:streak/features/todos/pages/todos_page.dart';
+import 'package:streak/features/todos/state/todo_tags_controller.dart';
+import 'package:streak/features/todos/state/todos_controller.dart';
 import 'package:streak/services/widget_action_service.dart';
 import 'package:streak/services/folder_sync.dart';
 import 'package:streak/services/image_cleanup_service.dart';
@@ -32,6 +35,7 @@ import 'package:streak/services/focus_service.dart';
 import 'package:streak/services/home_widget_service.dart';
 import 'package:streak/features/sleep/state/sleep_controller.dart';
 import 'package:streak/services/portable_traces.dart';
+import 'package:streak/services/todos_widget_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -87,12 +91,15 @@ Future<void> _startup() async {
   AppClock.cutoffHour = LocalStore.setting('dayCutoff', 0);
   await WidgetActionService.drain(
     LocalStore.readHabits(),
+    todos: LocalStore.readTodos(),
   );
   await FolderSync.pull();
   unawaited(ImageCleanupService.run());
 
   NotificationService.onOpenHabit = _openHabit;
+  NotificationService.onOpenTodos = _openTodos;
   NotificationService.onHabitsChanged = _reloadHabits;
+  NotificationService.onTodosChanged = _reloadTodos;
   FocusService.onPending = drainFocusActions;
   FocusService.listen();
   try {
@@ -149,7 +156,15 @@ void _run() {
       providers: [
         ChangeNotifierProvider(create: (_) => SettingsController()),
         ChangeNotifierProvider(create: (_) => CategoriesController()),
+        ChangeNotifierProvider(create: (_) => TodoTagsController()),
         ChangeNotifierProvider(create: (_) => NotesController()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final controller = TodosController();
+            TodosWidgetService.sync(controller.all);
+            return controller;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => FocusController()),
         ChangeNotifierProvider(
           create: (_) {
@@ -178,7 +193,16 @@ void _reloadHabits() {
   AppNavigator.key.currentContext?.read<HabitsController>().reload();
 }
 
+void _reloadTodos() {
+  AppNavigator.key.currentContext?.read<TodosController>().reload();
+}
+
+void _openTodos([String? todoId]) {
+  AppNavigator.push(TodosPage(openId: todoId), fade: true);
+}
+
 void _openPage(String page) {
+  if (page == 'todos') _openTodos();
   if (page == 'stats') AppNavigator.push(const StatisticsPage(), fade: true);
   if (page == 'focus') _openFocus();
   if (page == 'focusPage') _openFocusHome();
@@ -262,8 +286,11 @@ Future<void> widgetActionEntrypoint() async {
     AppClock.cutoffHour = LocalStore.setting('dayCutoff', 0);
     await LocalStore.reloadHabits();
     final habits = LocalStore.readHabits();
-    await WidgetActionService.drain(habits);
+    final todos = LocalStore.readTodos();
+    await WidgetActionService.drain(habits, todos: todos);
     await HomeWidgetService.sync(habits, renderIcons: false);
+    await TodosWidgetService.sync(todos);
+    await NotificationService().rescheduleTodos(todos);
   } catch (e) {
     debugPrint('Widget action entrypoint failed: $e');
   }

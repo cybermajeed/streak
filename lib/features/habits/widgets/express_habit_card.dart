@@ -119,7 +119,6 @@ class ExpressHabitCard extends StatelessWidget {
                       const SizedBox(height: 7),
                       _MetaPills(
                         habit: habit,
-                        planning: settings.planningEnabled,
                         mode: mode,
                       ),
                     ],
@@ -196,12 +195,10 @@ class _Glyph extends StatelessWidget {
 class _MetaPills extends StatelessWidget {
   const _MetaPills({
     required this.habit,
-    required this.planning,
     required this.mode,
   });
 
   final Habit habit;
-  final bool planning;
   final HeatmapMode mode;
 
   @override
@@ -225,7 +222,7 @@ class _MetaPills extends StatelessWidget {
           text: habitMarkLabel(context, habit, mode),
           tint: habit.color.shownIn(context),
         ),
-        if (habit.isPlanned && planning)
+        if (habit.isPlanned)
           _Pill(
             icon: LucideIcons.clock,
             text: context.clockAt(habit.startMinute),

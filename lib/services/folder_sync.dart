@@ -172,6 +172,10 @@ class FolderSync {
         (n) => n.id, LocalStore.note, (n) => n.toMap(), LocalStore.writeNote);
     brought += await _records(data.focus.where((f) => !orphan(f.habitId)), stamps,
         (f) => f.id, LocalStore.focusSession, (f) => f.toMap(), LocalStore.writeFocusSession);
+    brought += await _records(data.todos, stamps, (t) => t.id,
+        LocalStore.todo, (t) => t.toMap(), LocalStore.writeTodo);
+    brought += await _records(data.todoTags, stamps, (t) => t.id,
+        LocalStore.todoTag, (t) => t.toMap(), LocalStore.writeTodoTag);
     for (final entry in data.sleep) {
       await LocalStore.writeSleepEntry(entry);
     }
@@ -204,12 +208,25 @@ class FolderSync {
       await LocalStore.removeFocusFor(id);
       return true;
     }
+    if (LocalStore.todo(id) != null) {
+      try {
+        await notifications.cancelTodo(id);
+      } catch (e) {
+        debugPrint('Could not cancel the reminder of $id: $e');
+      }
+      await LocalStore.removeTodo(id);
+      return true;
+    }
     if (LocalStore.note(id) != null) {
       await LocalStore.removeNote(id);
       return true;
     }
     if (LocalStore.focusSession(id) != null) {
       await LocalStore.removeFocusSessions([id]);
+      return true;
+    }
+    if (LocalStore.todoTag(id) != null) {
+      await LocalStore.removeTodoTag(id);
       return true;
     }
     return false;

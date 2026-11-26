@@ -169,8 +169,7 @@ class HabitCard extends StatelessWidget {
                                         color: context.tokens.muted,
                                       ),
                                     ),
-                                    if (habit.isPlanned &&
-                                        settings.planningEnabled) ...[
+                                    if (habit.isPlanned) ...[
                                       const SizedBox(width: 8),
                                       Icon(
                                         LucideIcons.clock,

@@ -704,6 +704,8 @@ class HabitsController extends ChangeNotifier {
     final categories = known(LocalStore.readCategories(), (c) => c.id);
     final notes = known(LocalStore.readNotes(), (n) => n.id);
     final focus = known(LocalStore.readFocusSessions(), (f) => f.id);
+    final todos = known(LocalStore.readTodos(), (t) => t.id);
+    final tags = known(LocalStore.readTodoTags(), (t) => t.id);
     final sleep = known(LocalStore.readSleepEntries(), (s) => s.id);
     for (final category in data.categories) {
       if (categories.contains(category.id)) continue;
@@ -716,6 +718,12 @@ class HabitsController extends ChangeNotifier {
     }
     for (final session in data.focus) {
       if (!focus.contains(session.id)) await LocalStore.writeFocusSession(session);
+    }
+    for (final todo in data.todos) {
+      if (!todos.contains(todo.id)) await LocalStore.writeTodo(todo);
+    }
+    for (final tag in data.todoTags) {
+      if (!tags.contains(tag.id)) await LocalStore.writeTodoTag(tag);
     }
     for (final entry in data.sleep) {
       if (!sleep.contains(entry.id)) await LocalStore.writeSleepEntry(entry);

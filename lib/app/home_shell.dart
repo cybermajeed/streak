@@ -22,7 +22,6 @@ import 'package:streak/core/utils/responsive.dart';
 import 'package:streak/core/widgets/page_motion.dart';
 import 'package:streak/features/focus/state/focus_actions.dart';
 import 'package:streak/features/focus/state/focus_controller.dart';
-import 'package:streak/features/habits/pages/day_timeline_page.dart';
 import 'package:streak/features/habits/pages/home_page.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/widgets/today_intro.dart';
@@ -31,6 +30,8 @@ import 'package:streak/features/settings/settings_actions.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
 import 'package:streak/features/statistics/pages/statistics_page.dart';
 import 'package:streak/features/sleep/pages/sleep_page.dart';
+import 'package:streak/features/todos/pages/todos_page.dart';
+import 'package:streak/features/todos/state/todos_controller.dart';
 import 'package:streak/services/auto_sync.dart';
 import 'package:streak/services/health_steps.dart';
 import 'package:streak/services/home_widget_service.dart';
@@ -48,7 +49,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-enum _Tab { today, sleep, plan, stats, settings }
+enum _Tab { today, sleep, todos, stats, settings }
 
 final _paneTab = ValueNotifier(_Tab.today);
 
@@ -81,8 +82,11 @@ class _HomeShellState extends State<HomeShell>
     _toSettings.addListener(_openSettings);
     final focus = context.read<FocusController>();
     final habits = context.read<HabitsController>();
-    focus.onRoundSaved = (session) =>
-        unawaited(creditFocusRound(habits, focus, session));
+    final todos = context.read<TodosController>();
+    focus.onRoundSaved = (session) {
+      unawaited(creditFocusTodo(todos, focus.todoId, session));
+      unawaited(creditFocusRound(habits, focus, session));
+    };
     _waitForNextDay();
     unawaited(HealthSteps.sync(habits));
     final settings = context.read<SettingsController>();
@@ -103,6 +107,7 @@ class _HomeShellState extends State<HomeShell>
     _nextDay = Timer(end.difference(DateTime.now()), () {
       if (!mounted) return;
       context.read<HabitsController>().refresh();
+      context.read<TodosController>().reload();
       _waitForNextDay();
     });
   }
@@ -233,6 +238,7 @@ class _HomeShellState extends State<HomeShell>
         HomeWidgetService.sync(habits.asMap);
         return HealthSteps.sync(habits);
       });
+      context.read<TodosController>().refresh();
       TodayIntro.replay();
       drainFocusActions();
       context.read<SettingsController>().runAutoBackup();
@@ -242,11 +248,14 @@ class _HomeShellState extends State<HomeShell>
   }
 
   Future<void> _applyWidgetActions(HabitsController habits) async {
+    final todos = context.read<TodosController>();
     final changed = await WidgetActionService.drain(
       LocalStore.readHabits(),
+      todos: LocalStore.readTodos(),
     );
     if (!changed) return;
     await habits.reload();
+    todos.reload();
     await HomeWidgetService.sync(habits.asMap);
   }
 
@@ -271,7 +280,7 @@ class _HomeShellState extends State<HomeShell>
     final tabs = [
       _Tab.today,
       _Tab.sleep,
-      if (settings.planningEnabled) _Tab.plan,
+      if (settings.todosEnabled) _Tab.todos,
       _Tab.stats,
       _Tab.settings,
     ];
@@ -397,7 +406,7 @@ class _HomeShellState extends State<HomeShell>
 Widget _pageOf(_Tab tab) => switch (tab) {
   _Tab.today => const HomePage(),
   _Tab.sleep => const SleepPage(),
-  _Tab.plan => const DayTimelinePage(),
+  _Tab.todos => const TodosPage(),
   _Tab.stats => const StatisticsPage(),
   _Tab.settings => const SettingsPage(),
 };
@@ -405,7 +414,7 @@ Widget _pageOf(_Tab tab) => switch (tab) {
 IconData _iconOf(_Tab tab) => switch (tab) {
   _Tab.today => LucideIcons.house,
   _Tab.sleep => LucideIcons.moonStar,
-  _Tab.plan => LucideIcons.calendarClock,
+  _Tab.todos => LucideIcons.listChecks,
   _Tab.stats => LucideIcons.chartColumn,
   _Tab.settings => LucideIcons.settings,
 };
@@ -413,7 +422,7 @@ IconData _iconOf(_Tab tab) => switch (tab) {
 String _labelOf(BuildContext context, _Tab tab) => switch (tab) {
   _Tab.today => context.l10n.today,
   _Tab.sleep => 'Sleep',
-  _Tab.plan => context.l10n.plan_tab,
+  _Tab.todos => context.l10n.todos,
   _Tab.stats => context.l10n.stats,
   _Tab.settings => context.l10n.settings,
 };

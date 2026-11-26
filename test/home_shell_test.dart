@@ -6,6 +6,7 @@ import 'package:streak/core/minimal/minimal_nav.dart';
 import 'package:streak/features/habits/pages/home_page.dart';
 import 'package:streak/features/settings/pages/settings_page.dart';
 import 'package:streak/features/statistics/pages/statistics_page.dart';
+import 'package:streak/features/todos/pages/todos_page.dart';
 
 import 'support/app_harness.dart';
 
@@ -81,5 +82,30 @@ void main() {
     expect(find.byType(HomePage), findsOneWidget);
     expect(find.byType(StatisticsPage), findsNothing);
     expect(find.byType(SettingsPage), findsNothing);
+  });
+
+  testWidgets('classic hides the tasks tab when todosEnabled is false',
+      (tester) async {
+    await pumpScreen(
+      tester,
+      const HomeShell(),
+      settings: {'todosEnabled': false},
+    );
+
+    expect(find.byIcon(LucideIcons.listChecks), findsNothing);
+    expect(find.byType(TodosPage), findsNothing);
+  });
+
+  testWidgets('classic shows the tasks tab when todosEnabled is true',
+      (tester) async {
+    await pumpScreen(
+      tester,
+      const HomeShell(),
+      settings: {'todosEnabled': true},
+    );
+
+    await tester.tap(find.byIcon(LucideIcons.listChecks).last);
+    await tester.pumpAndSettle();
+    expect(find.byType(TodosPage), findsOneWidget);
   });
 }

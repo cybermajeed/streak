@@ -723,14 +723,27 @@ class _ClassicPreferencesPage extends StatelessWidget {
                     ),
                   ),
                   settingsDivider(context),
-                  PickerRow(
-                    icon: LucideIcons.calendarClock,
-                    title: context.l10n.plan_day,
-                    subtitle: context.l10n.plan_day_sub,
-                    value: SettingsActions.planOptions(context)[
-                        settings.planChoice],
-                    onTap: () => SettingsActions.pickPlan(context),
+                  SettingRow(
+                    icon: LucideIcons.listChecks,
+                    title: context.l10n.todos,
+                    subtitle: context.l10n.todos_enable_sub,
+                    trailing: Segmented(
+                      options: [context.l10n.off, context.l10n.on],
+                      index: settings.todosEnabled ? 1 : 0,
+                      onChanged: (i) => settings.setTodosEnabled(i == 1),
+                    ),
                   ),
+                  if (settings.todosEnabled) ...[
+                    settingsDivider(context),
+                    PickerRow(
+                      icon: LucideIcons.stickyNote,
+                      title: context.l10n.todo_style,
+                      subtitle: context.l10n.todo_style_sub,
+                      value: SettingsActions.todoStyles(context)[
+                          settings.todoPapers ? 1 : 0],
+                      onTap: () => SettingsActions.pickTodoStyle(context),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -104,6 +104,7 @@ Everything stays on your device. No account, no ads, nothing to sync.
 - **Fill in the past**: tap any day to add or remove it
 - **Day notes**: long-press a day to write what happened, or attach a photo
 - **Vacation mode** pauses a habit without breaking anything
+- **Task & to-do manager**: organize tasks with due dates, repeats, priorities, projects, tags, checklists, and paper or list views
 
 </td>
 <td width="50%" valign="top">

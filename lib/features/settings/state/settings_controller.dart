@@ -73,12 +73,7 @@ class SettingsController extends ChangeNotifier {
     _heatmapRolling = LocalStore.setting('heatmapRolling', false);
     _consistencyPeriod = LocalStore.setting('consistencyPeriod', 2);
     _startView = LocalStore.setting('startView', 0);
-    _planningEnabled = LocalStore.setting('planningEnabled', true);
-    _planContent = LocalStore.setting(
-      'planContent',
-      LocalStore.setting('planTodos', false) ? 1 : 0,
-    );
-    _planMonth = LocalStore.setting('planMonth', false);
+    _todoPapers = LocalStore.setting('todoPapers', true);
     _swipeCards = LocalStore.setting('swipeCards', false);
     _cardActivity = LocalStore.setting('cardActivity', true);
     _viewSwitcher = LocalStore.setting('viewSwitcher', true);
@@ -86,6 +81,7 @@ class SettingsController extends ChangeNotifier {
     _compactCards = LocalStore.setting('compactCards', false);
     _glassEffects = LocalStore.setting('glassEffects', true);
     _animations = LocalStore.setting('animations', true);
+    _todosEnabled = LocalStore.setting('todosEnabled', true);
     _sortCompletedLast = LocalStore.setting('sortCompletedLast', true);
     _todayOnly = LocalStore.setting('todayOnly', false);
     _hideDone = LocalStore.setting('hideDone', false);
@@ -184,9 +180,7 @@ class SettingsController extends ChangeNotifier {
   late bool _heatmapRolling;
   late int _consistencyPeriod;
   late int _startView;
-  late bool _planningEnabled;
-  late int _planContent;
-  late bool _planMonth;
+  late bool _todoPapers;
   late bool _swipeCards;
   late bool _cardActivity;
   late bool _viewSwitcher;
@@ -194,6 +188,7 @@ class SettingsController extends ChangeNotifier {
   late bool _compactCards;
   late bool _glassEffects;
   late bool _animations;
+  late bool _todosEnabled;
   late int _appStyle;
   late bool _sortCompletedLast;
   late bool _todayOnly;
@@ -372,44 +367,6 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get planningEnabled => _planningEnabled;
-
-  Future<void> setPlanningEnabled(bool value) async {
-    _planningEnabled = value;
-    await LocalStore.writeSetting('planningEnabled', value);
-    notifyListeners();
-  }
-
-  int get planContent => _planContent;
-
-  bool get planTodos => todosEnabled && _planContent != 0;
-
-  bool get planHabits => !planTodos || _planContent != 2;
-
-  int get planChoice {
-    if (!_planningEnabled) return 0;
-    if (!todosEnabled) return 1;
-    return const [1, 3, 2][_planContent];
-  }
-
-  Future<void> setPlanChoice(int choice) async {
-    await setPlanningEnabled(choice > 0);
-    if (choice > 0) await setPlanContent(const [0, 2, 1][choice - 1]);
-  }
-
-  Future<void> setPlanContent(int value) async {
-    _planContent = value;
-    await LocalStore.writeSetting('planContent', value);
-    notifyListeners();
-  }
-
-  bool get planMonth => _planMonth;
-
-  Future<void> setPlanMonth(bool value) async {
-    _planMonth = value;
-    await LocalStore.writeSetting('planMonth', value);
-  }
-
   bool get swipeCards => _swipeCards;
 
   Future<void> setSwipeCards(bool value) async {
@@ -466,14 +423,20 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get todoPapers => false;
+  bool get todoPapers => _todoPapers;
 
-  Future<void> setTodoPapers(bool value) async {}
+  Future<void> setTodoPapers(bool value) async {
+    _todoPapers = value;
+    notifyListeners();
+    await LocalStore.writeSetting('todoPapers', value);
+  }
 
-  bool get todosEnabled => false;
+  bool get todosEnabled => _todosEnabled;
 
   Future<void> setTodosEnabled(bool value) async {
-    // Deprecated
+    _todosEnabled = value;
+    await LocalStore.writeSetting('todosEnabled', value);
+    notifyListeners();
   }
 
   bool get sortCompletedLast => _sortCompletedLast;

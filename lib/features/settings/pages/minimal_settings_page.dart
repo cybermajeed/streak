@@ -621,12 +621,23 @@ class _PreferencesPage extends StatelessWidget {
               ),
             ),
             SoftRow(
-              icon: LucideIcons.calendarClock,
-              title: context.l10n.plan_day,
-              subtitle: context.l10n.plan_day_sub,
-              value: SettingsActions.planOptions(context)[settings.planChoice],
-              onTap: () => SettingsActions.pickPlan(context),
+              icon: LucideIcons.listChecks,
+              title: context.l10n.todos,
+              subtitle: context.l10n.todos_enable_sub,
+              trailing: _SoftSwitch(
+                value: settings.todosEnabled,
+                onChanged: settings.setTodosEnabled,
+              ),
             ),
+            if (settings.todosEnabled)
+              SoftRow(
+                icon: LucideIcons.stickyNote,
+                title: context.l10n.todo_style,
+                subtitle: context.l10n.todo_style_sub,
+                value: SettingsActions.todoStyles(context)[
+                    settings.todoPapers ? 1 : 0],
+                onTap: () => SettingsActions.pickTodoStyle(context),
+              ),
             SoftRow(
               icon: LucideIcons.moveHorizontal,
               title: context.l10n.swipe_cards,

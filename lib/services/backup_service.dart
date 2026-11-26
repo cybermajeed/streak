@@ -17,6 +17,8 @@ import 'package:streak/features/habits/data/category.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
 import 'package:streak/features/sleep/data/sleep_entry.dart';
+import 'package:streak/features/todos/data/todo.dart';
+import 'package:streak/features/todos/data/todo_tag.dart';
 import 'package:streak/services/vault_writer.dart';
 
 const _kBackupVersion = 2;
@@ -29,6 +31,8 @@ class BackupData {
     required this.habits,
     required this.notes,
     required this.focus,
+    required this.todos,
+    required this.todoTags,
     required this.categories,
     required this.skipped,
     this.sleep = const [],
@@ -45,6 +49,8 @@ class BackupData {
   final List<Habit> habits;
   final List<HabitNote> notes;
   final List<FocusSession> focus;
+  final List<Todo> todos;
+  final List<TodoTag> todoTags;
   final List<SleepEntry> sleep;
   final String? profilePhotoBase64;
   final List<Category> categories;
@@ -58,7 +64,11 @@ class BackupData {
   final Map<String, int> days;
 
   bool get isEmpty =>
-      habits.isEmpty && notes.isEmpty && focus.isEmpty && sleep.isEmpty;
+      habits.isEmpty &&
+      notes.isEmpty &&
+      focus.isEmpty &&
+      todos.isEmpty &&
+      sleep.isEmpty;
 }
 
 class BackupService {
@@ -94,6 +104,8 @@ class BackupService {
       'notes': LocalStore.readNotes().map((n) => n.toMap()).toList(),
       'focus':
           LocalStore.readFocusSessions().map((f) => f.toMap()).toList(),
+      'todos': LocalStore.readTodos().map((t) => t.toMap()).toList(),
+      'todoTags': LocalStore.readTodoTags().map((t) => t.toMap()).toList(),
       'sleep':
           LocalStore.readSleepEntries().map((s) => s.toMap()).toList(),
       'settings': {
@@ -127,6 +139,7 @@ class BackupService {
   static bool _hasContent(List<Habit> habits) =>
       habits.isNotEmpty ||
       LocalStore.readNotes().isNotEmpty ||
+      LocalStore.readTodos().isNotEmpty ||
       LocalStore.readFocusSessions().isNotEmpty ||
       LocalStore.readSleepEntries().isNotEmpty;
 
@@ -217,6 +230,7 @@ class BackupService {
           habits: habits,
           categories: LocalStore.readCategories(),
           notes: LocalStore.readNotes(),
+          todos: LocalStore.readTodos(),
           focus: LocalStore.readFocusSessions(),
           sleep: LocalStore.readSleepEntries(),
         );
@@ -404,6 +418,8 @@ class BackupService {
       habits: habits,
       notes: collect(root['notes'], HabitNote.fromMap),
       focus: collect(root['focus'], FocusSession.fromMap),
+      todos: collect(root['todos'], Todo.fromMap),
+      todoTags: collect(root['todoTags'], TodoTag.fromMap),
       sleep: collect(root['sleep'], SleepEntry.fromMap),
       categories: collect(root['categories'], Category.fromMap),
       skipped: skipped,

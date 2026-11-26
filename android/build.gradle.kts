@@ -4,12 +4,12 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.20")
     }
 }
 
 plugins {
-    id("org.jetbrains.kotlin.plugin.compose") version "2.2.20" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.3.20" apply false
 }
 
 allprojects {
@@ -34,6 +34,12 @@ subprojects {
 }
 
 subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force("androidx.glance:glance-appwidget:1.1.1")
+            force("androidx.glance:glance-material3:1.1.1")
+        }
+    }
     val alignJvm: Project.() -> Unit = {
         extensions.findByType(com.android.build.gradle.LibraryExtension::class.java)
             ?.compileOptions {

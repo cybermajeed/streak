@@ -8,6 +8,7 @@ import 'package:streak/features/habits/data/category.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
 import 'package:streak/features/sleep/data/sleep_entry.dart';
+import 'package:streak/features/todos/data/todo.dart';
 
 const vaultFolder = 'Streak';
 
@@ -31,6 +32,7 @@ class VaultWriter {
     required List<Habit> habits,
     required List<Category> categories,
     required List<HabitNote> notes,
+    required List<Todo> todos,
     required List<FocusSession> focus,
     required List<SleepEntry> sleep,
   }) async {
@@ -48,14 +50,14 @@ class VaultWriter {
     final archived = habits.where((h) => h.isArchived).toList()
       ..sort((a, b) => a.name.compareTo(b.name));
 
-    await _writeText(root, 'README.md', _readme(habits, notes, focus));
+    await _writeText(root, 'README.md', _readme(habits, todos, notes, focus));
     await _writeHabits(Directory('${root.path}/habits'), live, labels);
     await _writeHabits(
       Directory('${root.path}/habits/archived'),
       archived,
       labels,
     );
-
+    await _writeText(root, 'tasks.md', _tasks(todos));
     await _writeText(root, 'notes.md', _notes(notes, names));
     await _writeText(root, 'focus.md', _focus(focus, names));
     await _writeText(root, 'sleep.md', _sleep(sleep));
@@ -113,7 +115,7 @@ class VaultWriter {
 
   static String _readme(
     List<Habit> habits,
-
+    List<Todo> todos,
     List<HabitNote> notes,
     List<FocusSession> focus,
   ) {
@@ -132,7 +134,7 @@ Written on ${_stamp(DateTime.now())}.
 | --- | --- |
 | Habits | $live |
 | Archived habits | $archived |
-
+| Tasks | ${todos.length} |
 | Notes | ${notes.length} |
 | Focus sessions | ${focus.length} |
 
@@ -140,7 +142,7 @@ Written on ${_stamp(DateTime.now())}.
 
 - `habits/` one file per habit, with its settings and its full day by day
   history. Archived ones are in `habits/archived/`.
-
+- `tasks.md` your to-do list.
 - `notes.md` the notes you wrote on habit days.
 - `focus.md` every focus session, newest first.
 
@@ -263,6 +265,38 @@ the markdown here does not change anything in the app.
     if (habit.isTimeAmount) return formatMinutes(count);
     final value = formatAmount(count);
     return habit.unitLabel.isEmpty ? value : '$value ${habit.unitLabel}';
+  }
+
+  static String _tasks(List<Todo> todos) {
+    if (todos.isEmpty) return '# Tasks\n\nNothing here yet.\n';
+
+    final open = todos.where((t) => !t.done).toList();
+    final done = todos.where((t) => t.done).toList();
+
+    final out = StringBuffer()..writeln('# Tasks');
+    out.writeln();
+    out.writeln('${open.length} open, ${done.length} done.');
+
+    void section(String title, List<Todo> list, bool checked) {
+      if (list.isEmpty) return;
+      out.writeln();
+      out.writeln('## $title');
+      out.writeln();
+      for (final todo in list) {
+        final box = checked ? '[x]' : '[ ]';
+        final when = todo.date.isEmpty
+            ? ''
+            : ' (${_day(parseDayKey(todo.date))})';
+        out.writeln('- $box ${todo.text}$when');
+        for (final step in todo.steps) {
+          out.writeln('  - ${step.done ? '[x]' : '[ ]'} ${step.text}');
+        }
+      }
+    }
+
+    section('Open', open, false);
+    section('Done', done, true);
+    return out.toString();
   }
 
   static String _notes(List<HabitNote> notes, Map<String, String> habits) {

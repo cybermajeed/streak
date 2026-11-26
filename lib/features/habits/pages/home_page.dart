@@ -26,7 +26,6 @@ import 'package:streak/core/widgets/celebration_overlay.dart';
 import 'package:streak/features/habits/data/category.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/pages/all_notes_page.dart';
-import 'package:streak/features/habits/pages/day_timeline_page.dart';
 import 'package:streak/features/habits/pages/habit_details_page.dart';
 import 'package:streak/features/habits/pages/habit_form_page.dart';
 import 'package:streak/features/habits/pages/note_editor_page.dart';
@@ -34,6 +33,7 @@ import 'package:streak/features/focus/widgets/focus_pill.dart';
 import 'package:streak/features/habits/state/categories_controller.dart';
 import 'package:streak/features/habits/widgets/category_editor_sheet.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
+import 'package:streak/features/todos/pages/todos_page.dart';
 
 import 'package:streak/features/habits/widgets/classic_habit_list.dart';
 import 'package:streak/features/habits/widgets/daily_quote.dart';
@@ -362,11 +362,11 @@ class _HomePageState extends State<HomePage> {
           label: context.l10n.focus,
           onTap: () => openFocus(context),
         ),
-      if (settings.planningEnabled)
-        'plan': (
-          icon: LucideIcons.calendarClock,
-          label: context.l10n.day_timeline,
-          onTap: () => AppNavigator.push(const DayTimelinePage()),
+      if (settings.todosEnabled)
+        'todos': (
+          icon: LucideIcons.listChecks,
+          label: context.l10n.todos,
+          onTap: () => AppNavigator.push(const TodosPage()),
         ),
       if (settings.notesEnabled)
         'notes': (
@@ -542,12 +542,12 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(width: 16),
               ]
             : [
-          if (minimal && !railed && !_reordering && settings.planningEnabled)
+          if (minimal && !railed && !_reordering && settings.todosEnabled)
             IconButton(
-              tooltip: context.l10n.day_timeline,
-              icon: const Icon(LucideIcons.calendarClock, size: 22),
+              tooltip: context.l10n.todos,
+              icon: const Icon(LucideIcons.listChecks, size: 22),
               visualDensity: VisualDensity.compact,
-              onPressed: () => AppNavigator.push(const DayTimelinePage()),
+              onPressed: () => AppNavigator.push(const TodosPage()),
             ),
           if (!_reordering && settings.notesEnabled)
             IconButton(

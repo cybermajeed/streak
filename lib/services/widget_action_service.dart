@@ -8,15 +8,20 @@ import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/habits/data/completion_ops.dart';
 import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/habits/data/habit_links.dart';
+import 'package:streak/features/todos/data/todo.dart';
 import 'package:streak/services/home_widget_service.dart';
 import 'package:streak/services/notification_service.dart';
+import 'package:uuid/uuid.dart';
 
 class WidgetActionService {
   const WidgetActionService._();
 
   static const _queueKey = 'pending_actions';
 
-  static Future<bool> drain(Map<String, Habit> habits) async {
+  static Future<bool> drain(
+    Map<String, Habit> habits, {
+    List<Todo> todos = const [],
+  }) async {
     await HomeWidgetService.prepare();
     final pending = await _read();
     if (pending.isEmpty) return false;
@@ -29,9 +34,14 @@ class WidgetActionService {
           habit.id: habit.silencesRemindersOn(today),
     };
     final touched = <String>{};
+    final ticked = <Todo>[];
     for (final raw in pending) {
       try {
         final uri = Uri.parse(raw);
+        if (uri.queryParameters.containsKey('todoId')) {
+          ticked.addAll(_applyTodo(todos, uri));
+          continue;
+        }
         if (HabitLinks.marksHabit(uri)) {
           final id = _applyLink(habits, uri);
           if (id != null) touched.add(id);
@@ -59,7 +69,35 @@ class WidgetActionService {
         debugPrint('Widget reminder refresh skipped ($id): $e');
       }
     }
-    return touched.isNotEmpty;
+    for (final todo in ticked) {
+      await LocalStore.writeTodo(todo);
+      await NotificationService().scheduleTodo(todo);
+    }
+    return touched.isNotEmpty || ticked.isNotEmpty;
+  }
+
+  static List<Todo> _applyTodo(List<Todo> todos, Uri uri) {
+    final id = uri.queryParameters['todoId'];
+    if (id == null) return const [];
+    final index = todos.indexWhere((todo) => todo.id == id);
+    if (index == -1) return const [];
+
+    if (!todos[index].done && todos[index].repeats) {
+      final next = todos[index].nextTime(AppClock.today());
+      final record = todos[index].doneRecord(const Uuid().v4(), DateTime.now());
+      todos[index] = next;
+      todos.add(record);
+      return [next, record];
+    }
+
+    final done = !todos[index].done;
+    final updated = todos[index].copyWith(
+      done: done,
+      doneAt: done ? DateTime.now() : null,
+      clearDoneAt: !done,
+    );
+    todos[index] = updated;
+    return [updated];
   }
 
   static Future<List<String>> _read() async {

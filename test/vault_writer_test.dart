@@ -20,6 +20,7 @@ Future<Directory> _vault(
     habits: habits,
     categories: categories,
     notes: const [],
+    todos: const [],
     focus: const [],
     sleep: const [],
   );
@@ -167,6 +168,7 @@ void main() {
         habits: [testHabit(id: 'a', name: 'New name')],
         categories: const [],
         notes: const [],
+        todos: const [],
         focus: const [],
         sleep: const [],
       );
@@ -185,6 +187,7 @@ void main() {
         habits: const [],
         categories: const [],
         notes: const [],
+        todos: const [],
         focus: const [],
         sleep: const [],
       );

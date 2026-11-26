@@ -12,6 +12,8 @@ import 'package:streak/features/habits/data/habit.dart';
 import 'package:streak/features/focus/data/focus_session.dart';
 import 'package:streak/features/habits/data/habit_note.dart';
 import 'package:streak/features/sleep/data/sleep_entry.dart';
+import 'package:streak/features/todos/data/todo.dart';
+import 'package:streak/features/todos/data/todo_tag.dart';
 
 class LocalStore {
   const LocalStore._();
@@ -22,6 +24,8 @@ class LocalStore {
   static const _notesBox = 'notes';
   static const _focusBox = 'focus';
   static const _sleepBox = 'sleep';
+  static const _todosBox = 'todos';
+  static const _todoTagsBox = 'todo_tags';
   static const _changesKey = 'syncChanges';
   static const _deletedKey = 'syncDeleted';
   static const _clearedKey = 'syncCleared';
@@ -36,9 +40,12 @@ class LocalStore {
   static late Box _notes;
   static late Box _focus;
   static late Box _sleep;
+  static late Box _todos;
+  static late Box _todoTags;
 
   static int _writing = 0;
   static String _habitsStamp = '';
+  static String _todosStamp = '';
 
   static bool get isWriting => _writing > 0;
 
@@ -193,6 +200,9 @@ class LocalStore {
     _notes = await Hive.openBox(_notesBox);
     _focus = await Hive.openBox(_focusBox);
     _sleep = await Hive.openBox(_sleepBox);
+    _todos = await Hive.openBox(_todosBox);
+    _todosStamp = _stampOf(_todos);
+    _todoTags = await Hive.openBox(_todoTagsBox);
     final movedFrom = DataLocation.rewriteFrom;
     if (movedFrom != null) await _followMove(movedFrom);
   }
@@ -206,6 +216,8 @@ class LocalStore {
       _notes,
       _focus,
       _sleep,
+      _todos,
+      _todoTags,
     ]) {
       for (final key in box.keys.toList()) {
         final value = box.get(key);
@@ -215,6 +227,91 @@ class LocalStore {
       await box.flush();
     }
     DataLocation.finish();
+  }
+
+  static List<Todo> readTodos() {
+    final result = <Todo>[];
+    for (final raw in _todos.values) {
+      try {
+        result.add(Todo.fromMap(Map<String, dynamic>.from(raw as Map)));
+      } catch (e) {
+        debugPrint('Skipped an unreadable to-do: $e');
+      }
+    }
+    return result;
+  }
+
+  static Future<void> writeTodo(Todo todo) async {
+    await _todos.put(todo.id, todo.toMap());
+    _todosStamp = _stampOf(_todos);
+    await _touch([todo.id]);
+  }
+
+  static Todo? todo(String id) {
+    try {
+      final raw = _todos.get(id);
+      return raw is Map ? Todo.fromMap(Map<String, dynamic>.from(raw)) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static bool get todosChangedElsewhere {
+    final stamp = _stampOf(_todos);
+    return stamp.isEmpty || stamp != _todosStamp;
+  }
+
+  static Future<void> reloadTodos() async {
+    if (_writing > 0) return;
+    if (_todos.isOpen) await _todos.close();
+    _todos = await Hive.openBox(_todosBox);
+    _todosStamp = _stampOf(_todos);
+  }
+
+  static Future<void> writeTodos(Iterable<Todo> todos) async {
+    await _todos.putAll({for (final todo in todos) todo.id: todo.toMap()});
+    await _touch(todos.map((todo) => todo.id));
+  }
+
+  static Future<void> removeTodo(String id) async {
+    await _todos.delete(id);
+    await _removed([id]);
+  }
+
+  static Future<void> removeTodos(Iterable<String> ids) async {
+    await _todos.deleteAll(ids);
+    await _removed(ids);
+  }
+
+  static List<TodoTag> readTodoTags() {
+    final result = <TodoTag>[];
+    for (final raw in _todoTags.values) {
+      try {
+        result.add(TodoTag.fromJson(raw as String));
+      } catch (e) {
+        debugPrint('Skipped an unreadable tag: $e');
+      }
+    }
+    return result;
+  }
+
+  static Future<void> writeTodoTag(TodoTag tag) async {
+    await _todoTags.put(tag.id, tag.toJson());
+    await _touch([tag.id]);
+  }
+
+  static TodoTag? todoTag(String id) {
+    try {
+      final raw = _todoTags.get(id);
+      return raw is String ? TodoTag.fromJson(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> removeTodoTag(String id) async {
+    await _todoTags.delete(id);
+    await _removed([id]);
   }
   static List<FocusSession> readFocusSessions() {
     final result = <FocusSession>[];
@@ -468,6 +565,8 @@ class LocalStore {
     await _notes.clear();
     await _focus.clear();
     await _sleep.clear();
+    await _todos.clear();
+    await _todoTags.clear();
     await _categories.clear();
   }
 

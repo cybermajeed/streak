@@ -22,6 +22,8 @@ import 'package:streak/features/habits/state/categories_controller.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
 import 'package:streak/features/sleep/state/sleep_controller.dart';
+import 'package:streak/features/todos/state/todo_tags_controller.dart';
+import 'package:streak/features/todos/state/todos_controller.dart';
 
 import 'package:streak/services/notification_service.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
@@ -76,28 +78,14 @@ class SettingsActions {
       if (!context.mounted) return;
       context.read<NotesController>().reload();
       context.read<FocusController>().reload();
+      context.read<TodosController>().reload();
+      context.read<TodoTagsController>().reload();
       context.read<SleepController>().reload();
       context.read<CategoriesController>().reload();
       AppSnackbar.success(context, context.l10n.habits_imported);
     } else {
       AppSnackbar.error(context, error);
     }
-  }
-
-  static List<String> planOptions(BuildContext context) => [
-        context.l10n.off,
-        context.l10n.plan_show_habits,
-      ];
-
-  static Future<void> pickPlan(BuildContext context) {
-    final settings = context.read<SettingsController>();
-    return showOptionSheet(
-      context,
-      title: context.l10n.plan_day,
-      options: planOptions(context),
-      index: settings.planChoice,
-      onSelected: settings.setPlanChoice,
-    );
   }
 
   static List<String> todoStyles(BuildContext context) => [
@@ -127,6 +115,8 @@ class SettingsActions {
     if (!context.mounted) return;
     context.read<NotesController>().reload();
     context.read<FocusController>().reload();
+    context.read<TodosController>().reload();
+    context.read<TodoTagsController>().reload();
     context.read<SleepController>().reload();
     context.read<CategoriesController>().reload();
     await HomeWidgetService.sync(habits.asMap);
@@ -156,6 +146,8 @@ class SettingsActions {
         if (!context.mounted) return;
         context.read<NotesController>().reload();
         context.read<FocusController>().reload();
+        context.read<TodosController>().reload();
+        context.read<TodoTagsController>().reload();
         context.read<SleepController>().reload();
         context.read<CategoriesController>().reload();
       } else if (outcome.notes.isNotEmpty) {
@@ -394,6 +386,9 @@ class SettingsActions {
     if (!context.mounted) return;
     context.read<NotesController>().reload();
     context.read<FocusController>().reload();
+    context.read<TodosController>().reload();
+    context.read<TodoTagsController>().reload();
+    context.read<SleepController>().reload();
     context.read<CategoriesController>().reload();
 
     await context.read<SettingsController>().reloadFromStore();

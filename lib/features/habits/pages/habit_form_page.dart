@@ -124,8 +124,6 @@ class _HabitFormPageState extends State<HabitFormPage> {
   bool get _monthly =>
       _scheduleUnit == ScheduleUnit.months && !_fromLastDone;
 
-  bool get _planning => context.watch<SettingsController>().planningEnabled;
-
   bool get _focusTimeHabit =>
       _kind == HabitKind.quantitative &&
       _quantKind == QuantKind.time &&
@@ -831,7 +829,7 @@ class _HabitFormPageState extends State<HabitFormPage> {
         ],
         if (_noDays) _NoDaysHint(key: _noDaysKey),
       ],
-      if (_kind != HabitKind.negative && _planning) ...[
+      if (_kind != HabitKind.negative) ...[
         const SizedBox(height: 26),
         SectionLabel(context.l10n.habit_time),
         HabitTimeFields(
@@ -1216,7 +1214,7 @@ class _HabitFormPageState extends State<HabitFormPage> {
           if (_noDays) _NoDaysHint(key: _noDaysKey),
         ],
       ],
-      if (_kind != HabitKind.negative && _planning) ...[
+      if (_kind != HabitKind.negative) ...[
         const SizedBox(height: 16),
         SectionLabel(context.l10n.habit_time),
         HabitTimeFields(
@@ -1594,7 +1592,7 @@ class _HabitFormPageState extends State<HabitFormPage> {
               ],
               if (_noDays) _NoDaysHint(key: _noDaysKey),
             ],
-            if (_kind != HabitKind.negative && _planning) ...[
+            if (_kind != HabitKind.negative) ...[
               const SizedBox(height: 20),
               SectionLabel(context.l10n.habit_time),
               HabitTimeFields(

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:streak/core/extensions/date_extensions.dart';
 import 'package:streak/features/habits/data/completion.dart';
-import 'package:streak/features/habits/data/day_plan.dart';
 import 'package:streak/features/habits/data/habit.dart';
 
 DateTime _today() => DateTime.now().atMidnight;
@@ -108,8 +107,8 @@ void main() {
       expect(h.isScheduledOn(_today()), isTrue);
       expect(h.isCoveredOn(_today()), isTrue);
       expect(h.isDoneForNow, isTrue);
-      expect(DayPlan.isDueOn(h, _today()), isFalse);
-      expect(DayPlan.isDueOn(h, _ago(2)), isTrue);
+      expect(h.isDoneAheadOn(_today()), isTrue);
+      expect(h.isDoneAheadOn(_ago(2)), isFalse);
     });
 
     test('the days after a completion are covered until the next due day', () {
@@ -161,7 +160,7 @@ void main() {
       expect(h.isScheduledOn(_ago(1)), isFalse);
       expect(h.isScheduledOn(_today()), isTrue);
       expect(h.isCoveredOn(_ago(1)), isTrue);
-      expect(DayPlan.isDueOn(h, _today()), isTrue);
+      expect(h.isDoneAheadOn(_today()), isFalse);
     });
 
     test('the missed day still breaks the streak', () {

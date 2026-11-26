@@ -20,6 +20,10 @@ import 'package:streak/features/habits/state/categories_controller.dart';
 import 'package:streak/features/habits/state/habits_controller.dart';
 import 'package:streak/features/habits/state/notes_controller.dart';
 import 'package:streak/features/settings/state/settings_controller.dart';
+import 'package:streak/features/sleep/state/sleep_controller.dart';
+import 'package:streak/features/todos/data/todo.dart';
+import 'package:streak/features/todos/state/todo_tags_controller.dart';
+import 'package:streak/features/todos/state/todos_controller.dart';
 
 import 'package:streak/l10n/app_localizations.dart';
 
@@ -130,7 +134,32 @@ Future<void> seedNotes(WidgetTester tester, List<HabitNote> notes) =>
       }
     });
 
+Todo testTodo({
+  required String id,
+  required String text,
+  DateTime? due,
+  int? minutes,
+  TodoPriority priority = TodoPriority.none,
+  bool done = false,
+  DateTime? createdAt,
+}) =>
+    Todo(
+      id: id,
+      text: text,
+      done: done,
+      date: due?.dayKey ?? '',
+      minutes: minutes,
+      priority: priority,
+      createdAt: createdAt ?? AppClock.now(),
+      doneAt: done ? (createdAt ?? AppClock.now()) : null,
+    );
 
+Future<void> seedTodos(WidgetTester tester, List<Todo> todos) =>
+    tester.runAsync(() async {
+      for (final todo in todos) {
+        await LocalStore.writeTodo(todo);
+      }
+    });
 
 Future<void> seedHabits(WidgetTester tester, List<Habit> habits) =>
     tester.runAsync(() async {
@@ -164,9 +193,11 @@ Future<void> pumpScreen(
       providers: [
         ChangeNotifierProvider(create: (_) => SettingsController()),
         ChangeNotifierProvider(create: (_) => CategoriesController()),
+        ChangeNotifierProvider(create: (_) => TodoTagsController()),
         ChangeNotifierProvider(create: (_) => NotesController()),
+        ChangeNotifierProvider(create: (_) => TodosController()),
         ChangeNotifierProvider(create: (_) => FocusController()),
-
+        ChangeNotifierProvider(create: (_) => SleepController()),
         ChangeNotifierProvider(create: (_) => HabitsController()),
       ],
       child: MaterialApp(

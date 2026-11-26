@@ -3,7 +3,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:streak/features/focus/pages/focus_setup_page.dart';
 import 'package:streak/features/habits/data/habit.dart';
-import 'package:streak/features/habits/pages/day_timeline_page.dart';
 import 'package:streak/features/habits/pages/habit_details_page.dart';
 import 'package:streak/features/habits/pages/habit_form_page.dart';
 import 'package:streak/features/habits/pages/home_page.dart';
@@ -45,7 +44,6 @@ void main() {
     'form': const HabitFormPage(),
     'focus': const FocusSetupPage(),
     'details': const HabitDetailsPage(habitId: 'a'),
-    'timeline': const DayTimelinePage(),
   };
 
   for (final entry in screens.entries) {
@@ -54,7 +52,9 @@ void main() {
           (tester) async {
         await seed(tester);
         await pumpScreen(tester, entry.value, minimal: minimal, textScale: 2);
-        await scrollToEnd(tester, drags: 6);
+        if (find.byType(Scrollable).evaluate().isNotEmpty) {
+          await scrollToEnd(tester, drags: 6);
+        }
         expect(tester.takeException(), isNull);
       });
     }
